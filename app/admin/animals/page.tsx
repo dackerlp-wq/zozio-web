@@ -15,7 +15,7 @@ export default async function AdminAnimalsPage() {
     .eq('user_id', user.id)
     .single()
 
-  const institution = membership?.institution as { id: string; name: string; type: string } | null
+  const institution = (membership?.institution as unknown) as { id: string; name: string; type: string } | null
   if (!institution) redirect('/auth/register')
 
   const isShelter = institution.type === 'shelter'

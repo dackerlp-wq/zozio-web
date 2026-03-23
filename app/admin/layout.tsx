@@ -28,7 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect('/auth/register')
   }
 
-  const institution = membership?.institution as {
+  const institution = (membership?.institution as unknown) as {
     id: string; name: string; type: string; slug: string; approval_status: string
   } | null
 

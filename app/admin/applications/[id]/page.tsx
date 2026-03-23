@@ -20,7 +20,7 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
     .eq('user_id', user.id)
     .single()
 
-  const institution = membership?.institution as { id: string } | null
+  const institution = (membership?.institution as unknown) as { id: string } | null
 
   const { data: app, error } = await supabase
     .from('adoption_applications')
