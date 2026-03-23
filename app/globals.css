@@ -1,26 +1,90 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --coral:          #E8634A;
+  --coral-light:    #FDEAE6;
+  --coral-dark:     #C44B33;
+  --amber:          #F0A500;
+  --amber-light:    #FEF3D6;
+  --terra-light:    #F9EDE3;
+
+  --shelter:        #E8634A;
+  --shelter-bg:     #FDEAE6;
+  --shelter-dark:   #C44B33;
+
+  --rescue:         #2E9E8F;
+  --rescue-bg:      #E4F7F5;
+  --rescue-dark:    #1F7268;
+  --rescue-light:   #A8E6DF;
+
+  --sand:           #F5E6D3;
+  --cream:          #FDF8F2;
+  --warm:           #FFFCF8;
+  --brown:          #6B3F1F;
+  --brown-mid:      #9B5E35;
+  --dark:           #2C1810;
+  --espresso:       #2C1810;
+  --gray:           #8B7355;
+  --gray-light:     #D4C4B0;
+  --gray-pale:      #F0E8DC;
+
+  --success:        #1A7A45;
+  --success-bg:     #E8F5EE;
+  --warning:        #8B6000;
+  --warning-bg:     #FEF3D6;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-coral:        var(--coral);
+  --color-coral-light:  var(--coral-light);
+  --color-coral-dark:   var(--coral-dark);
+  --color-amber:        var(--amber);
+  --color-amber-light:  var(--amber-light);
+  --color-shelter:      var(--shelter);
+  --color-shelter-bg:   var(--shelter-bg);
+  --color-shelter-dark: var(--shelter-dark);
+  --color-rescue:       var(--rescue);
+  --color-rescue-bg:    var(--rescue-bg);
+  --color-rescue-dark:  var(--rescue-dark);
+  --color-rescue-light: var(--rescue-light);
+  --color-sand:         var(--sand);
+  --color-cream:        var(--cream);
+  --color-warm:         var(--warm);
+  --color-brown:        var(--brown);
+  --color-brown-mid:    var(--brown-mid);
+  --color-espresso:     var(--espresso);
+  --color-gray:         var(--gray);
+  --color-gray-light:   var(--gray-light);
+  --color-gray-pale:    var(--gray-pale);
+  --color-success:      var(--success);
+  --color-success-bg:   var(--success-bg);
+
+  --font-display: var(--font-display);
+  --font-body:    var(--font-body);
+
+  --radius-sm:   12px;
+  --radius-md:   20px;
+  --radius-lg:   32px;
+  --radius-xl:   48px;
+  --radius-pill: 100px;
+
+  --shadow-sm: 0 2px 10px rgba(44,24,16,.07);
+  --shadow-md: 0 8px 28px rgba(44,24,16,.11);
+  --shadow-lg: 0 20px 56px rgba(44,24,16,.15);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes blobFloat {
+  0%,100% { transform: translate(0,0) scale(1); }
+  33%     { transform: translate(18px,-28px) scale(1.05); }
+  66%     { transform: translate(-14px,18px) scale(.95); }
+}
+
+@keyframes chipFloat {
+  0%,100% { transform: translateY(0); }
+  50%     { transform: translateY(-9px); }
 }
