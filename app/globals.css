@@ -58,6 +58,8 @@
   --color-gray-pale:    var(--gray-pale);
   --color-success:      var(--success);
   --color-success-bg:   var(--success-bg);
+  --color-warning:      var(--warning);
+  --color-warning-bg:   var(--warning-bg);
 
   --font-display: var(--font-display);
   --font-body:    var(--font-body);

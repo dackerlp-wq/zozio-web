@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Baloo_2, Nunito } from 'next/font/google'
+import { NavbarWrapper } from '@/components/admin/NavbarWrapper'
 import './globals.css'
 
 const baloo = Baloo_2({
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="cs" className={`${baloo.variable} ${nunito.variable}`}>
       <body className="font-body bg-warm text-espresso antialiased">
+        <NavbarWrapper />
         {children}
       </body>
     </html>
