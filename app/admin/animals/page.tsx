@@ -34,7 +34,8 @@ export default async function AdminAnimalsPage() {
         .eq('institution_id', institution.id)
         .order('created_at', { ascending: false })
 
-  const items = animals ?? []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const items = (animals ?? []) as any[]
 
   return (
     <div>

@@ -32,23 +32,27 @@ export default async function DashboardPage() {
     supabase.from('volunteers').select('status').eq('institution_id', institution.id),
   ])
 
-  const animals = animalsData.data ?? []
-  const applications = (applicationsData as { data: { status: string }[] | null }).data ?? []
-  const fundraisers = fundraisersData.data ?? []
-  const volunteers = volunteersData.data ?? []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const animals = (animalsData.data ?? []) as any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const applications = ((applicationsData as any).data ?? []) as any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fundraisers = (fundraisersData.data ?? []) as any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const volunteers = (volunteersData.data ?? []) as any[]
 
   // Počty
   const availableAnimals = isShelter
-    ? animals.filter((a: { adoption_status: string }) => a.adoption_status === 'available').length
-    : animals.filter((a: { status: string }) => ['intake', 'treatment', 'rehabilitation'].includes(a.status)).length
+    ? animals.filter((a: any) => a.adoption_status === 'available').length
+    : animals.filter((a: any) => ['intake', 'treatment', 'rehabilitation'].includes(a.status)).length
 
   const adoptedAnimals = isShelter
-    ? animals.filter((a: { adoption_status: string }) => a.adoption_status === 'adopted').length
-    : animals.filter((a: { status: string }) => a.status === 'released').length
+    ? animals.filter((a: any) => a.adoption_status === 'adopted').length
+    : animals.filter((a: any) => a.status === 'released').length
 
-  const pendingApplications = applications.filter(a => a.status === 'pending').length
-  const activeVolunteers = volunteers.filter(v => v.status === 'active').length
-  const pendingVolunteers = volunteers.filter(v => v.status === 'pending').length
+  const pendingApplications = applications.filter((a: any) => a.status === 'pending').length
+  const activeVolunteers = volunteers.filter((v: any) => v.status === 'active').length
+  const pendingVolunteers = volunteers.filter((v: any) => v.status === 'pending').length
 
   return (
     <div>
