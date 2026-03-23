@@ -89,8 +89,8 @@ export default async function AdminApplicationsPage() {
                     <div className="text-xs text-gray">{app.applicant_email}</div>
                   </td>
                   <td className="px-5 py-3.5 text-sm text-gray font-semibold">
-                    {(app.animal as { name: string; species: { icon: string } | null } | null)?.animal?.species?.icon}{' '}
-                    {(app.animal as { name: string } | null)?.name ?? '—'}
+                    {((app.animal as unknown) as { name: string; species: { icon: string } | null } | null)?.species?.icon}{' '}
+                    {((app.animal as unknown) as { name: string } | null)?.name ?? '—'}
                   </td>
                   <td className="px-5 py-3.5">
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-pill text-xs font-bold ${statusColor[app.status] ?? 'bg-gray-pale text-gray'}`}>
