@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -8,15 +9,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!user) redirect('/auth/login')
 
-  // Načti instituci uživatele
-  const { data: membership } = await supabase
-    .from('institution_members')
-    .select('role, institution:institutions(id, name, type, slug, approval_status)')
-    .eq('user_id', user.id)
-    .single()
+  const service = createServiceClient()
 
-  // Pokud nemá instituci a není superadmin — přesměruj
-  const { data: profile } = await supabase
+  // Zkontroluj superadmin
+  const { data: profile } = await service
     .from('profiles')
     .select('role')
     .eq('id', user.id)
@@ -24,13 +20,27 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const isSuperadmin = profile?.role === 'superadmin'
 
+  // Načti membership přes service client (obejde RLS)
+  const { data: membership } = await service
+    .from('institution_members')
+    .select('role, institution_id')
+    .eq('user_id', user.id)
+    .single()
+
   if (!membership && !isSuperadmin) {
     redirect('/auth/register')
   }
 
-  const institution = (membership?.institution as unknown) as {
-    id: string; name: string; type: string; slug: string; approval_status: string
-  } | null
+  // Načti instituci zvlášť
+  let institution = null
+  if (membership?.institution_id) {
+    const { data: inst } = await service
+      .from('institutions')
+      .select('id, name, type, slug, approval_status')
+      .eq('id', membership.institution_id)
+      .single()
+    institution = inst
+  }
 
   return (
     <div className="min-h-screen bg-gray-pale/30 flex">
