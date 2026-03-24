@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Baloo_2, Nunito } from 'next/font/google'
-import { NavbarWrapper } from '@/components/admin/NavbarWrapper'
+import { NavbarWrapper, FooterWrapper } from '@/components/admin/NavbarWrapper'
 import './globals.css'
 
 const baloo = Baloo_2({
@@ -19,7 +19,7 @@ const nunito = Nunito({
 
 export const metadata: Metadata = {
   title: 'Zozio — Zachraňme zvířata',
-  description: 'Platforma pro útulky a záchranné stanice v ČR a SR.',
+  description: 'Platforma pro útulky a záchranné stanice v ČR a SR. Lidé volají SOS — zvířata volají ZOZ.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -28,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-body bg-warm text-espresso antialiased">
         <NavbarWrapper />
         {children}
+        <FooterWrapper />
       </body>
     </html>
   )
