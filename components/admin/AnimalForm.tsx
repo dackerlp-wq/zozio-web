@@ -19,52 +19,48 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState({
-    name:           animal?.name           ?? '',
-    species_id:     animal?.species_id     ?? '',
-    sex:            animal?.sex            ?? '',
-    birth_year:     animal?.birth_year     ?? '',
-    size:           animal?.size           ?? '',
-    breed:          animal?.breed          ?? '',
-    color:          animal?.color          ?? '',
-    weight_kg:      animal?.weight_kg      ?? '',
-    description:    animal?.description    ?? '',
-    adoption_status: animal?.adoption_status ?? 'available',
-    urgent:         animal?.urgent         ?? false,
-    adoption_fee:   animal?.adoption_fee   ?? 0,
-    vaccinated:     animal?.vaccinated     ?? false,
-    neutered:       animal?.neutered       ?? false,
-    microchipped:   animal?.microchipped   ?? false,
-    good_with_kids: animal?.good_with_kids ?? false,
-    good_with_dogs: animal?.good_with_dogs ?? false,
-    good_with_cats: animal?.good_with_cats ?? false,
-    special_needs:  animal?.special_needs  ?? '',
-    published:      animal?.published      ?? true,
-    // Rescue fields
-    case_number:      animal?.case_number      ?? '',
-    estimated_age:    animal?.estimated_age    ?? '',
-    status:           animal?.status           ?? 'intake',
-    cause_of_injury:  animal?.cause_of_injury  ?? '',
-    diagnosis:        animal?.diagnosis        ?? '',
-    treatment_notes:  animal?.treatment_notes  ?? '',
+    name:               animal?.name               ?? '',
+    species_id:         animal?.species_id         ?? '',
+    sex:                animal?.sex                ?? '',
+    birth_year:         animal?.birth_year         ?? '',
+    size:               animal?.size               ?? '',
+    breed:              animal?.breed              ?? '',
+    color:              animal?.color              ?? '',
+    weight_kg:          animal?.weight_kg          ?? '',
+    description:        animal?.description        ?? '',
+    adoption_status:    animal?.adoption_status    ?? 'available',
+    urgent:             animal?.urgent             ?? false,
+    adoption_fee:       animal?.adoption_fee       ?? 0,
+    vaccinated:         animal?.vaccinated         ?? false,
+    neutered:           animal?.neutered           ?? false,
+    microchipped:       animal?.microchipped       ?? false,
+    good_with_kids:     animal?.good_with_kids     ?? false,
+    good_with_dogs:     animal?.good_with_dogs     ?? false,
+    good_with_cats:     animal?.good_with_cats     ?? false,
+    special_needs:      animal?.special_needs      ?? '',
+    published:          animal?.published          ?? true,
+    case_number:        animal?.case_number        ?? '',
+    estimated_age:      animal?.estimated_age      ?? '',
+    status:             animal?.status             ?? 'intake',
+    cause_of_injury:    animal?.cause_of_injury    ?? '',
+    diagnosis:          animal?.diagnosis          ?? '',
+    treatment_notes:    animal?.treatment_notes    ?? '',
     public_description: animal?.public_description ?? '',
-    found_location:   animal?.found_location   ?? '',
-    found_by:         animal?.found_by         ?? '',
+    found_location:     animal?.found_location     ?? '',
+    found_by:           animal?.found_by           ?? '',
   })
 
-  const [photos, setPhotos] = useState<string[]>(animal?.photos ?? [])
+  const [photos, setPhotos]           = useState<string[]>(animal?.photos ?? [])
   const [primaryPhoto, setPrimaryPhoto] = useState<string>(animal?.primary_photo ?? '')
-  const [uploading, setUploading] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [uploading, setUploading]     = useState(false)
+  const [loading, setLoading]         = useState(false)
+  const [error, setError]             = useState<string | null>(null)
 
-  const update = (key: string, value: any) =>
-    setForm(prev => ({ ...prev, [key]: value }))
+  const update = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }))
 
-  // Upload fotky
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
-
     setUploading(true)
     const supabase = createClient()
     const newPhotos: string[] = []
@@ -72,20 +68,9 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
     for (const file of files) {
       const ext = file.name.split('.').pop()
       const path = `animals/${institutionId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('animal-photos')
-        .upload(path, file, { upsert: true })
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError)
-        continue
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('animal-photos')
-        .getPublicUrl(path)
-
+      const { error: uploadError } = await supabase.storage.from('animal-photos').upload(path, file, { upsert: true })
+      if (uploadError) { console.error('Upload error:', uploadError); continue }
+      const { data: { publicUrl } } = supabase.storage.from('animal-photos').getPublicUrl(path)
       newPhotos.push(publicUrl)
     }
 
@@ -106,50 +91,29 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
     setError(null)
 
     const table = isShelter ? 'animals' : 'rescue_cases'
-    const url = mode === 'create'
-      ? `/api/${table}`
-      : `/api/${table}/${animal.id}`
+    const url = mode === 'create' ? `/api/${table}` : `/api/${table}/${animal.id}`
 
     const payload = isShelter ? {
       institution_id: institutionId,
-      name:           form.name,
-      species_id:     form.species_id || null,
-      sex:            form.sex || null,
-      birth_year:     form.birth_year ? parseInt(form.birth_year) : null,
-      size:           form.size || null,
-      breed:          form.breed || null,
-      color:          form.color || null,
-      weight_kg:      form.weight_kg ? parseFloat(form.weight_kg) : null,
-      description:    form.description || null,
-      adoption_status: form.adoption_status,
-      urgent:         form.urgent,
-      adoption_fee:   parseInt(form.adoption_fee) || 0,
-      vaccinated:     form.vaccinated,
-      neutered:       form.neutered,
-      microchipped:   form.microchipped,
-      good_with_kids: form.good_with_kids,
-      good_with_dogs: form.good_with_dogs,
-      good_with_cats: form.good_with_cats,
-      special_needs:  form.special_needs || null,
-      photos,
-      primary_photo:  primaryPhoto || null,
-      published:      form.published,
+      name: form.name, species_id: form.species_id || null,
+      sex: form.sex || null, birth_year: form.birth_year ? parseInt(form.birth_year) : null,
+      size: form.size || null, breed: form.breed || null, color: form.color || null,
+      weight_kg: form.weight_kg ? parseFloat(form.weight_kg) : null,
+      description: form.description || null,
+      adoption_status: form.adoption_status, urgent: form.urgent,
+      adoption_fee: parseInt(form.adoption_fee) || 0,
+      vaccinated: form.vaccinated, neutered: form.neutered, microchipped: form.microchipped,
+      good_with_kids: form.good_with_kids, good_with_dogs: form.good_with_dogs, good_with_cats: form.good_with_cats,
+      special_needs: form.special_needs || null, photos, primary_photo: primaryPhoto || null, published: form.published,
     } : {
-      institution_id:     institutionId,
-      name:               form.name || null,
-      species_id:         form.species_id || null,
-      sex:                form.sex || null,
-      estimated_age:      form.estimated_age || null,
-      status:             form.status,
-      cause_of_injury:    form.cause_of_injury || null,
-      diagnosis:          form.diagnosis || null,
-      treatment_notes:    form.treatment_notes || null,
+      institution_id: institutionId,
+      name: form.name || null, species_id: form.species_id || null,
+      sex: form.sex || null, estimated_age: form.estimated_age || null,
+      status: form.status, cause_of_injury: form.cause_of_injury || null,
+      diagnosis: form.diagnosis || null, treatment_notes: form.treatment_notes || null,
       public_description: form.public_description || null,
-      found_location:     form.found_location || null,
-      found_by:           form.found_by || null,
-      photos,
-      primary_photo:      primaryPhoto || null,
-      published:          form.published,
+      found_location: form.found_location || null, found_by: form.found_by || null,
+      photos, primary_photo: primaryPhoto || null, published: form.published,
     }
 
     const res = await fetch(url, {
@@ -159,30 +123,23 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
     })
 
     const data = await res.json()
-    if (!res.ok) {
-      setError(data.error ?? 'Chyba při ukládání')
-      setLoading(false)
-      return
-    }
-
+    if (!res.ok) { setError(data.error ?? 'Chyba při ukládání'); setLoading(false); return }
     router.push('/admin/animals')
     router.refresh()
   }
 
   const inputCls = 'px-4 py-3 border-2 border-gray-pale rounded-sm font-body text-sm text-espresso outline-none focus:border-coral transition-colors w-full bg-white'
-  const checkCls = 'w-4 h-4 accent-coral cursor-pointer'
+  const checkCls = 'w-4 h-4 accent-coral cursor-pointer flex-shrink-0'
 
   return (
-    <div className="grid grid-cols-3 gap-6">
+    <div className="flex flex-col lg:grid lg:grid-cols-3 gap-5 md:gap-6">
 
-      {/* Levý panel — hlavní info */}
-      <div className="col-span-2 space-y-5">
+      {/* Hlavní info — 2/3 šířky na desktopu */}
+      <div className="lg:col-span-2 space-y-4 md:space-y-5">
 
         {/* Základní info */}
-        <div className="bg-white rounded-lg p-6 border border-gray-pale shadow-sm">
-          <h2 className="font-display font-extrabold text-xl text-espresso mb-4">
-            Základní informace
-          </h2>
+        <div className="bg-white rounded-lg p-4 md:p-6 border border-gray-pale shadow-sm">
+          <h2 className="font-display font-extrabold text-lg md:text-xl text-espresso mb-4">Základní informace</h2>
           <div className="space-y-4">
 
             {isShelter ? (
@@ -190,7 +147,7 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
                 <input value={form.name} onChange={e => update('name', e.target.value)} placeholder="Max" className={inputCls} />
               </Field>
             ) : (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Jméno (volitelné)">
                   <input value={form.name} onChange={e => update('name', e.target.value)} placeholder="Vocálko" className={inputCls} />
                 </Field>
@@ -200,13 +157,11 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Druh">
                 <select value={form.species_id} onChange={e => update('species_id', e.target.value)} className={inputCls}>
                   <option value="">Vybrat druh...</option>
-                  {species.map(s => (
-                    <option key={s.id} value={s.id}>{s.icon} {s.name_cs}</option>
-                  ))}
+                  {species.map(s => <option key={s.id} value={s.id}>{s.icon} {s.name_cs}</option>)}
                 </select>
               </Field>
               <Field label="Pohlaví">
@@ -219,7 +174,7 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
             </div>
 
             {isShelter ? (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <Field label="Rok narození">
                   <input type="number" value={form.birth_year} onChange={e => update('birth_year', e.target.value)} placeholder="2021" className={inputCls} />
                 </Field>
@@ -243,7 +198,7 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
             )}
 
             {isShelter && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Plemeno / rasa">
                   <input value={form.breed} onChange={e => update('breed', e.target.value)} placeholder="Labrador kříženec" className={inputCls} />
                 </Field>
@@ -256,24 +211,21 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
         </div>
 
         {/* Popis */}
-        <div className="bg-white rounded-lg p-6 border border-gray-pale shadow-sm">
-          <h2 className="font-display font-extrabold text-xl text-espresso mb-4">Popis</h2>
-          <Field label={isShelter ? 'Popis pro adoptivní rodiny' : 'Veřejný popis (pro sbírky)'}>
+        <div className="bg-white rounded-lg p-4 md:p-6 border border-gray-pale shadow-sm">
+          <h2 className="font-display font-extrabold text-lg md:text-xl text-espresso mb-4">Popis</h2>
+          <Field label={isShelter ? 'Popis pro adoptivní rodiny' : 'Veřejný popis'}>
             <textarea
               value={isShelter ? form.description : form.public_description}
               onChange={e => update(isShelter ? 'description' : 'public_description', e.target.value)}
-              placeholder={isShelter
-                ? 'Max je energický a přátelský pes...'
-                : 'Vocálko byl nalezen na dálnici...'
-              }
-              rows={5}
+              placeholder={isShelter ? 'Max je energický a přátelský pes...' : 'Vocálko byl nalezen na dálnici...'}
+              rows={4}
               className={`${inputCls} resize-none`}
             />
           </Field>
 
           {!isShelter && (
             <div className="mt-4 space-y-4">
-              <Field label="Příčina zranění / nemoci">
+              <Field label="Příčina zranění">
                 <input value={form.cause_of_injury} onChange={e => update('cause_of_injury', e.target.value)} placeholder="Střet s vozidlem" className={inputCls} />
               </Field>
               <Field label="Diagnóza">
@@ -282,7 +234,7 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
               <Field label="Průběh léčby">
                 <textarea value={form.treatment_notes} onChange={e => update('treatment_notes', e.target.value)} placeholder="Operace proběhla úspěšně..." rows={3} className={`${inputCls} resize-none`} />
               </Field>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Místo nálezu">
                   <input value={form.found_location} onChange={e => update('found_location', e.target.value)} placeholder="Dálnice D1 u Jihlavy" className={inputCls} />
                 </Field>
@@ -296,40 +248,35 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
 
         {/* Zdraví — pouze útulky */}
         {isShelter && (
-          <div className="bg-white rounded-lg p-6 border border-gray-pale shadow-sm">
-            <h2 className="font-display font-extrabold text-xl text-espresso mb-4">Zdraví & povaha</h2>
-            <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="bg-white rounded-lg p-4 md:p-6 border border-gray-pale shadow-sm">
+            <h2 className="font-display font-extrabold text-lg md:text-xl text-espresso mb-4">Zdraví & povaha</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
               {[
                 { key: 'vaccinated',     label: '💉 Očkovaný' },
-                { key: 'neutered',       label: '✂️ Kastrovaný / sterilizovaná' },
+                { key: 'neutered',       label: '✂️ Kastrovaný' },
                 { key: 'microchipped',   label: '📡 Čipovaný' },
                 { key: 'good_with_kids', label: '🧒 Vychází s dětmi' },
                 { key: 'good_with_dogs', label: '🐕 Vychází se psy' },
                 { key: 'good_with_cats', label: '🐈 Vychází s kočkami' },
               ].map(({ key, label }) => (
                 <label key={key} className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={(form as any)[key]}
-                    onChange={e => update(key, e.target.checked)}
-                    className={checkCls}
-                  />
+                  <input type="checkbox" checked={(form as any)[key]} onChange={e => update(key, e.target.checked)} className={checkCls} />
                   <span className="font-body text-sm font-semibold text-espresso">{label}</span>
                 </label>
               ))}
             </div>
             <Field label="Speciální potřeby">
-              <input value={form.special_needs} onChange={e => update('special_needs', e.target.value)} placeholder="Dieta, léky, alergies..." className={inputCls} />
+              <input value={form.special_needs} onChange={e => update('special_needs', e.target.value)} placeholder="Dieta, léky..." className={inputCls} />
             </Field>
           </div>
         )}
       </div>
 
       {/* Pravý panel */}
-      <div className="space-y-5">
+      <div className="space-y-4 md:space-y-5">
 
         {/* Stav */}
-        <div className="bg-white rounded-lg p-5 border border-gray-pale shadow-sm">
+        <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm">
           <h3 className="font-display font-extrabold text-lg text-espresso mb-4">Stav</h3>
 
           {isShelter ? (
@@ -357,7 +304,7 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
                 <option value="intake">🚑 Příjem</option>
                 <option value="treatment">🩺 Léčba</option>
                 <option value="rehabilitation">💪 Rehabilitace</option>
-                <option value="released">✓ Propuštěn do přírody</option>
+                <option value="released">✓ Propuštěn</option>
                 <option value="transferred">🚐 Přemístěn</option>
                 <option value="deceased">💔 Uhynul</option>
               </select>
@@ -371,49 +318,35 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
         </div>
 
         {/* Fotky */}
-        <div className="bg-white rounded-lg p-5 border border-gray-pale shadow-sm">
+        <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm">
           <h3 className="font-display font-extrabold text-lg text-espresso mb-3">Fotografie</h3>
 
           {photos.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-3">
               {photos.map((url, i) => (
                 <div key={i} className="relative group">
-                  <div className="relative w-20 h-20 rounded-md overflow-hidden border-2 border-transparent hover:border-coral transition-all cursor-pointer"
+                  <div
+                    className="relative w-16 h-16 md:w-20 md:h-20 rounded-md overflow-hidden border-2 cursor-pointer transition-all"
                     onClick={() => setPrimaryPhoto(url)}
-                    style={{ borderColor: primaryPhoto === url ? 'var(--coral)' : undefined }}>
+                    style={{ borderColor: primaryPhoto === url ? 'var(--coral)' : 'transparent' }}>
                     <Image src={url} alt={`foto ${i+1}`} fill className="object-cover" />
                     {primaryPhoto === url && (
                       <div className="absolute inset-0 bg-coral/20 flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">✓ Hlavní</span>
+                        <span className="text-white text-[10px] font-bold">✓</span>
                       </div>
                     )}
                   </div>
                   <button
                     onClick={() => removePhoto(url)}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-coral text-white rounded-full text-xs font-bold hidden group-hover:flex items-center justify-center cursor-pointer border-none"
-                  >
-                    ×
-                  </button>
+                  >×</button>
                 </div>
               ))}
             </div>
           )}
 
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handlePhotoUpload}
-          />
-          <Button
-            variant="sand"
-            size="sm"
-            className="w-full justify-center"
-            loading={uploading}
-            onClick={() => fileRef.current?.click()}
-          >
+          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
+          <Button variant="sand" size="sm" className="w-full justify-center" loading={uploading} onClick={() => fileRef.current?.click()}>
             {uploading ? 'Nahrávám...' : '📷 Přidat fotky'}
           </Button>
           {photos.length > 0 && (
@@ -423,18 +356,11 @@ export function AnimalForm({ institutionId, institutionType, species, mode, anim
 
         {/* Uložit */}
         {error && (
-          <div className="bg-coral-light text-coral-dark text-sm font-semibold px-4 py-3 rounded-sm">
-            ⚠️ {error}
-          </div>
+          <div className="bg-coral-light text-coral-dark text-sm font-semibold px-4 py-3 rounded-sm">⚠️ {error}</div>
         )}
 
-        <Button
-          variant="primary"
-          className="w-full justify-center"
-          loading={loading}
-          onClick={handleSubmit}
-        >
-          {mode === 'create' ? '✓ Přidat zvíře' : '✓ Uložit změny'}
+        <Button variant="primary" className="w-full justify-center" loading={loading} onClick={handleSubmit}>
+          {mode === 'create' ? '✓ Přidat' : '✓ Uložit změny'}
         </Button>
 
         {mode === 'edit' && (

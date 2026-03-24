@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Button } from '@/components/ui/Button'
 
 export const metadata: Metadata = {
   title: 'Ceník | Zozio',
@@ -9,10 +8,7 @@ export const metadata: Metadata = {
 
 const plans = [
   {
-    tier: 'Free',
-    price: '0 Kč',
-    period: 'navždy zdarma',
-    hot: false,
+    tier: 'Free', price: '0 Kč', period: 'navždy zdarma', hot: false,
     features: [
       { ok: true,  text: 'Do 15 zvířat / pacientů' },
       { ok: true,  text: 'Veřejný profil instituce' },
@@ -21,30 +17,22 @@ const plans = [
       { ok: false, text: 'Sbírky' },
       { ok: false, text: 'Dobrovolníci' },
     ],
-    cta: 'Začít zdarma',
-    href: '/auth/register',
+    cta: 'Začít zdarma', href: '/auth/register',
   },
   {
-    tier: 'Standard',
-    price: '490 Kč',
-    period: 'měsíčně · bez závazků',
-    hot: true,
+    tier: 'Standard', price: '490 Kč', period: 'měsíčně · bez závazků', hot: true,
     features: [
-      { ok: true,  text: 'Neomezená zvířata' },
-      { ok: true,  text: 'E-mail notifikace' },
-      { ok: true,  text: '1 aktivní sbírka' },
-      { ok: true,  text: 'Správa dobrovolníků' },
-      { ok: true,  text: 'Export dat (CSV)' },
+      { ok: true, text: 'Neomezená zvířata' },
+      { ok: true, text: 'E-mail notifikace' },
+      { ok: true, text: '1 aktivní sbírka' },
+      { ok: true, text: 'Správa dobrovolníků' },
+      { ok: true, text: 'Export dat (CSV)' },
       { ok: false, text: 'Více poboček' },
     ],
-    cta: '30 dní zdarma',
-    href: '/auth/register',
+    cta: '30 dní zdarma →', href: '/auth/register',
   },
   {
-    tier: 'Pro',
-    price: '990 Kč',
-    period: 'měsíčně · bez závazků',
-    hot: false,
+    tier: 'Pro', price: '990 Kč', period: 'měsíčně · bez závazků', hot: false,
     features: [
       { ok: true, text: 'Vše ze Standard' },
       { ok: true, text: 'Neomezené sbírky' },
@@ -53,41 +41,40 @@ const plans = [
       { ok: true, text: 'Prioritní podpora' },
       { ok: true, text: 'Prioritní zobrazení' },
     ],
-    cta: 'Kontaktovat nás',
-    href: 'mailto:info@zozio.cz',
+    cta: 'Kontaktovat nás', href: 'mailto:info@zozio.cz',
   },
 ]
 
 export default function PricingPage() {
   return (
-    <main className="min-h-screen bg-warm pt-24 pb-20">
-      <div className="max-w-250 mx-auto px-6">
+    <main className="min-h-screen bg-warm pt-20 md:pt-24 pb-16 md:pb-20">
+      <div className="max-w-[1000px] mx-auto px-4 md:px-6">
 
-        <div className="text-center mb-14">
+        <div className="text-center mb-10 md:mb-14">
           <span className="inline-flex items-center gap-1.5 bg-amber-light text-warning font-body text-xs font-bold px-4 py-1.5 rounded-pill uppercase tracking-wider mb-4">
             💰 Ceník
           </span>
-          <h1 className="font-display font-extrabold text-5xl text-espresso mb-3">
+          <h1 className="font-display font-extrabold text-3xl md:text-5xl text-espresso mb-3 leading-tight">
             Féroví pro útulky<br />i záchranné stanice
           </h1>
-          <p className="text-lg text-brown-mid max-w-120 mx-auto leading-relaxed">
+          <p className="text-base md:text-lg text-brown-mid max-w-[480px] mx-auto leading-relaxed">
             Začni zdarma. Plať jen když rosteš. Bez závazků, bez skrytých poplatků.
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-5 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5 mb-8">
           {plans.map(plan => (
-            <div key={plan.tier} className={`rounded-lg p-7 border-2 transition-all relative
+            <div key={plan.tier} className={`relative rounded-lg p-6 md:p-7 border-2 transition-all
               ${plan.hot
-                ? 'bg-coral border-coral text-white shadow-lg scale-[1.03]'
-                : 'bg-white border-gray-pale'
+                ? 'bg-coral border-coral sm:scale-[1.03] shadow-lg'
+                : 'bg-white border-gray-pale hover:border-gray-light'
               }`}>
               {plan.hot && (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber text-espresso font-display font-extrabold text-[11px] px-4 py-1 rounded-pill whitespace-nowrap">
                   ⭐ NEJOBLÍBENĚJŠÍ
                 </div>
               )}
-              <div className={`text-xs font-bold uppercase tracking-widest mb-2.5 ${plan.hot ? 'text-white/75' : 'text-gray'}`}>
+              <div className={`text-xs font-bold uppercase tracking-widest mb-2 ${plan.hot ? 'text-white/75' : 'text-gray'}`}>
                 {plan.tier}
               </div>
               <div className={`font-display font-extrabold text-4xl mb-1 ${plan.hot ? 'text-white' : 'text-espresso'}`}>
@@ -106,7 +93,7 @@ export default function PricingPage() {
                 ))}
               </ul>
               <Link href={plan.href}>
-                <button className={`w-full py-3 rounded-pill font-display font-extrabold text-sm transition-all cursor-pointer
+                <button className={`w-full py-3 rounded-pill font-display font-extrabold text-sm cursor-pointer border-none transition-all
                   ${plan.hot
                     ? 'bg-white text-coral-dark hover:bg-cream'
                     : 'bg-espresso text-white hover:bg-brown'
@@ -118,14 +105,16 @@ export default function PricingPage() {
           ))}
         </div>
 
-        <div className="text-center">
+        <div className="text-center space-y-3">
           <p className="text-sm text-gray">
-            🏛️ Neziskové organizace a obecní útulky: <strong>30% sleva</strong> po ověření.
+            🏛️ Neziskové organizace a obecní útulky:{' '}
+            <strong className="text-espresso">30% sleva</strong> po ověření.
             Napiš nám na{' '}
-            <a href="mailto:info@zozio.cz" className="text-coral hover:text-coral-dark transition-colors font-semibold">
+            <a href="mailto:info@zozio.cz" className="text-coral hover:text-coral-dark font-semibold">
               info@zozio.cz
             </a>
           </p>
+          <p className="text-xs text-gray">Ceny jsou uvedeny bez DPH. Fakturace měsíčně nebo ročně (roční platba = 2 měsíce zdarma).</p>
         </div>
       </div>
     </main>

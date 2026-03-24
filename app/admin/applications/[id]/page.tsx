@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
@@ -14,43 +15,38 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const { data: membership } = await supabase
-    .from('institution_members')
-    .select('role, institution:institutions(id)')
-    .eq('user_id', user.id)
-    .single()
+  const service = createServiceClient()
+  const { data: membership } = await service.from('institution_members').select('role, institution_id').eq('user_id', user.id).single()
+  const institution = membership ? await service.from('institutions').select('id').eq('id', membership.institution_id).single() : null
 
-  const institution = (membership?.institution as unknown) as { id: string } | null
-
-  const { data: app, error } = await supabase
+  const { data: app, error } = await service
     .from('adoption_applications')
-    .select(`*, animal:animals(id, name, species:animal_species(name_cs, icon))`)
+    .select('*, animal:animals(id, name, species:animal_species(name_cs, icon))')
     .eq('id', id)
-    .eq('institution_id', institution?.id ?? '')
+    .eq('institution_id', institution?.data?.id ?? '')
     .single()
 
   if (error || !app) notFound()
 
-  const animal = app.animal as { id: string; name: string; species: { name_cs: string; icon: string } | null } | null
+  const animal = (app.animal as unknown) as { id: string; name: string; species: { name_cs: string; icon: string } | null } | null
 
   return (
     <div>
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-gray mb-6 font-semibold">
-        <Link href="/admin/applications" className="hover:text-coral transition-colors">Žádosti</Link>
+      <nav className="flex items-center gap-2 text-sm text-gray mb-5 md:mb-6 font-semibold">
+        <Link href="/admin/applications" className="hover:text-coral transition-colors">← Žádosti</Link>
         <span>·</span>
-        <span className="text-espresso">{app.applicant_name}</span>
+        <span className="text-espresso truncate">{app.applicant_name}</span>
       </nav>
 
-      <div className="grid grid-cols-3 gap-6">
+      {/* Mobile: stack, Desktop: grid */}
+      <div className="flex flex-col lg:grid lg:grid-cols-3 gap-5 md:gap-6">
 
         {/* Hlavní info */}
-        <div className="col-span-2 space-y-5">
+        <div className="lg:col-span-2 space-y-4 md:space-y-5">
 
-          {/* Žadatel */}
-          <div className="bg-white rounded-lg p-6 border border-gray-pale shadow-sm">
-            <h2 className="font-display font-extrabold text-xl text-espresso mb-4">👤 Žadatel</h2>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white rounded-lg p-4 md:p-6 border border-gray-pale shadow-sm">
+            <h2 className="font-display font-extrabold text-lg md:text-xl text-espresso mb-4">👤 Žadatel</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InfoRow label="Jméno" value={app.applicant_name} />
               <InfoRow label="E-mail" value={app.applicant_email} />
               <InfoRow label="Telefon" value={app.applicant_phone ?? '—'} />
@@ -58,15 +54,13 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Bydlení */}
-          <div className="bg-white rounded-lg p-6 border border-gray-pale shadow-sm">
-            <h2 className="font-display font-extrabold text-xl text-espresso mb-4">🏡 Bydlení</h2>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white rounded-lg p-4 md:p-6 border border-gray-pale shadow-sm">
+            <h2 className="font-display font-extrabold text-lg md:text-xl text-espresso mb-4">🏡 Bydlení</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InfoRow label="Typ bydlení" value={
                 app.housing_type === 'house' ? 'Rodinný dům' :
                 app.housing_type === 'apartment' ? 'Byt' :
-                app.housing_type === 'farm' ? 'Farma' :
-                app.housing_type ?? '—'
+                app.housing_type === 'farm' ? 'Farma' : app.housing_type ?? '—'
               } />
               <InfoRow label="Zahrada" value={app.has_garden === true ? '✓ Ano' : app.has_garden === false ? '✗ Ne' : '—'} />
               <InfoRow label="Děti" value={app.has_children === true ? `✓ Ano${app.children_ages ? ` (${app.children_ages})` : ''}` : app.has_children === false ? '✗ Ne' : '—'} />
@@ -74,12 +68,11 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Zkušenosti a motivace */}
-          <div className="bg-white rounded-lg p-6 border border-gray-pale shadow-sm">
-            <h2 className="font-display font-extrabold text-xl text-espresso mb-4">💭 Motivace</h2>
+          <div className="bg-white rounded-lg p-4 md:p-6 border border-gray-pale shadow-sm">
+            <h2 className="font-display font-extrabold text-lg md:text-xl text-espresso mb-4">💭 Motivace</h2>
             {app.experience && (
               <div className="mb-4">
-                <div className="text-xs font-bold text-gray uppercase tracking-wider mb-1.5">Zkušenosti se zvířaty</div>
+                <div className="text-xs font-bold text-gray uppercase tracking-wider mb-1.5">Zkušenosti</div>
                 <p className="text-sm text-brown-mid leading-relaxed bg-sand/50 rounded-md p-3">{app.experience}</p>
               </div>
             )}
@@ -89,23 +82,21 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* Poznámky štábu */}
           {app.staff_notes && (
-            <div className="bg-amber-light/50 rounded-lg p-5 border border-amber/20">
+            <div className="bg-amber-light/50 rounded-lg p-4 md:p-5 border border-amber/20">
               <div className="text-xs font-bold text-warning uppercase tracking-wider mb-1.5">Interní poznámky</div>
               <p className="text-sm text-brown-mid">{app.staff_notes}</p>
             </div>
           )}
         </div>
 
-        {/* Pravý panel — zvíře + akce */}
-        <div className="space-y-5">
+        {/* Pravý panel */}
+        <div className="space-y-4 md:space-y-5">
 
-          {/* Zvíře */}
           {animal && (
-            <div className="bg-coral-light rounded-lg p-5">
+            <div className="bg-coral-light rounded-lg p-4 md:p-5">
               <div className="text-xs font-bold text-coral-dark uppercase tracking-wider mb-2">Žádost o</div>
-              <div className="font-display font-extrabold text-2xl text-espresso">
+              <div className="font-display font-extrabold text-xl md:text-2xl text-espresso">
                 {animal.species?.icon} {animal.name}
               </div>
               <div className="text-xs text-gray mt-1 font-semibold">{animal.species?.name_cs}</div>
@@ -117,7 +108,6 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
             </div>
           )}
 
-          {/* Akce */}
           <ApplicationActions
             applicationId={app.id}
             currentStatus={app.status}

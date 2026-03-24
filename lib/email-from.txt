@@ -1,0 +1,3 @@
+const FROM = process.env.NODE_ENV === 'production' && process.env.RESEND_DOMAIN_VERIFIED === 'true'
+  ? 'ZOZ <noreply@zozio.cz>'
+  : 'ZOZ <onboarding@resend.dev>'
