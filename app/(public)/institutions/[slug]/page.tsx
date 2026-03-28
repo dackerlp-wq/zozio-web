@@ -6,6 +6,7 @@ import { AnimalCard } from '@/components/public/AnimalCard'
 import { RescueCard } from '@/components/public/RescueCard'
 import { FundraiserBar } from '@/components/public/FundraiserBar'
 import { Button } from '@/components/ui/Button'
+import { InstitutionMap } from '@/components/public/InstitutionMap'
 import type { Institution, Animal, RescueCase, Fundraiser } from '@/types/database'
 
 interface PageProps {
@@ -36,7 +37,6 @@ export default async function InstitutionProfilePage({ params }: PageProps) {
     <main className="min-h-screen bg-warm pt-20 md:pt-24 pb-16 md:pb-20">
       <div className="max-w-[1200px] mx-auto px-4 md:px-6">
 
-        {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-gray mb-6 font-semibold">
           <Link href="/" className="hover:text-coral transition-colors">Domů</Link>
           <span>·</span>
@@ -62,35 +62,47 @@ export default async function InstitutionProfilePage({ params }: PageProps) {
               )}
             </div>
 
-            {/* Kontakt */}
-            <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm w-full md:w-auto md:min-w-[240px]">
-              <h3 className="font-display font-bold text-sm text-espresso mb-3 uppercase tracking-wider">Kontakt</h3>
-              {inst.city && (
-                <div className="flex items-center gap-2 text-sm text-brown-mid mb-2">
-                  <span>📍</span>
-                  <span>{inst.street ? `${inst.street}, ` : ''}{inst.city}</span>
-                </div>
-              )}
-              {inst.phone && (
-                <div className="flex items-center gap-2 text-sm text-brown-mid mb-2">
-                  <span>📞</span>
-                  <a href={`tel:${inst.phone}`} className="hover:text-coral transition-colors">{inst.phone}</a>
-                </div>
-              )}
-              {inst.email && (
-                <div className="flex items-center gap-2 text-sm text-brown-mid mb-2">
-                  <span>✉️</span>
-                  <a href={`mailto:${inst.email}`} className="hover:text-coral transition-colors truncate">{inst.email}</a>
-                </div>
-              )}
-              {inst.website && (
-                <div className="flex items-center gap-2 text-sm text-brown-mid">
-                  <span>🌐</span>
-                  <a href={inst.website} target="_blank" rel="noopener noreferrer" className="hover:text-coral transition-colors truncate">
-                    {inst.website.replace(/^https?:\/\//, '')}
-                  </a>
-                </div>
-              )}
+            {/* Kontakt + mapa */}
+            <div className="w-full md:w-auto md:min-w-[260px]">
+              <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm">
+                <h3 className="font-display font-bold text-sm text-espresso mb-3 uppercase tracking-wider">Kontakt</h3>
+                {inst.city && (
+                  <div className="flex items-start gap-2 text-sm text-brown-mid mb-2">
+                    <span className="flex-shrink-0">📍</span>
+                    <span>{inst.street ? `${inst.street}, ` : ''}{inst.city}{inst.postal_code ? ` ${inst.postal_code}` : ''}</span>
+                  </div>
+                )}
+                {inst.phone && (
+                  <div className="flex items-center gap-2 text-sm text-brown-mid mb-2">
+                    <span>📞</span>
+                    <a href={`tel:${inst.phone}`} className="hover:text-coral transition-colors">{inst.phone}</a>
+                  </div>
+                )}
+                {inst.email && (
+                  <div className="flex items-center gap-2 text-sm text-brown-mid mb-2">
+                    <span>✉️</span>
+                    <a href={`mailto:${inst.email}`} className="hover:text-coral transition-colors truncate">{inst.email}</a>
+                  </div>
+                )}
+                {inst.website && (
+                  <div className="flex items-center gap-2 text-sm text-brown-mid">
+                    <span>🌐</span>
+                    <a href={inst.website} target="_blank" rel="noopener noreferrer" className="hover:text-coral transition-colors truncate">
+                      {inst.website.replace(/^https?:\/\//, '')}
+                    </a>
+                  </div>
+                )}
+
+                {/* Mapa — zobrazí se jen pokud má koordináty */}
+                {inst.lat && inst.lng && (
+                  <InstitutionMap
+                    lat={inst.lat}
+                    lng={inst.lng}
+                    name={inst.name}
+                    city={inst.city ?? ''}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -148,24 +160,37 @@ export default async function InstitutionProfilePage({ params }: PageProps) {
 
 async function getInstitution(slug: string): Promise<Institution | null> {
   const supabase = await createClient()
-  const { data } = await supabase.from('institutions').select('*').eq('slug', slug).eq('approval_status','approved').single()
+  const { data } = await supabase
+    .from('institutions').select('*')
+    .eq('slug', slug).eq('approval_status', 'approved').single()
   return data as Institution | null
 }
 
 async function getAnimals(id: string): Promise<Animal[]> {
   const supabase = await createClient()
-  const { data } = await supabase.from('animals').select('*, institution:institutions(id,name,city,type,slug), species:animal_species(id,name_cs,icon)').eq('institution_id',id).eq('published',true).in('adoption_status',['available','reserved']).order('urgent',{ascending:false})
+  const { data } = await supabase
+    .from('animals')
+    .select('*, institution:institutions(id,name,city,type,slug), species:animal_species(id,name_cs,icon)')
+    .eq('institution_id', id).eq('published', true)
+    .in('adoption_status', ['available', 'reserved'])
+    .neq('in_quarantine', true)
+    .order('urgent', { ascending: false })
   return (data as Animal[]) ?? []
 }
 
 async function getRescueCases(id: string): Promise<RescueCase[]> {
   const supabase = await createClient()
-  const { data } = await supabase.from('rescue_cases').select('*, institution:institutions(id,name,city,type,slug), species:animal_species(id,name_cs,icon)').eq('institution_id',id).eq('published',true).not('status','eq','deceased')
+  const { data } = await supabase
+    .from('rescue_cases')
+    .select('*, institution:institutions(id,name,city,type,slug), species:animal_species(id,name_cs,icon)')
+    .eq('institution_id', id).eq('published', true).not('status', 'eq', 'deceased')
   return (data as RescueCase[]) ?? []
 }
 
 async function getFundraisers(id: string): Promise<Fundraiser[]> {
   const supabase = await createClient()
-  const { data } = await supabase.from('fundraisers').select('*').eq('institution_id',id).eq('active',true)
+  const { data } = await supabase
+    .from('fundraisers').select('*')
+    .eq('institution_id', id).eq('active', true)
   return data ?? []
 }

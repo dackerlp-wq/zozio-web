@@ -7,18 +7,21 @@ import { Tag } from '@/components/ui/Tag'
 import { Button } from '@/components/ui/Button'
 import { AdoptionForm } from '@/components/public/AdoptionForm'
 import { PhotoGallery } from '@/components/public/PhotoGallery'
+import { ShareButtons } from '@/components/public/ShareButtons'
 import type { Animal } from '@/types/database'
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
+const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://zozio.cz'
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params
-  const animal = await getAnimal(id)
+  const animal  = await getAnimal(id)
   if (!animal) return { title: 'Zvíře nenalezeno | Zozio' }
   return {
-    title: `${animal.name} — Adopce | Zozio`,
+    title:       `${animal.name} — Adopce | Zozio`,
     description: animal.description?.slice(0, 155) ?? `Adoptuj ${animal.name}.`,
     openGraph: {
       title:       `${animal.name} hledá domov | Zozio`,
@@ -29,15 +32,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function AnimalDetailPage({ params }: PageProps) {
-  const { id } = await params
-  const animal = await getAnimal(id)
+  const { id }  = await params
+  const animal  = await getAnimal(id)
   if (!animal) notFound()
 
-  const institution = animal.institution as any
-  const species     = animal.species as any
-
-  // Načti propojený článek
+  const institution   = animal.institution as any
+  const species       = animal.species     as any
   const linkedArticle = await getLinkedArticle(id)
+
+  const shareUrl   = `${BASE}/animals/${id}`
+  const shareTitle = `${animal.name} hledá domov`
+  const shareText  = animal.description?.slice(0, 120) ?? `Adoptuj ${animal.name} z útulku ${institution?.name}.`
 
   return (
     <main className="min-h-screen bg-warm pt-20 md:pt-24 pb-16 md:pb-20">
@@ -61,6 +66,8 @@ export default async function AnimalDetailPage({ params }: PageProps) {
               animalName={animal.name}
               icon={species?.icon}
             />
+            {/* ShareButtons pod galerií */}
+            <ShareButtons url={shareUrl} title={shareTitle} text={shareText} />
           </div>
 
           {/* Info */}
@@ -89,12 +96,12 @@ export default async function AnimalDetailPage({ params }: PageProps) {
             )}
 
             <div className="flex flex-wrap gap-2 mb-5">
-              {animal.vaccinated     && <Tag label="✓ Očkovaný"          variant="green" />}
-              {animal.neutered       && <Tag label="✓ Kastrovaný"        variant="green" />}
-              {animal.microchipped   && <Tag label="✓ Čipovaný"          variant="green" />}
+              {animal.vaccinated    && <Tag label="✓ Očkovaný"           variant="green" />}
+              {animal.neutered      && <Tag label="✓ Kastrovaný"         variant="green" />}
+              {animal.microchipped  && <Tag label="✓ Čipovaný"           variant="green" />}
               {animal.good_with_kids && <Tag label="🧒 Miluje děti"      variant="coral" />}
               {animal.good_with_dogs && <Tag label="🐕 Vychází se psy"   variant="sand"  />}
-              {animal.good_with_cats && <Tag label="🐈 Vychází s kočkami" variant="sand"  />}
+              {animal.good_with_cats && <Tag label="🐈 Vychází s kočkami" variant="sand" />}
               {animal.special_needs  && <Tag label={`⚠️ ${animal.special_needs}`} variant="amber" />}
             </div>
 
@@ -120,21 +127,12 @@ export default async function AnimalDetailPage({ params }: PageProps) {
             {/* Propojený článek */}
             {linkedArticle && (
               <div className="bg-coral-light rounded-lg p-4 mb-5 flex items-start gap-3">
-                <div className="text-2xl flex-shrink-0">📖</div>
+                <span className="text-2xl flex-shrink-0">📖</span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-coral-dark uppercase tracking-wider mb-1">
-                    Příběh {animal.name}
-                  </div>
-                  <div className="font-display font-bold text-sm text-espresso leading-tight mb-2">
-                    {linkedArticle.title}
-                  </div>
-                  {linkedArticle.perex && (
-                    <p className="text-xs text-brown-mid line-clamp-2 mb-2">{linkedArticle.perex}</p>
-                  )}
-                  <Link href={`/articles/${linkedArticle.slug}`}>
-                    <span className="text-xs font-bold text-coral hover:text-coral-dark transition-colors">
-                      Přečíst celý příběh →
-                    </span>
+                  <div className="text-xs font-bold text-coral-dark uppercase tracking-wider mb-1">Příběh {animal.name}</div>
+                  <div className="font-display font-bold text-sm text-espresso leading-tight mb-2">{(linkedArticle as any).title}</div>
+                  <Link href={`/articles/${(linkedArticle as any).slug}`}>
+                    <span className="text-xs font-bold text-coral hover:text-coral-dark transition-colors">Přečíst celý příběh →</span>
                   </Link>
                 </div>
               </div>
@@ -171,21 +169,15 @@ async function getAnimal(id: string): Promise<Animal | null> {
   const { data } = await supabase
     .from('animals')
     .select('*, institution:institutions(id,name,city,type,slug,email,phone), species:animal_species(id,name_cs,icon)')
-    .eq('id', id)
-    .eq('published', true)
-    .single()
+    .eq('id', id).eq('published', true).single()
   return data as Animal | null
 }
 
 async function getLinkedArticle(animalId: string) {
   const supabase = await createClient()
   const { data } = await supabase
-    .from('articles')
-    .select('id, title, slug, perex')
-    .eq('animal_id', animalId)
-    .eq('published', true)
-    .order('published_at', { ascending: false })
-    .limit(1)
-    .single()
+    .from('articles').select('id, title, slug, perex')
+    .eq('animal_id', animalId).eq('published', true)
+    .order('published_at', { ascending: false }).limit(1).single()
   return data ?? null
 }

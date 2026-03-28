@@ -29,29 +29,72 @@ export default async function DashboardPage() {
 
   const isShelter = institution.type === 'shelter'
 
-  const [animalsData, applicationsData, fundraisersData, volunteersData] = await Promise.all([
-    isShelter
-      ? service.from('animals').select('adoption_status').eq('institution_id', institution.id)
-      : service.from('rescue_cases').select('status').eq('institution_id', institution.id),
-    isShelter
-      ? service.from('adoption_applications').select('status').eq('institution_id', institution.id)
-      : Promise.resolve({ data: [] }),
-    service.from('fundraisers').select('title, goal_amount, current_amount').eq('institution_id', institution.id).eq('active', true),
-    service.from('volunteers').select('status').eq('institution_id', institution.id),
-  ])
+  // Datum hranice pro výpočty
+  const now         = new Date()
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
+  const longStayDate   = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 90 dní
 
-  const animals     = (animalsData.data ?? []) as any[]
+  const [animalsData, applicationsData, fundraisersData, volunteersData, longStayData] =
+    await Promise.all([
+      isShelter
+        ? service.from('animals').select('adoption_status, intake_date, created_at').eq('institution_id', institution.id)
+        : service.from('rescue_cases').select('status, intake_date, created_at').eq('institution_id', institution.id),
+      isShelter
+        ? service.from('adoption_applications').select('status, created_at').eq('institution_id', institution.id)
+        : Promise.resolve({ data: [] }),
+      service.from('fundraisers').select('title, goal_amount, current_amount, active').eq('institution_id', institution.id).eq('active', true),
+      service.from('volunteers').select('status').eq('institution_id', institution.id),
+      // Zvířata déle než 90 dní
+      isShelter
+        ? service.from('animals').select('id, name, intake_date').eq('institution_id', institution.id).eq('adoption_status', 'available').lt('intake_date', longStayDate).order('intake_date', { ascending: true }).limit(5)
+        : service.from('rescue_cases').select('id, name, case_number, intake_date').eq('institution_id', institution.id).in('status', ['intake', 'treatment', 'rehabilitation']).lt('intake_date', longStayDate).order('intake_date', { ascending: true }).limit(5),
+    ])
+
+  const animals      = (animalsData.data    ?? []) as any[]
   const applications = ((applicationsData as any).data ?? []) as any[]
   const fundraisers  = (fundraisersData.data ?? []) as any[]
-  const volunteers   = (volunteersData.data ?? []) as any[]
+  const volunteers   = (volunteersData.data  ?? []) as any[]
+  const longStay     = (longStayData.data    ?? []) as any[]
 
+  // Aktuální statistiky
   const availableAnimals = isShelter
     ? animals.filter((a: any) => a.adoption_status === 'available').length
     : animals.filter((a: any) => ['intake', 'treatment', 'rehabilitation'].includes(a.status)).length
 
-  const adoptedAnimals = isShelter
+  const adoptedTotal = isShelter
     ? animals.filter((a: any) => a.adoption_status === 'adopted').length
     : animals.filter((a: any) => a.status === 'released').length
+
+  // Tento měsíc
+  const newThisMonth = animals.filter((a: any) =>
+    new Date(a.intake_date ?? a.created_at) >= new Date(thisMonthStart)
+  ).length
+
+  const adoptedThisMonth = isShelter
+    ? applications.filter((a: any) => a.status === 'adopted' && new Date(a.created_at) >= new Date(thisMonthStart)).length
+    : animals.filter((a: any) => a.status === 'released' && new Date(a.created_at) >= new Date(thisMonthStart)).length
+
+  // Minulý měsíc (pro trend)
+  const newLastMonth = animals.filter((a: any) => {
+    const d = new Date(a.intake_date ?? a.created_at)
+    return d >= new Date(lastMonthStart) && d < new Date(thisMonthStart)
+  }).length
+
+  const trend = newLastMonth > 0
+    ? Math.round(((newThisMonth - newLastMonth) / newLastMonth) * 100)
+    : newThisMonth > 0 ? 100 : 0
+
+  // Průměrná délka pobytu (adoptovaná zvířata)
+  const avgStayDays = (() => {
+    const withIntake = animals.filter((a: any) => a.intake_date)
+    if (!withIntake.length) return null
+    const totalDays = withIntake.reduce((sum: number, a: any) => {
+      const days = Math.floor((now.getTime() - new Date(a.intake_date).getTime()) / (1000 * 60 * 60 * 24))
+      return sum + days
+    }, 0)
+    return Math.round(totalDays / withIntake.length)
+  })()
 
   const pendingApplications = applications.filter((a: any) => a.status === 'pending').length
   const activeVolunteers    = volunteers.filter((v: any) => v.status === 'active').length
@@ -62,9 +105,7 @@ export default async function DashboardPage() {
       {/* Hlavička */}
       <div className="flex items-center justify-between mb-6 md:mb-8">
         <div>
-          <h1 className="font-display font-extrabold text-3xl md:text-4xl text-espresso">
-            Dobrý den 👋
-          </h1>
+          <h1 className="font-display font-extrabold text-3xl md:text-4xl text-espresso">Dobrý den 👋</h1>
           <p className="text-gray mt-1 font-semibold text-sm">{institution.name}</p>
         </div>
         <Link href="/admin/animals/new">
@@ -74,8 +115,8 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* Stat karty — 2 na mobilu, 4 na desktopu */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-8 md:mb-10">
+      {/* ── Stat karty ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-6">
         <StatCard
           icon={isShelter ? '🐾' : '🦉'}
           value={availableAnimals}
@@ -86,10 +127,10 @@ export default async function DashboardPage() {
           href="/admin/animals"
         />
         <StatCard
-          icon={isShelter ? '✓' : '🌿'}
-          value={adoptedAnimals}
+          icon={isShelter ? '🏠' : '🌿'}
+          value={adoptedTotal}
           label={isShelter ? 'Adoptováno' : 'Propuštěno'}
-          sub="celkem"
+          sub={adoptedThisMonth > 0 ? `${adoptedThisMonth} tento měsíc` : 'celkem'}
           colorVal="text-success"
           colorBg="bg-success-bg"
           href="/admin/animals"
@@ -126,19 +167,93 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Aktivní sbírky */}
+      {/* ── Trendy tento měsíc ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm">
+          <div className="text-xs font-bold text-gray uppercase tracking-wider mb-1">Nových {isShelter ? 'příjmů' : 'případů'} tento měsíc</div>
+          <div className="flex items-end gap-2">
+            <span className="font-display font-extrabold text-3xl text-espresso">{newThisMonth}</span>
+            {trend !== 0 && (
+              <span className={`text-sm font-bold mb-0.5 ${trend > 0 ? 'text-coral' : 'text-success'}`}>
+                {trend > 0 ? '↑' : '↓'} {Math.abs(trend)} %
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-gray mt-0.5">vs. {newLastMonth} minulý měsíc</div>
+        </div>
+
+        <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm">
+          <div className="text-xs font-bold text-gray uppercase tracking-wider mb-1">
+            {isShelter ? 'Adopcí' : 'Propuštění'} tento měsíc
+          </div>
+          <div className="font-display font-extrabold text-3xl text-espresso">{adoptedThisMonth}</div>
+          <div className="text-xs text-gray mt-0.5">celkem {adoptedTotal} od začátku</div>
+        </div>
+
+        <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm">
+          <div className="text-xs font-bold text-gray uppercase tracking-wider mb-1">Průměrná délka pobytu</div>
+          <div className="font-display font-extrabold text-3xl text-espresso">
+            {avgStayDays !== null ? `${avgStayDays} dní` : '—'}
+          </div>
+          <div className="text-xs text-gray mt-0.5">u aktuálních zvířat</div>
+        </div>
+      </div>
+
+      {/* ── Dlouhodobě ubytovaná zvířata ── */}
+      {longStay.length > 0 && (
+        <div className="bg-amber-light/60 rounded-lg border border-amber/30 p-4 md:p-5 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="font-display font-extrabold text-lg text-espresso">
+                ⏰ Dlouhodobý pobyt (90+ dní)
+              </h2>
+              <p className="text-xs text-brown-mid mt-0.5">
+                Tato zvířata čekají déle než 3 měsíce — zvažte urgentní adopci nebo mediální pozornost.
+              </p>
+            </div>
+            <Link href="/admin/animals?status=available">
+              <Button variant="amber" size="sm">Zobrazit vše</Button>
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {longStay.map((a: any) => {
+              const days = Math.floor((now.getTime() - new Date(a.intake_date).getTime()) / (1000 * 60 * 60 * 24))
+              return (
+                <Link key={a.id} href={`/admin/animals/${a.id}`} className="no-underline">
+                  <div className="flex items-center justify-between bg-white rounded-md px-4 py-2.5 hover:shadow-sm transition-all">
+                    <span className="font-display font-bold text-sm text-espresso">
+                      {a.name ?? a.case_number}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray">
+                        od {new Date(a.intake_date).toLocaleDateString('cs-CZ')}
+                      </span>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-pill text-xs font-bold
+                        ${days > 180 ? 'bg-coral text-white' : 'bg-amber text-espresso'}`}>
+                        {days} dní
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Aktivní sbírky ── */}
       {fundraisers.length > 0 && (
-        <section className="mb-8 md:mb-10">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display font-extrabold text-xl md:text-2xl text-espresso">💛 Aktivní sbírky</h2>
+        <section className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display font-extrabold text-xl text-espresso">💛 Aktivní sbírky</h2>
             <Link href="/admin/fundraisers">
               <Button variant="sand" size="sm">Spravovat</Button>
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {fundraisers.map((f: any) => {
-              const percent = Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100)
-              const barColor = isShelter ? 'bg-coral' : 'bg-rescue'
+              const percent   = Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100)
+              const barColor  = isShelter ? 'bg-coral' : 'bg-rescue'
               return (
                 <div key={f.title} className="bg-white rounded-lg p-4 md:p-5 shadow-sm border border-gray-pale">
                   <div className="font-display font-bold text-sm md:text-base text-espresso mb-3 leading-tight">{f.title}</div>
@@ -149,7 +264,9 @@ export default async function DashboardPage() {
                   <div className="w-full h-2.5 bg-gray-pale rounded-pill overflow-hidden">
                     <div className={`h-full ${barColor} rounded-pill`} style={{ width: `${percent}%` }} />
                   </div>
-                  <div className={`text-xs font-bold mt-1 ${isShelter ? 'text-coral' : 'text-rescue'}`}>{percent}% vybráno</div>
+                  <div className={`text-xs font-bold mt-1 ${isShelter ? 'text-coral' : 'text-rescue'}`}>
+                    {percent}% vybráno
+                  </div>
                 </div>
               )
             })}
@@ -157,17 +274,16 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {/* Rychlé akce */}
+      {/* ── Rychlé akce ── */}
       <section>
-        <h2 className="font-display font-extrabold text-xl md:text-2xl text-espresso mb-4">Rychlé akce</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-          <QuickAction href="/admin/animals/new" icon={isShelter ? '🐾' : '🦉'} label={isShelter ? 'Přidat zvíře' : 'Nový pacient'} color="coral" />
-          {isShelter && (
-            <QuickAction href="/admin/applications" icon="📋" label={pendingApplications > 0 ? `Žádosti (${pendingApplications})` : 'Žádosti'} color="amber" />
-          )}
-          <QuickAction href="/admin/fundraisers/new" icon="💛" label="Nová sbírka" color="amber" />
-          <QuickAction href="/admin/volunteers" icon="🙋" label={pendingVolunteers > 0 ? `Dobrovolníci (${pendingVolunteers})` : 'Dobrovolníci'} color="default" />
-          <QuickAction href="/admin/settings" icon="⚙️" label="Nastavení" color="default" />
+        <h2 className="font-display font-extrabold text-xl text-espresso mb-3">Rychlé akce</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <QuickAction href="/admin/animals/new"    icon={isShelter ? '🐾' : '🦉'} label={isShelter ? 'Přidat zvíře' : 'Nový pacient'} color="coral" />
+          {isShelter && <QuickAction href="/admin/applications" icon="📋" label={pendingApplications > 0 ? `Žádosti (${pendingApplications})` : 'Žádosti'} color="amber" />}
+          <QuickAction href="/admin/fundraisers/new" icon="💛" label="Nová sbírka"    color="amber" />
+          <QuickAction href="/admin/volunteers"      icon="🙋" label={pendingVolunteers > 0 ? `Dobrovolníci (${pendingVolunteers})` : 'Dobrovolníci'} color="default" />
+          <QuickAction href="/admin/articles/new"    icon="📝" label="Nový článek"    color="default" />
+          <QuickAction href="/admin/settings"        icon="⚙️" label="Nastavení"      color="default" />
         </div>
       </section>
     </div>
