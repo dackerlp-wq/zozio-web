@@ -4,14 +4,15 @@ import { useCallback, useState } from 'react'
 
 interface FilterProps {
   species: { id: string; name_cs: string; icon: string | null }[]
-  cities: string[]
-  params: { species?: string; city?: string; size?: string; urgent?: string }
+  cities:  string[]
+  params:  { species?: string; city?: string; size?: string; urgent?: string; q?: string }
 }
 
 export function AnimalFilter({ species, cities, params }: FilterProps) {
-  const router = useRouter()
+  const router      = useRouter()
   const searchParams = useSearchParams()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen]       = useState(false)
+  const [searchVal, setSearchVal] = useState(params.q ?? '')
 
   const updateFilter = useCallback((key: string, value: string) => {
     const current = new URLSearchParams(searchParams.toString())
@@ -21,28 +22,52 @@ export function AnimalFilter({ species, cities, params }: FilterProps) {
     router.push(`/adopt?${current.toString()}`)
   }, [router, searchParams])
 
-  const clearAll = () => router.push('/adopt')
-  const hasFilters = params.species || params.city || params.size || params.urgent
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    const current = new URLSearchParams(searchParams.toString())
+    if (searchVal.trim()) current.set('q', searchVal.trim())
+    else current.delete('q')
+    router.push(`/adopt?${current.toString()}`)
+  }
 
-  const selectCls = 'px-3 py-2.5 border-2 border-gray-pale rounded-sm font-body text-sm text-espresso bg-white outline-none focus:border-coral transition-colors cursor-pointer w-full'
+  const clearAll = () => {
+    setSearchVal('')
+    router.push('/adopt')
+  }
+
+  const hasFilters = params.species || params.city || params.size || params.urgent || params.q
+  const selectCls  = 'px-3 py-2.5 border-2 border-gray-pale rounded-sm font-body text-sm text-espresso bg-white outline-none focus:border-coral transition-colors cursor-pointer w-full'
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-pale p-4 mb-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-pale p-4 mb-6 space-y-3">
 
-      {/* Mobile — toggle button */}
-      <div className="flex items-center justify-between md:hidden mb-2">
+      {/* ── Vyhledávání ── */}
+      <form onSubmit={handleSearch} className="flex gap-2">
+        <input
+          type="search"
+          value={searchVal}
+          onChange={e => setSearchVal(e.target.value)}
+          placeholder="Hledat jméno, plemeno..."
+          className="flex-1 px-4 py-2.5 border-2 border-gray-pale rounded-sm font-body text-sm text-espresso outline-none focus:border-coral transition-colors"
+        />
+        <button
+          type="submit"
+          className="px-4 py-2.5 bg-coral text-white font-bold text-sm rounded-sm hover:bg-coral-dark transition-colors cursor-pointer border-none"
+        >
+          🔍
+        </button>
+      </form>
+
+      {/* ── Filtry ── */}
+      <div className="flex items-center justify-between md:hidden">
         <span className="font-display font-bold text-sm text-espresso">
           Filtry {hasFilters && <span className="text-coral">({[params.species, params.city, params.size, params.urgent].filter(Boolean).length})</span>}
         </span>
-        <button
-          onClick={() => setOpen(!open)}
-          className="text-xs font-bold text-coral cursor-pointer bg-transparent border-none"
-        >
-          {open ? 'Zavřít ▲' : 'Zobrazit ▼'}
+        <button onClick={() => setOpen(!open)} className="text-xs font-bold text-coral cursor-pointer bg-transparent border-none">
+          {open ? 'Skrýt ▲' : 'Více filtrů ▼'}
         </button>
       </div>
 
-      {/* Filters — always visible on md+, toggle on mobile */}
       <div className={`${open ? 'block' : 'hidden'} md:block`}>
         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-end">
           <div className="flex flex-col gap-1.5 w-full sm:w-auto sm:min-w-[150px]">
@@ -68,6 +93,7 @@ export function AnimalFilter({ species, cities, params }: FilterProps) {
               <option value="small">Malý</option>
               <option value="medium">Střední</option>
               <option value="large">Velký</option>
+              <option value="xlarge">Extra velký</option>
             </select>
           </div>
 
@@ -84,7 +110,7 @@ export function AnimalFilter({ species, cities, params }: FilterProps) {
 
           {hasFilters && (
             <button onClick={clearAll} className="text-sm font-bold text-gray hover:text-coral transition-colors cursor-pointer bg-transparent border-none self-end pb-2.5">
-              ✕ Zrušit
+              ✕ Zrušit vše
             </button>
           )}
         </div>

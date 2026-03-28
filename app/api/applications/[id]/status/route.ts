@@ -25,12 +25,13 @@ export async function PUT(
 
     const { data: app } = await service
       .from('adoption_applications')
-      .select('institution_id, applicant_email, applicant_name')
+      .select('institution_id, applicant_email, applicant_name, animal_id')
       .eq('id', id)
       .single()
 
     if (!app) return NextResponse.json({ error: 'Žádost nenalezena' }, { status: 404 })
 
+    // Ověř přístup
     const { data: membership } = await service
       .from('institution_members')
       .select('role')
@@ -40,6 +41,7 @@ export async function PUT(
 
     if (!membership) return NextResponse.json({ error: 'Nemáš přístup' }, { status: 403 })
 
+    // Aktualizuj žádost
     const { error } = await service
       .from('adoption_applications')
       .update({
@@ -52,23 +54,56 @@ export async function PUT(
 
     if (error) throw error
 
-    // Načti jméno zvířete pro e-mail
-    const { data: appFull } = await service
-      .from('adoption_applications')
-      .select('animal:animals(name)')
-      .eq('id', id)
-      .single()
+    // ── FIX 1: Při adoptování automaticky změň stav zvířete ──────────────
+    if (status === 'adopted' && app.animal_id) {
+      await service
+        .from('animals')
+        .update({
+          adoption_status: 'adopted',
+          updated_at:      new Date().toISOString(),
+        })
+        .eq('id', app.animal_id)
 
-    const animalName = (appFull?.animal as any)?.name ?? 'zvíře'
-
-    // Pošli e-mail při relevantních stavech
-    if (['approved', 'rejected', 'meeting_scheduled'].includes(status)) {
-      await sendApplicationStatusEmail({
-        applicantEmail: app.applicant_email,
-        applicantName:  app.applicant_name,
-        animalName,
-        status,
+      // Zaznamenej do historie
+      await service.from('animal_status_history').insert({
+        animal_id:  app.animal_id,
+        old_status: 'available',
+        new_status: 'adopted',
+        note:       `Automaticky po schválení žádosti ${id}`,
+        action:     'status_change',
+        changed_by: user.id,
       })
+
+      // Zamítni ostatní pending žádosti o toto zvíře
+      await service
+        .from('adoption_applications')
+        .update({ status: 'rejected', updated_at: new Date().toISOString() })
+        .eq('animal_id', app.animal_id)
+        .in('status', ['pending', 'reviewing', 'meeting_scheduled'])
+        .neq('id', id)
+    }
+
+    // ── FIX 2: E-mail i při stavu 'adopted' ──────────────────────────────
+    if (['approved', 'rejected', 'meeting_scheduled', 'adopted'].includes(status)) {
+      try {
+        // Načti jméno zvířete
+        const { data: appFull } = await service
+          .from('adoption_applications')
+          .select('animal:animals(name)')
+          .eq('id', id)
+          .single()
+
+        const animalName = (appFull?.animal as any)?.name ?? 'zvíře'
+
+        await sendApplicationStatusEmail({
+          applicantEmail: app.applicant_email,
+          applicantName:  app.applicant_name,
+          animalName,
+          status,
+        })
+      } catch (emailError) {
+        console.error('Email send error:', emailError)
+      }
     }
 
     return NextResponse.json({ success: true })
