@@ -1,5 +1,6 @@
+'server-only'
 import { Resend } from 'resend'
-import { renderToStaticMarkup } from 'react-dom/server'
+import { render } from '@react-email/render'
 import * as React from 'react'
 import {
   WelcomeEmail,
@@ -22,11 +23,7 @@ import {
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'Zozio <info@zozio.cz>'
 
-function render(el: React.ReactElement): string {
-  return '<!DOCTYPE html>' + renderToStaticMarkup(el)
-}
-
-// ─── 1. VÍTEJTE — po registraci instituce ────────────────────────────────────
+// ─── 1. VÍTEJTE ──────────────────────────────────────────────────────────────
 export async function sendWelcomeEmail(props: {
   to: string
   contactName: string
@@ -38,11 +35,11 @@ export async function sendWelcomeEmail(props: {
     from: FROM,
     to: props.to,
     subject: `Vítejte v Zozio — vaše registrace byla přijata`,
-    html: render(React.createElement(WelcomeEmail, props)),
+    html: await render(React.createElement(WelcomeEmail, props)),
   })
 }
 
-// ─── 2. SCHVÁLENÍ REGISTRACE — superadmin schválí ────────────────────────────
+// ─── 2. SCHVÁLENÍ REGISTRACE ─────────────────────────────────────────────────
 export async function sendApprovalEmail(props: {
   to: string
   contactName: string
@@ -54,11 +51,11 @@ export async function sendApprovalEmail(props: {
     from: FROM,
     to: props.to,
     subject: `✅ ${props.institutionName} byl schválen — vítejte na Zozio!`,
-    html: render(React.createElement(ApprovalEmail, props)),
+    html: await render(React.createElement(ApprovalEmail, props)),
   })
 }
 
-// ─── 3. ZAMÍTNUTÍ REGISTRACE — superadmin zamítne ────────────────────────────
+// ─── 3. ZAMÍTNUTÍ REGISTRACE ─────────────────────────────────────────────────
 export async function sendRejectionEmail(props: {
   to: string
   contactName: string
@@ -70,12 +67,11 @@ export async function sendRejectionEmail(props: {
     from: FROM,
     to: props.to,
     subject: `Vaše registrace ${props.institutionName} vyžaduje doplnění`,
-    html: render(React.createElement(RejectionEmail, props)),
+    html: await render(React.createElement(RejectionEmail, props)),
   })
 }
 
-// ─── 4. NOVÁ ADOPČNÍ ŽÁDOST — notifikace pro správce útulku ─────────────────
-// Toto volá app/api/applications/route.ts
+// ─── 4. NOVÁ ADOPČNÍ ŽÁDOST — pro správce ────────────────────────────────────
 export async function sendNewApplicationEmail(props: {
   institutionEmail: string
   institutionName: string
@@ -95,7 +91,7 @@ export async function sendNewApplicationEmail(props: {
     from: FROM,
     to: props.institutionEmail,
     subject: `📩 Nová adopční žádost o ${props.animalName} od ${props.applicantName}`,
-    html: render(React.createElement(NewApplicationEmail, {
+    html: await render(React.createElement(NewApplicationEmail, {
       institutionContactName: props.institutionName,
       applicantName: props.applicantName,
       applicantEmail: props.applicantEmail,
@@ -113,7 +109,7 @@ export async function sendNewApplicationEmail(props: {
   })
 }
 
-// ─── 5. POTVRZENÍ ŽÁDOSTI — email pro žadatele po odeslání ──────────────────
+// ─── 5. POTVRZENÍ ŽÁDOSTI — pro žadatele ─────────────────────────────────────
 // Alias: sendApplicationConfirmationEmail (viz lib/email/index.ts)
 export async function sendAdoptionRequestConfirmedEmail(props: {
   applicantEmail: string
@@ -130,7 +126,7 @@ export async function sendAdoptionRequestConfirmedEmail(props: {
     from: FROM,
     to: props.applicantEmail,
     subject: `📬 Vaše žádost o adopci ${props.animalName} byla přijata!`,
-    html: render(React.createElement(AdoptionRequestConfirmedEmail, {
+    html: await render(React.createElement(AdoptionRequestConfirmedEmail, {
       applicantName: props.applicantName,
       animalName: props.animalName,
       animalEmoji: props.animalEmoji ?? '🐾',
@@ -143,7 +139,7 @@ export async function sendAdoptionRequestConfirmedEmail(props: {
   })
 }
 
-// ─── 6A. ŽÁDOST SCHVÁLENA — email pro žadatele ───────────────────────────────
+// ─── 6A. ŽÁDOST SCHVÁLENA — pro žadatele ─────────────────────────────────────
 export async function sendApplicationApprovedEmail(props: {
   to: string
   applicantName: string
@@ -161,14 +157,14 @@ export async function sendApplicationApprovedEmail(props: {
     from: FROM,
     to: props.to,
     subject: `🎊 Vaše žádost o adopci ${props.animalName} byla schválena!`,
-    html: render(React.createElement(ApplicationApprovedEmail, {
+    html: await render(React.createElement(ApplicationApprovedEmail, {
       ...props,
       animalEmoji: props.animalEmoji ?? '🐾',
     })),
   })
 }
 
-// ─── 6B. ŽÁDOST ZAMÍTNUTA — email pro žadatele ───────────────────────────────
+// ─── 6B. ŽÁDOST ZAMÍTNUTA — pro žadatele ─────────────────────────────────────
 export async function sendApplicationRejectedEmail(props: {
   to: string
   applicantName: string
@@ -181,14 +177,14 @@ export async function sendApplicationRejectedEmail(props: {
     from: FROM,
     to: props.to,
     subject: `Zpráva ohledně vaší žádosti o adopci — Zozio`,
-    html: render(React.createElement(ApplicationRejectedEmail, {
+    html: await render(React.createElement(ApplicationRejectedEmail, {
       ...props,
       browseUrl: props.browseUrl ?? 'https://zozio.cz/adopt',
     })),
   })
 }
 
-// ─── 7. ADOPCE DOKONČENA — email pro nového majitele ─────────────────────────
+// ─── 7. ADOPCE DOKONČENA ──────────────────────────────────────────────────────
 export async function sendAnimalAdoptedEmail(props: {
   to: string
   adoptorName: string
@@ -201,7 +197,7 @@ export async function sendAnimalAdoptedEmail(props: {
     from: FROM,
     to: props.to,
     subject: `🏡 Gratulujeme! ${props.animalName} má nový domov!`,
-    html: render(React.createElement(AnimalAdoptedEmail, {
+    html: await render(React.createElement(AnimalAdoptedEmail, {
       ...props,
       animalEmoji: props.animalEmoji ?? '🐾',
       shareUrl: props.shareUrl ?? 'https://zozio.cz',
@@ -209,7 +205,7 @@ export async function sendAnimalAdoptedEmail(props: {
   })
 }
 
-// ─── 8. NOVÉ ZVÍŘE — notifikace pro odběratele ───────────────────────────────
+// ─── 8. NOVÉ ZVÍŘE — notifikace ──────────────────────────────────────────────
 export async function sendNewAnimalEmail(props: {
   to: string | string[]
   animalName: string
@@ -227,7 +223,7 @@ export async function sendNewAnimalEmail(props: {
     from: FROM,
     to: props.to,
     subject: `🐾 ${props.animalName} hledá domov — ${props.institutionName}`,
-    html: render(React.createElement(NewAnimalEmail, {
+    html: await render(React.createElement(NewAnimalEmail, {
       ...props,
       animalEmoji: props.animalEmoji ?? '🐾',
       browseUrl: props.browseUrl ?? 'https://zozio.cz/adopt',
@@ -245,7 +241,7 @@ export async function sendResetPasswordEmail(props: {
     from: FROM,
     to: props.to,
     subject: `Obnova hesla Zozio`,
-    html: render(React.createElement(ResetPasswordEmail, props)),
+    html: await render(React.createElement(ResetPasswordEmail, props)),
   })
 }
 
@@ -258,7 +254,7 @@ export async function sendVerifyEmail(props: {
     from: FROM,
     to: props.to,
     subject: `Ověřte svůj e-mail — Zozio`,
-    html: render(React.createElement(VerifyEmail, { verifyUrl: props.verifyUrl })),
+    html: await render(React.createElement(VerifyEmail, { verifyUrl: props.verifyUrl })),
   })
 }
 
@@ -284,7 +280,7 @@ export async function sendInvoiceEmail(props: {
     from: FROM,
     to: props.to,
     subject: `Faktura ${props.invoiceNumber} — ${props.totalPrice} · Zozio`,
-    html: render(React.createElement(InvoiceEmail, props)),
+    html: await render(React.createElement(InvoiceEmail, props)),
   })
 }
 
@@ -303,7 +299,7 @@ export async function sendSubscriptionExpiringEmail(props: {
     from: FROM,
     to: props.to,
     subject: `⏰ Předplatné Zozio vyprší za ${props.daysLeft} dní`,
-    html: render(React.createElement(SubscriptionExpiringEmail, props)),
+    html: await render(React.createElement(SubscriptionExpiringEmail, props)),
   })
 }
 
@@ -322,7 +318,7 @@ export async function sendOnboardingTipsEmail(props: {
     from: FROM,
     to: props.to,
     subject: `🚀 Jak vytěžit z Zozio maximum — tipy pro váš útulek`,
-    html: render(React.createElement(OnboardingTipsEmail, props)),
+    html: await render(React.createElement(OnboardingTipsEmail, props)),
   })
 }
 
@@ -341,6 +337,6 @@ export async function sendNewsletterEmail(props: {
     from: FROM,
     to: props.to,
     subject: `🐾 Zozio Novinky — ${props.month}`,
-    html: render(React.createElement(NewsletterEmail, props)),
+    html: await render(React.createElement(NewsletterEmail, props)),
   })
 }
