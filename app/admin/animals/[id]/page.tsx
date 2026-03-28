@@ -2,16 +2,24 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { redirect, notFound } from 'next/navigation'
 import { AnimalForm } from '@/components/admin/AnimalForm'
+import { ScanRedirect } from '@/components/admin/ScanRedirect'
 
 interface PageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ scan?: string }>
 }
 
-export default async function EditAnimalPage({ params }: PageProps) {
-  const { id } = await params
+export default async function EditAnimalPage({ params, searchParams }: PageProps) {
+  const { id }   = await params
+  const { scan } = await searchParams
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
+
+  // Pokud přišel přes QR a není přihlášen → přihlašovací stránka s redirect
+  if (!user) {
+    redirect(`/auth/login?next=/admin/animals/${id}`)
+  }
 
   const service = createServiceClient()
 
@@ -33,42 +41,61 @@ export default async function EditAnimalPage({ params }: PageProps) {
 
   const isShelter = institution.type === 'shelter'
 
-  // Načti zvíře nebo záchranný případ
   const { data: animal } = isShelter
     ? await service.from('animals').select('*').eq('id', id).eq('institution_id', institution.id).single()
     : await service.from('rescue_cases').select('*').eq('id', id).eq('institution_id', institution.id).single()
 
   if (!animal) notFound()
 
-  // Načti druhy
   const { data: species } = await service
     .from('animal_species')
     .select('id, name_cs, icon, category')
     .eq('category', isShelter ? 'domestic' : 'wild')
     .order('name_cs')
 
-  // Načti historii stavů
   const { data: statusHistory } = await service
     .from('animal_status_history')
     .select('*')
     .eq(isShelter ? 'animal_id' : 'rescue_case_id', id)
     .order('changed_at', { ascending: false })
 
+  const a = animal as any
+
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <a href="/admin/animals" className="text-sm text-gray hover:text-coral transition-colors font-semibold">
-          ← Zpět na seznam
-        </a>
-        <span className="text-gray">·</span>
-        <a href={isShelter ? `/animals/${id}` : `/rescue/${id}`} target="_blank"
-          className="text-sm text-coral hover:text-coral-dark font-semibold transition-colors">
-          Zobrazit na webu ↗
+      {/* Pokud přišlo přes QR → zobraz flash banner */}
+      {scan === '1' && <ScanRedirect animalName={a.name ?? a.case_number} />}
+
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <a href="/admin/animals" className="text-sm text-gray hover:text-coral transition-colors font-semibold">
+            ← Zpět
+          </a>
+          <span className="text-gray">·</span>
+          <a
+            href={isShelter ? `/animals/${id}` : `/rescue/${id}`}
+            target="_blank"
+            className="text-sm text-coral hover:text-coral-dark font-semibold transition-colors"
+          >
+            Web ↗
+          </a>
+        </div>
+
+        {/* QR tlačítko */}
+        <a
+          href={`/admin/animals/${id}/qr`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-espresso text-white font-display font-bold text-sm rounded-sm hover:bg-brown transition-colors no-underline"
+        >
+          <span>▣</span> QR karta
         </a>
       </div>
+
       <h1 className="font-display font-extrabold text-3xl md:text-4xl text-espresso mb-8">
-        {(animal as any).name ?? (animal as any).case_number}
+        {a.name ?? a.case_number}
       </h1>
+
       <AnimalForm
         institutionId={institution.id}
         institutionType={institution.type}
