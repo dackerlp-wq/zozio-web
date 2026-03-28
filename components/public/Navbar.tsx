@@ -1,45 +1,36 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { ZozLogo } from '@/components/ui/ZozLogo'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 
 const mainLinks = [
-  {
-    href: '/adopt',
-    label: '🐾 Zvířata k adopci',
-    desc: 'Psi, kočky a další hledají domov',
-  },
-  {
-    href: '/rescue',
-    label: '🦉 Záchranné stanice',
-    desc: 'Volně žijící zvířata v léčbě',
-  },
-  {
-    href: '/institutions',
-    label: '🏠 Útulky a stanice',
-    desc: 'Adresář všech institucí v ČR/SR',
-  },
-  {
-    href: '/fundraisers',
-    label: '💛 Sbírky',
-    desc: 'Přispěj konkrétnímu zvířeti',
-  },
-  {
-    href: '/articles',
-    label: '📖 Příběhy',
-    desc: 'Úspěšné adopce a záchranné příběhy',
-  },
+  { href: '/adopt',        label: '🐾 Zvířata k adopci',    desc: 'Psi, kočky a další hledají domov' },
+  { href: '/rescue',       label: '🦉 Záchranné stanice',   desc: 'Volně žijící zvířata v léčbě' },
+  { href: '/institutions', label: '🏠 Útulky a stanice',    desc: 'Adresář všech institucí v ČR/SR' },
+  { href: '/fundraisers',  label: '💛 Sbírky',              desc: 'Přispěj konkrétnímu zvířeti' },
+  { href: '/articles',     label: '📖 Příběhy',             desc: 'Úspěšné adopce a záchranné příběhy' },
 ]
 
 export function Navbar() {
-  const pathname = usePathname()
-  const [open, setOpen] = useState(false)
+  const pathname  = usePathname()
+  const router    = useRouter()
+  const [open, setOpen]       = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchVal, setSearchVal]   = useState('')
 
-  const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(href + '/')
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchVal.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchVal.trim())}`)
+      setSearchOpen(false)
+      setSearchVal('')
+    }
+  }
 
   return (
     <>
@@ -53,7 +44,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop nav */}
-          <ul className="hidden lg:flex items-center gap-1 list-none m-0 p-0 flex-1 justify-center">
+          <ul className="hidden lg:flex items-center gap-0.5 list-none m-0 p-0 flex-1 justify-center">
             {mainLinks.map(({ href, label }) => (
               <li key={href}>
                 <Link
@@ -73,6 +64,17 @@ export function Navbar() {
 
           {/* Desktop actions */}
           <div className="hidden lg:flex items-center gap-2 flex-shrink-0">
+            {/* Search button */}
+            <button
+              onClick={() => setSearchOpen(!searchOpen)}
+              className={cn(
+                'w-9 h-9 rounded-md flex items-center justify-center transition-colors cursor-pointer border-none',
+                searchOpen ? 'bg-coral-light text-coral' : 'text-gray hover:bg-sand'
+              )}
+              aria-label="Hledat"
+            >
+              🔍
+            </button>
             <Link href="/auth/login">
               <Button variant="sand" size="sm">Přihlásit</Button>
             </Link>
@@ -81,25 +83,61 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setOpen(!open)}
-            className="lg:hidden flex flex-col gap-1.5 p-2 cursor-pointer bg-transparent border-none"
-            aria-label="Menu"
-          >
-            <span className={cn('w-6 h-0.5 bg-espresso rounded transition-all duration-200', open && 'rotate-45 translate-y-2')} />
-            <span className={cn('w-6 h-0.5 bg-espresso rounded transition-all duration-200', open && 'opacity-0')} />
-            <span className={cn('w-6 h-0.5 bg-espresso rounded transition-all duration-200', open && '-rotate-45 -translate-y-2')} />
-          </button>
+          {/* Mobile: search + hamburger */}
+          <div className="flex items-center gap-2 lg:hidden">
+            <button
+              onClick={() => setSearchOpen(!searchOpen)}
+              className="w-9 h-9 rounded-md flex items-center justify-center text-gray hover:bg-sand transition-colors cursor-pointer border-none"
+              aria-label="Hledat"
+            >
+              🔍
+            </button>
+            <button
+              onClick={() => setOpen(!open)}
+              className="flex flex-col gap-1.5 p-2 cursor-pointer bg-transparent border-none"
+              aria-label="Menu"
+            >
+              <span className={cn('w-6 h-0.5 bg-espresso rounded transition-all duration-200', open && 'rotate-45 translate-y-2')} />
+              <span className={cn('w-6 h-0.5 bg-espresso rounded transition-all duration-200', open && 'opacity-0')} />
+              <span className={cn('w-6 h-0.5 bg-espresso rounded transition-all duration-200', open && '-rotate-45 -translate-y-2')} />
+            </button>
+          </div>
         </div>
+
+        {/* Search bar — dropdown */}
+        {searchOpen && (
+          <div className="border-t border-gray-pale bg-white px-4 md:px-8 py-3">
+            <form onSubmit={handleSearch} className="flex gap-2 max-w-[620px] mx-auto">
+              <input
+                type="search"
+                value={searchVal}
+                onChange={e => setSearchVal(e.target.value)}
+                placeholder="Hledej zvíře, útulok, město..."
+                autoFocus
+                className="flex-1 px-4 py-2.5 border-2 border-gray-pale rounded-sm font-body text-sm text-espresso outline-none focus:border-coral transition-colors"
+              />
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-coral text-white font-display font-bold text-sm rounded-sm hover:bg-coral-dark transition-colors cursor-pointer border-none"
+              >
+                Hledat
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchOpen(false)}
+                className="px-3 py-2.5 text-gray hover:text-espresso font-bold cursor-pointer bg-transparent border-none"
+              >
+                ✕
+              </button>
+            </form>
+          </div>
+        )}
       </nav>
 
       {/* Mobile menu */}
       {open && (
         <div className="fixed inset-0 z-40 bg-warm flex flex-col pt-16 overflow-y-auto lg:hidden">
           <div className="px-4 py-4 flex-1">
-
-            {/* Hlavní sekce */}
             <div className="mb-6">
               <div className="text-xs font-bold text-gray uppercase tracking-widest mb-3 px-2">Adopce a záchrana</div>
               <ul className="list-none space-y-1">
@@ -123,7 +161,6 @@ export function Navbar() {
               </ul>
             </div>
 
-            {/* Pro instituce */}
             <div className="border-t border-gray-pale pt-5 mb-5">
               <div className="text-xs font-bold text-gray uppercase tracking-widest mb-3 px-2">Instituce</div>
               <Link href="/pro-instituce" onClick={() => setOpen(false)}
@@ -134,7 +171,6 @@ export function Navbar() {
             </div>
           </div>
 
-          {/* Mobile CTA */}
           <div className="px-4 py-5 border-t border-gray-pale space-y-3">
             <Link href="/auth/register" onClick={() => setOpen(false)}>
               <Button variant="primary" className="w-full justify-center">Registrovat instituci</Button>
