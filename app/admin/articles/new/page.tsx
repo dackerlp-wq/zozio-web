@@ -17,6 +17,25 @@ export default async function NewArticlePage() {
 
   if (!membership) redirect('/auth/register')
 
+  const { data: institution } = await service
+    .from('institutions')
+    .select('id, type')
+    .eq('id', membership.institution_id)
+    .single()
+
+  if (!institution) redirect('/admin/dashboard')
+
+  const isShelter = institution.type === 'shelter'
+
+  const [animalsData, rescueCasesData] = await Promise.all([
+    isShelter
+      ? service.from('animals').select('id, name').eq('institution_id', institution.id).eq('published', true).order('name')
+      : Promise.resolve({ data: [] }),
+    !isShelter
+      ? service.from('rescue_cases').select('id, name, case_number').eq('institution_id', institution.id).not('status', 'in', '("released","deceased")').order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+  ])
+
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
@@ -28,8 +47,11 @@ export default async function NewArticlePage() {
         📝 Nový článek
       </h1>
       <ArticleEditor
-        institutionId={membership.institution_id}
+        institutionId={institution.id}
+        institutionType={institution.type}
         mode="create"
+        animals={(animalsData.data ?? []) as any[]}
+        rescueCases={(rescueCasesData.data ?? []) as any[]}
       />
     </div>
   )

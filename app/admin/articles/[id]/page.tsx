@@ -22,14 +22,33 @@ export default async function EditArticlePage({ params }: PageProps) {
 
   if (!membership) redirect('/auth/register')
 
+  const { data: institution } = await service
+    .from('institutions')
+    .select('id, type')
+    .eq('id', membership.institution_id)
+    .single()
+
+  if (!institution) redirect('/admin/dashboard')
+
   const { data: article } = await service
     .from('articles')
     .select('*')
     .eq('id', id)
-    .eq('institution_id', membership.institution_id)
+    .eq('institution_id', institution.id)
     .single()
 
   if (!article) notFound()
+
+  const isShelter = institution.type === 'shelter'
+
+  const [animalsData, rescueCasesData] = await Promise.all([
+    isShelter
+      ? service.from('animals').select('id, name').eq('institution_id', institution.id).eq('published', true).order('name')
+      : Promise.resolve({ data: [] }),
+    !isShelter
+      ? service.from('rescue_cases').select('id, name, case_number').eq('institution_id', institution.id).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+  ])
 
   return (
     <div>
@@ -38,11 +57,8 @@ export default async function EditArticlePage({ params }: PageProps) {
           ← Zpět na články
         </a>
         {article.published && (
-          <a
-            href={`/articles/${article.slug}`}
-            target="_blank"
-            className="text-sm text-coral hover:text-coral-dark font-semibold transition-colors"
-          >
+          <a href={`/articles/${article.slug}`} target="_blank"
+            className="text-sm text-coral hover:text-coral-dark font-semibold transition-colors">
             Zobrazit na webu ↗
           </a>
         )}
@@ -51,9 +67,12 @@ export default async function EditArticlePage({ params }: PageProps) {
         Upravit článek
       </h1>
       <ArticleEditor
-        institutionId={membership.institution_id}
+        institutionId={institution.id}
+        institutionType={institution.type}
         mode="edit"
         article={article}
+        animals={(animalsData.data ?? []) as any[]}
+        rescueCases={(rescueCasesData.data ?? []) as any[]}
       />
     </div>
   )
