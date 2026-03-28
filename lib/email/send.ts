@@ -322,6 +322,50 @@ export async function sendOnboardingTipsEmail(props: {
   })
 }
 
+// ─── ALIAS: sendApplicationStatusEmail ───────────────────────────────────────
+// Volá app/api/applications/[id]/status/route.ts
+// Mapuje status na správný email template
+export async function sendApplicationStatusEmail(props: {
+  applicantEmail: string
+  applicantName: string
+  animalName: string
+  status: 'approved' | 'rejected' | 'meeting_scheduled' | string
+}) {
+  if (props.status === 'approved' || props.status === 'meeting_scheduled') {
+    return resend.emails.send({
+      from: FROM,
+      to: props.applicantEmail,
+      subject: `🎊 Vaše žádost o adopci ${props.animalName} byla schválena!`,
+      html: await render(React.createElement(ApplicationApprovedEmail, {
+        applicantName: props.applicantName,
+        animalName: props.animalName,
+        animalEmoji: '🐾',
+        institutionName: '',
+        institutionContactName: '',
+        institutionPhone: '',
+        institutionEmail: '',
+        adoptionFee: '',
+        applicationId: '',
+        detailUrl: 'https://zozio.cz/moje-zadosti',
+      })),
+    })
+  }
+
+  if (props.status === 'rejected') {
+    return resend.emails.send({
+      from: FROM,
+      to: props.applicantEmail,
+      subject: `Zpráva ohledně vaší žádosti o adopci — Zozio`,
+      html: await render(React.createElement(ApplicationRejectedEmail, {
+        applicantName: props.applicantName,
+        animalName: props.animalName,
+        institutionName: '',
+        browseUrl: 'https://zozio.cz/adopt',
+      })),
+    })
+  }
+}
+
 // ─── 14. NEWSLETTER ──────────────────────────────────────────────────────────
 export async function sendNewsletterEmail(props: {
   to: string | string[]

@@ -22,6 +22,6 @@ export {
   sendNewsletterEmail,
 } from './send'
 
-// Aliasy pro zpětnou kompatibilitu s app/api/applications/route.ts
-// route.ts volá: sendApplicationConfirmationEmail → mapujeme na sendAdoptionRequestConfirmedEmail
+// Aliasy pro zpětnou kompatibilitu
 export { sendAdoptionRequestConfirmedEmail as sendApplicationConfirmationEmail } from './send'
+export { sendApplicationStatusEmail } from './send'
