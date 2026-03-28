@@ -1,17 +1,7 @@
-// Tento soubor přejmenuj z middleware.ts na proxy.ts
-// Obsah zůstává stejný — jen změna názvu souboru
-
-// INSTRUKCE:
-// 1. Smaž middleware.ts
-// 2. Vytvoř proxy.ts se stejným obsahem
-//
-// Nebo v PowerShellu:
-// Rename-Item middleware.ts proxy.ts
-
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
