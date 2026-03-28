@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { ADOPTION_STATUS_LABEL, RESCUE_STATUS_LABEL } from '@/lib/animal-labels'
 
 export default async function AdminAnimalsPage() {
   const supabase = await createClient()
@@ -11,17 +12,27 @@ export default async function AdminAnimalsPage() {
   if (!user) redirect('/auth/login')
 
   const service = createServiceClient()
-  const { data: membership } = await service.from('institution_members').select('role, institution_id').eq('user_id', user.id).single()
+  const { data: membership } = await service
+    .from('institution_members')
+    .select('role, institution_id')
+    .eq('user_id', user.id)
+    .single()
+
   if (!membership) redirect('/auth/register')
 
-  const { data: institution } = await service.from('institutions').select('id, name, type').eq('id', membership.institution_id).single()
+  const { data: institution } = await service
+    .from('institutions')
+    .select('id, name, type')
+    .eq('id', membership.institution_id)
+    .single()
+
   if (!institution) redirect('/admin/dashboard')
 
   const isShelter = institution.type === 'shelter'
 
   const { data: animals } = isShelter
-    ? await service.from('animals').select('*, species:animal_species(name_cs, icon)').eq('institution_id', institution.id).order('urgent', { ascending: false }).order('created_at', { ascending: false })
-    : await service.from('rescue_cases').select('*, species:animal_species(name_cs, icon)').eq('institution_id', institution.id).order('created_at', { ascending: false })
+    ? await service.from('animals').select('id, name, urgent, adoption_status, health_status, in_quarantine, species:animal_species(name_cs,icon), intake_date, created_at').eq('institution_id', institution.id).order('urgent', { ascending: false }).order('created_at', { ascending: false })
+    : await service.from('rescue_cases').select('id, name, case_number, status, health_status, species:animal_species(name_cs,icon), intake_date, created_at').eq('institution_id', institution.id).order('created_at', { ascending: false })
 
   const items = (animals ?? []) as any[]
 
@@ -36,7 +47,7 @@ export default async function AdminAnimalsPage() {
         </div>
         <Link href="/admin/animals/new">
           <Button variant={isShelter ? 'primary' : 'rescue'} size="sm">
-            + {isShelter ? 'Přidat' : 'Nový pacient'}
+            + {isShelter ? 'Přidat zvíře' : 'Nový pacient'}
           </Button>
         </Link>
       </div>
@@ -45,32 +56,25 @@ export default async function AdminAnimalsPage() {
         <div className="text-center py-16 bg-white rounded-lg border border-gray-pale">
           <div className="text-5xl mb-4">{isShelter ? '🐾' : '🦉'}</div>
           <h3 className="font-display font-bold text-xl text-espresso mb-2">Zatím žádné záznamy</h3>
-          <p className="text-gray mb-6 text-sm">Přidej první záznam kliknutím na tlačítko výše.</p>
+          <Link href="/admin/animals/new" className="mt-4 inline-block">
+            <Button variant="primary">+ Přidat první záznam</Button>
+          </Link>
         </div>
       ) : (
         <>
-          {/* Mobile — karty */}
+          {/* Mobilní karty */}
           <div className="md:hidden space-y-3">
             {items.map((item: any) => (
               <div key={item.id} className="bg-white rounded-lg p-4 border border-gray-pale shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     {isShelter && item.urgent && <span className="text-coral text-sm">🆘</span>}
+                    {item.in_quarantine && <span className="text-warning text-sm">🚧</span>}
                     <span className="font-display font-bold text-base text-espresso">
                       {item.name ?? item.case_number}
                     </span>
                   </div>
-                  {isShelter ? (
-                    <Badge variant={
-                      item.adoption_status === 'available' ? 'available' :
-                      item.adoption_status === 'reserved' ? 'reserved' :
-                      item.adoption_status === 'adopted' ? 'adopted' : 'available'
-                    } />
-                  ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-pill text-xs font-bold bg-rescue-bg text-rescue-dark">
-                      {item.status}
-                    </span>
-                  )}
+                  <Badge variant={isShelter ? item.adoption_status : item.status} size="sm" />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-gray font-semibold">
@@ -84,7 +88,7 @@ export default async function AdminAnimalsPage() {
             ))}
           </div>
 
-          {/* Desktop — tabulka */}
+          {/* Desktop tabulka */}
           <div className="hidden md:block bg-white rounded-lg border border-gray-pale overflow-hidden shadow-sm">
             <table className="w-full">
               <thead>
@@ -92,6 +96,7 @@ export default async function AdminAnimalsPage() {
                   <th className="text-left px-5 py-3 font-body text-xs font-bold text-gray uppercase tracking-wider">{isShelter ? 'Zvíře' : 'Pacient'}</th>
                   <th className="text-left px-5 py-3 font-body text-xs font-bold text-gray uppercase tracking-wider">Druh</th>
                   <th className="text-left px-5 py-3 font-body text-xs font-bold text-gray uppercase tracking-wider">{isShelter ? 'Stav adopce' : 'Stav léčby'}</th>
+                  <th className="text-left px-5 py-3 font-body text-xs font-bold text-gray uppercase tracking-wider">Příznaky</th>
                   <th className="text-left px-5 py-3 font-body text-xs font-bold text-gray uppercase tracking-wider">Přijato</th>
                   <th className="px-5 py-3"></th>
                 </tr>
@@ -102,22 +107,30 @@ export default async function AdminAnimalsPage() {
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
                         {isShelter && item.urgent && <span className="text-coral text-sm font-bold">🆘</span>}
-                        <span className="font-display font-bold text-sm text-espresso">{item.name ?? item.case_number}</span>
+                        {item.in_quarantine && <span title="V karanténě">🚧</span>}
+                        <span className="font-display font-bold text-sm text-espresso">
+                          {item.name ?? item.case_number}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-sm text-gray font-semibold">{item.species?.icon} {item.species?.name_cs ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-sm text-gray font-semibold">
+                      {item.species?.icon} {item.species?.name_cs ?? '—'}
+                    </td>
                     <td className="px-5 py-3.5">
-                      {isShelter ? (
-                        <Badge variant={item.adoption_status === 'available' ? 'available' : item.adoption_status === 'reserved' ? 'reserved' : item.adoption_status === 'adopted' ? 'adopted' : 'available'} />
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-pill text-xs font-bold bg-rescue-bg text-rescue-dark">{item.status}</span>
+                      <Badge variant={isShelter ? item.adoption_status : item.status} size="sm" />
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {item.health_status && item.health_status !== 'healthy' && (
+                        <Badge variant={item.health_status} size="sm" />
                       )}
                     </td>
                     <td className="px-5 py-3.5 text-xs text-gray font-semibold">
                       {new Date(item.intake_date ?? item.created_at).toLocaleDateString('cs-CZ')}
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <Link href={`/admin/animals/${item.id}`}><Button variant="sand" size="sm">Upravit</Button></Link>
+                      <Link href={`/admin/animals/${item.id}`}>
+                        <Button variant="sand" size="sm">Upravit</Button>
+                      </Link>
                     </td>
                   </tr>
                 ))}
