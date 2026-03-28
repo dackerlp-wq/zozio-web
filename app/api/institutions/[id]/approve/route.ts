@@ -80,6 +80,7 @@ export async function POST(
             contactName:     institution.name,
             institutionName: institution.name,
             reason:          'Vaše registrace nesplňuje podmínky platformy Zozio.',
+            editUrl:         `${process.env.NEXT_PUBLIC_SITE_URL}/auth/register`,
           })
         }
       } catch (emailError) {
