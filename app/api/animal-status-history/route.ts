@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
       old_status:     body.old_status     ?? null,
       new_status:     body.new_status,
       note:           body.note           ?? null,
+      action:         body.action         ?? 'update',
       changed_by:     user.id,
     })
 
