@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { sendWelcomeEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
     const { data: authData, error: authError } = await service.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // automaticky potvrdí e-mail
+      email_confirm: true,
     })
 
     if (authError) {
@@ -90,6 +91,15 @@ export async function POST(request: NextRequest) {
         user_id:        userId,
         role:           'admin',
       })
+
+    // Pošli vítací email (fire & forget)
+    sendWelcomeEmail({
+      to:              email,
+      contactName:     name,
+      institutionName: name,
+      institutionType: type,
+      email:           email,
+    }).catch(err => console.error('sendWelcomeEmail failed:', err))
 
     return NextResponse.json({ success: true })
 
