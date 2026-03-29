@@ -1,120 +1,324 @@
 'use client'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import { useState, useCallback } from 'react'
 
-interface FilterProps {
+interface AnimalFilterProps {
   species: { id: string; name_cs: string; icon: string | null }[]
   cities:  string[]
-  params:  { species?: string; city?: string; size?: string; urgent?: string; q?: string }
+  params:  Record<string, string | undefined>
+  total:   number
 }
 
-export function AnimalFilter({ species, cities, params }: FilterProps) {
-  const router      = useRouter()
-  const searchParams = useSearchParams()
-  const [open, setOpen]       = useState(false)
-  const [searchVal, setSearchVal] = useState(params.q ?? '')
+export function AnimalFilter({ species, cities, params, total }: AnimalFilterProps) {
+  const router   = useRouter()
+  const pathname = usePathname()
+  const [q, setQ]               = useState(params.q ?? '')
+  const [mobileOpen, setMobileOpen] = useState(false)
 
-  const updateFilter = useCallback((key: string, value: string) => {
-    const current = new URLSearchParams(searchParams.toString())
-    if (value) current.set(key, value)
-    else current.delete(key)
-    current.delete('page')
-    router.push(`/adopt?${current.toString()}`)
-  }, [router, searchParams])
+  const buildUrl = useCallback((overrides: Record<string, string | undefined>) => {
+    const next = { ...params, ...overrides, page: undefined }
+    const qs   = new URLSearchParams()
+    Object.entries(next).forEach(([k, v]) => { if (v) qs.set(k, v) })
+    const str = qs.toString()
+    return `${pathname}${str ? `?${str}` : ''}`
+  }, [params, pathname])
+
+  const setFilter = (key: string, value: string | undefined) =>
+    router.push(buildUrl({ [key]: value }))
+
+  const toggleFilter = (key: string, value: string) =>
+    setFilter(key, params[key] === value ? undefined : value)
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    const current = new URLSearchParams(searchParams.toString())
-    if (searchVal.trim()) current.set('q', searchVal.trim())
-    else current.delete('q')
-    router.push(`/adopt?${current.toString()}`)
+    router.push(buildUrl({ q: q.trim() || undefined }))
   }
 
-  const clearAll = () => {
-    setSearchVal('')
-    router.push('/adopt')
+  const clearAll = () => { setQ(''); router.push(pathname) }
+
+  const activeCount = [
+    params.q, params.species, params.city, params.size, params.urgent,
+    params.housing, params.kids, params.other_animals,
+    params.activity, params.difficulty,
+  ].filter(Boolean).length
+
+  // Styly
+  const chip = (active: boolean) =>
+    `inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-all
+    ${active
+      ? 'border-[#E8634A] text-[#993C1D] bg-[#FAECE7]'
+      : 'border-[#F0EDE8] text-[#6B4030] bg-white hover:border-[#E8634A]/40'}`
+
+  const yesNoChip = (key: string, value: string, label: string, activeStyle?: { bg: string; border: string; color: string }) => {
+    const isActive = params[key] === value
+    return (
+      <button onClick={() => toggleFilter(key, value)}
+        className={`flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center`}
+        style={isActive
+          ? (activeStyle ?? { background: '#FAECE7', borderColor: '#E8634A', color: '#993C1D' })
+          : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
+        }>
+        {label}
+      </button>
+    )
   }
 
-  const hasFilters = params.species || params.city || params.size || params.urgent || params.q
-  const selectCls  = 'px-3 py-2.5 border-2 border-gray-pale rounded-sm font-body text-sm text-espresso bg-white outline-none focus:border-coral transition-colors cursor-pointer w-full'
+  const divider = <div className="h-px bg-[#F0EDE8] my-4" />
 
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-pale p-4 mb-6 space-y-3">
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="mb-4">
+      <span className="text-[10px] font-bold uppercase tracking-widest mb-2 block" style={{ color: '#8B6550' }}>
+        {title}
+      </span>
+      {children}
+    </div>
+  )
 
-      {/* ── Vyhledávání ── */}
-      <form onSubmit={handleSearch} className="flex gap-2">
-        <input
-          type="search"
-          value={searchVal}
-          onChange={e => setSearchVal(e.target.value)}
-          placeholder="Hledat jméno, plemeno..."
-          className="flex-1 px-4 py-2.5 border-2 border-gray-pale rounded-sm font-body text-sm text-espresso outline-none focus:border-coral transition-colors"
-        />
-        <button
-          type="submit"
-          className="px-4 py-2.5 bg-coral text-white font-bold text-sm rounded-sm hover:bg-coral-dark transition-colors cursor-pointer border-none"
-        >
-          🔍
-        </button>
+  const filterPanel = (
+    <div className="bg-white rounded-2xl border border-[#F0EDE8] p-4">
+
+      {/* Search */}
+      <form onSubmit={handleSearch} className="mb-4">
+        <div className="flex items-center gap-0 border rounded-lg overflow-hidden"
+          style={{ borderColor: '#E0DDD8', background: '#FAFAF8' }}>
+          <input
+            type="search" value={q} onChange={e => setQ(e.target.value)}
+            placeholder="Jméno, plemeno..."
+            className="flex-1 px-3 py-2 text-sm outline-none bg-transparent"
+            style={{ color: '#1A0F0A', minWidth: 0 }}
+          />
+          <button type="submit"
+            className="px-3 py-2 text-white text-sm border-none cursor-pointer hover:opacity-90 flex-shrink-0"
+            style={{ background: '#E8634A' }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M10 10l2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
       </form>
 
-      {/* ── Filtry ── */}
-      <div className="flex items-center justify-between md:hidden">
-        <span className="font-display font-bold text-sm text-espresso">
-          Filtry {hasFilters && <span className="text-coral">({[params.species, params.city, params.size, params.urgent].filter(Boolean).length})</span>}
-        </span>
-        <button onClick={() => setOpen(!open)} className="text-xs font-bold text-coral cursor-pointer bg-transparent border-none">
-          {open ? 'Skrýt ▲' : 'Více filtrů ▼'}
-        </button>
-      </div>
+      {divider}
 
-      <div className={`${open ? 'block' : 'hidden'} md:block`}>
-        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-end">
-          <div className="flex flex-col gap-1.5 w-full sm:w-auto sm:min-w-[150px]">
-            <label className="font-body text-xs font-bold text-brown uppercase tracking-wider">Druh</label>
-            <select value={params.species ?? ''} onChange={e => updateFilter('species', e.target.value)} className={selectCls}>
-              <option value="">Všechna zvířata</option>
-              {species.map(s => <option key={s.id} value={s.id}>{s.icon} {s.name_cs}</option>)}
-            </select>
-          </div>
+      {/* Urgentní */}
+      <button
+        onClick={() => toggleFilter('urgent', 'true')}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm font-semibold cursor-pointer transition-all mb-4"
+        style={params.urgent === 'true'
+          ? { background: '#FAECE7', borderColor: '#E8634A', color: '#993C1D' }
+          : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
+        }>
+        <span>🆘</span>
+        Urgentní adopce
+        {params.urgent === 'true' && <span className="ml-auto text-[10px]">✓</span>}
+      </button>
 
-          <div className="flex flex-col gap-1.5 w-full sm:w-auto sm:min-w-[150px]">
-            <label className="font-body text-xs font-bold text-brown uppercase tracking-wider">Město</label>
-            <select value={params.city ?? ''} onChange={e => updateFilter('city', e.target.value)} className={selectCls}>
-              <option value="">Celá ČR a SR</option>
-              {cities.map(city => <option key={city} value={city}>{city}</option>)}
-            </select>
-          </div>
+      {divider}
 
-          <div className="flex flex-col gap-1.5 w-full sm:w-auto sm:min-w-[130px]">
-            <label className="font-body text-xs font-bold text-brown uppercase tracking-wider">Velikost</label>
-            <select value={params.size ?? ''} onChange={e => updateFilter('size', e.target.value)} className={selectCls}>
-              <option value="">Jakákoliv</option>
-              <option value="small">Malý</option>
-              <option value="medium">Střední</option>
-              <option value="large">Velký</option>
-              <option value="xlarge">Extra velký</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5 w-full sm:w-auto">
-            <label className="font-body text-xs font-bold text-brown uppercase tracking-wider">Urgentní</label>
-            <button
-              onClick={() => updateFilter('urgent', params.urgent === 'true' ? '' : 'true')}
-              className={`px-4 py-2.5 rounded-sm font-body text-sm font-bold border-2 transition-all cursor-pointer
-                ${params.urgent === 'true' ? 'bg-coral text-white border-coral' : 'bg-white text-gray border-gray-pale hover:border-coral'}`}
-            >
-              🆘 Urgentní adopce
+      {/* Druh */}
+      <Section title="Druh zvířete">
+        <div className="flex flex-wrap gap-1.5">
+          <button onClick={() => setFilter('species', undefined)} className={chip(!params.species)}>
+            Všechna
+          </button>
+          {species.map(s => (
+            <button key={s.id} onClick={() => toggleFilter('species', s.id)} className={chip(params.species === s.id)}>
+              {s.icon && <span>{s.icon}</span>}{s.name_cs}
             </button>
-          </div>
-
-          {hasFilters && (
-            <button onClick={clearAll} className="text-sm font-bold text-gray hover:text-coral transition-colors cursor-pointer bg-transparent border-none self-end pb-2.5">
-              ✕ Zrušit vše
-            </button>
-          )}
+          ))}
         </div>
-      </div>
+      </Section>
+
+      {divider}
+
+      {/* Bydlení */}
+      <Section title="Vhodný pro">
+        <div className="flex gap-2">
+          <button onClick={() => toggleFilter('housing', 'flat')}
+            className="flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center"
+            style={params.housing === 'flat'
+              ? { background: '#FAECE7', borderColor: '#E8634A', color: '#993C1D' }
+              : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
+            }>
+            🏢 Byt
+          </button>
+          <button onClick={() => toggleFilter('housing', 'house')}
+            className="flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center"
+            style={params.housing === 'house'
+              ? { background: '#FAECE7', borderColor: '#E8634A', color: '#993C1D' }
+              : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
+            }>
+            🏡 Dům/zahrada
+          </button>
+        </div>
+      </Section>
+
+      {divider}
+
+      {/* Kompatibilita */}
+      <Section title="Kompatibilita">
+        <div className="space-y-2">
+          {/* Děti */}
+          <div>
+            <div className="text-[10px] font-medium mb-1.5" style={{ color: '#8B6550' }}>S dětmi</div>
+            <div className="flex gap-2">
+              {yesNoChip('kids', 'yes', '✓ Ano', { background: '#EAF3DE', borderColor: '#BDE8D0', color: '#1D6A42' })}
+              {yesNoChip('kids', 'no',  '✗ Ne',  { background: '#FAECE7', borderColor: '#F5C4B3', color: '#993C1D' })}
+              {yesNoChip('kids', 'any', 'Nezáleží')}
+            </div>
+          </div>
+
+          {/* Jiná zvířata */}
+          <div>
+            <div className="text-[10px] font-medium mb-1.5" style={{ color: '#8B6550' }}>S jinými zvířaty</div>
+            <div className="flex gap-2">
+              {yesNoChip('other_animals', 'yes', '✓ Ano', { background: '#EAF3DE', borderColor: '#BDE8D0', color: '#1D6A42' })}
+              {yesNoChip('other_animals', 'no',  '✗ Ne',  { background: '#FAECE7', borderColor: '#F5C4B3', color: '#993C1D' })}
+              {yesNoChip('other_animals', 'any', 'Nezáleží')}
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {divider}
+
+      {/* Aktivita */}
+      <Section title="Úroveň aktivity">
+        <div className="grid grid-cols-2 gap-1.5">
+          {[
+            { value: 'low',       label: '😴 Nízká',        sub: 'Klidná povaha' },
+            { value: 'medium',    label: '🚶 Střední',       sub: 'Denní vycházky' },
+            { value: 'high',      label: '🏃 Vysoká',        sub: 'Sport a pohyb' },
+            { value: 'very_high', label: '⚡ Velmi vysoká',  sub: 'Intenzivní sport' },
+          ].map(({ value, label, sub }) => (
+            <button key={value} onClick={() => toggleFilter('activity', value)}
+              className="text-left p-2.5 rounded-xl border cursor-pointer transition-all"
+              style={params.activity === value
+                ? { background: '#FAECE7', borderColor: '#E8634A' }
+                : { background: 'white', borderColor: '#F0EDE8' }
+              }>
+              <div className="text-xs font-bold" style={{ color: params.activity === value ? '#993C1D' : '#1A0F0A' }}>
+                {label}
+              </div>
+              <div className="text-[10px] mt-0.5" style={{ color: '#8B6550' }}>{sub}</div>
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      {divider}
+
+      {/* Náročnost chovu */}
+      <Section title="Náročnost chovu">
+        <div className="grid grid-cols-2 gap-1.5">
+          {[
+            { value: 'easy',      label: '⭐ Nenáročný',    sub: 'Pro začátečníky' },
+            { value: 'medium',    label: '⭐⭐ Střední',     sub: 'Mírná zkušenost' },
+            { value: 'demanding', label: '⭐⭐⭐ Náročný',   sub: 'Pro zkušené' },
+            { value: 'expert',    label: '⭐⭐⭐⭐ Expert',  sub: 'Odborná péče' },
+          ].map(({ value, label, sub }) => (
+            <button key={value} onClick={() => toggleFilter('difficulty', value)}
+              className="text-left p-2.5 rounded-xl border cursor-pointer transition-all"
+              style={params.difficulty === value
+                ? { background: '#FAECE7', borderColor: '#E8634A' }
+                : { background: 'white', borderColor: '#F0EDE8' }
+              }>
+              <div className="text-xs font-bold" style={{ color: params.difficulty === value ? '#993C1D' : '#1A0F0A' }}>
+                {label}
+              </div>
+              <div className="text-[10px] mt-0.5" style={{ color: '#8B6550' }}>{sub}</div>
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      {divider}
+
+      {/* Velikost */}
+      <Section title="Velikost">
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { value: undefined,  label: 'Jakákoliv' },
+            { value: 'small',    label: 'Malý' },
+            { value: 'medium',   label: 'Střední' },
+            { value: 'large',    label: 'Velký' },
+            { value: 'xlarge',   label: 'Extra velký' },
+          ].map(({ value, label }) => (
+            <button key={label}
+              onClick={() => setFilter('size', params.size === value ? undefined : value)}
+              className={chip(!value ? !params.size : params.size === value)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      {divider}
+
+      {/* Město */}
+      {cities.length > 0 && (
+        <Section title="Město">
+          <div className="flex flex-col gap-0.5">
+            <button onClick={() => setFilter('city', undefined)}
+              className={`text-left px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all
+                ${!params.city ? 'text-[#993C1D] bg-[#FAECE7]' : 'text-[#6B4030] hover:bg-[#FAFAF8]'}`}>
+              Celá ČR a SR
+            </button>
+            {cities.map(city => (
+              <button key={city} onClick={() => setFilter('city', params.city === city ? undefined : city)}
+                className={`text-left px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all
+                  ${params.city === city ? 'text-[#993C1D] bg-[#FAECE7]' : 'text-[#6B4030] hover:bg-[#FAFAF8]'}`}>
+                {city}
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Zrušit filtry */}
+      {activeCount > 0 && (
+        <>
+          {divider}
+          <button onClick={clearAll}
+            className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all hover:opacity-80"
+            style={{ background: '#F0EDE8', color: '#6B4030' }}>
+            Zrušit všechny filtry ({activeCount})
+          </button>
+        </>
+      )}
     </div>
+  )
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <div className="hidden lg:block sticky top-24">
+        {filterPanel}
+      </div>
+
+      {/* Mobilní collapsible */}
+      <div className="lg:hidden">
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border font-semibold text-sm cursor-pointer transition-all"
+          style={{ background: 'white', borderColor: '#E0DDD8', color: '#1A0F0A' }}
+        >
+          <span className="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            Filtry
+            {activeCount > 0 && (
+              <span className="w-5 h-5 rounded-full text-[10px] font-bold text-white flex items-center justify-center"
+                style={{ background: '#E8634A' }}>
+                {activeCount}
+              </span>
+            )}
+          </span>
+          <span style={{ color: '#8B6550' }}>{mobileOpen ? '↑' : '↓'}</span>
+        </button>
+        {mobileOpen && <div className="mt-2">{filterPanel}</div>}
+      </div>
+    </>
   )
 }
