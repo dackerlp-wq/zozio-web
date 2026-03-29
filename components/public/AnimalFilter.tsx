@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useState, useCallback } from 'react'
 
@@ -49,7 +50,7 @@ export function AnimalFilter({ species, cities, params, total }: AnimalFilterPro
       ? 'border-[#E8634A] text-[#993C1D] bg-[#FAECE7]'
       : 'border-[#F0EDE8] text-[#6B4030] bg-white hover:border-[#E8634A]/40'}`
 
-  const yesNoChip = (key: string, value: string, label: string, activeStyle?: { bg: string; border: string; color: string }) => {
+  const yesNoChip = (key: string, value: string, label: string, activeStyle?: React.CSSProperties) => {
     const isActive = params[key] === value
     return (
       <button onClick={() => toggleFilter(key, value)}
