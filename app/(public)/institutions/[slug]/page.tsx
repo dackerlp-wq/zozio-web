@@ -1,196 +1,220 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
-import { AnimalCard } from '@/components/public/AnimalCard'
-import { RescueCard } from '@/components/public/RescueCard'
-import { FundraiserBar } from '@/components/public/FundraiserBar'
-import { Button } from '@/components/ui/Button'
-import { InstitutionMap } from '@/components/public/InstitutionMap'
-import type { Institution, Animal, RescueCase, Fundraiser } from '@/types/database'
+import { InstitutionTabs } from '@/components/public/InstitutionTabs'
 
 interface PageProps {
-  params: Promise<{ slug: string }>
+  params:       Promise<{ slug: string }>
+  searchParams: Promise<{ tab?: string }>
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const inst = await getInstitution(slug)
   if (!inst) return { title: 'Instituce nenalezena | Zozio' }
-  return { title: `${inst.name} | Zozio`, description: inst.short_description ?? '' }
+  const i = inst as any
+  return {
+    title:       `${i.name} | Zozio`,
+    description: i.short_description ?? i.description?.slice(0, 155) ?? '',
+    openGraph:   { title: i.name, images: i.cover_url ? [{ url: i.cover_url }] : [] },
+  }
 }
 
-export default async function InstitutionProfilePage({ params }: PageProps) {
+export default async function InstitutionProfilePage({ params, searchParams }: PageProps) {
   const { slug } = await params
+  const { tab }  = await searchParams
+
   const inst = await getInstitution(slug)
   if (!inst) notFound()
 
-  const isShelter = inst.type === 'shelter'
+  const i         = inst as any
+  const isShelter = i.type === 'shelter'
+  const activeTab = tab ?? (isShelter ? 'animals' : 'rescue')
 
-  const [animals, rescueCases, fundraisers] = await Promise.all([
-    isShelter ? getAnimals(inst.id) : Promise.resolve([]),
-    !isShelter ? getRescueCases(inst.id) : Promise.resolve([]),
-    getFundraisers(inst.id),
+  const [animals, rescueCases, fundraisers, articles, volunteers] = await Promise.all([
+    isShelter ? getAnimals(i.id)      : Promise.resolve([]),
+    !isShelter ? getRescueCases(i.id) : Promise.resolve([]),
+    getFundraisers(i.id),
+    getArticles(i.id),
+    getVolunteerCount(i.id),
   ])
 
+  const tabs = [
+    ...(isShelter
+      ? [{ id: 'animals',    label: 'Zvířata',          count: (animals as any[]).length }]
+      : [{ id: 'rescue',     label: 'Záchranné případy', count: (rescueCases as any[]).length }]
+    ),
+    { id: 'fundraisers', label: 'Sbírky',    count: (fundraisers as any[]).length },
+    { id: 'stories',     label: 'Příběhy',   count: (articles as any[]).length },
+    { id: 'about',       label: 'O nás',     count: null },
+    { id: 'contact',     label: 'Kontakt',   count: null },
+  ]
+
   return (
-    <main className="min-h-screen bg-warm pt-20 md:pt-24 pb-16 md:pb-20">
-      <div className="max-w-[1200px] mx-auto px-4 md:px-6">
+    <main className="min-h-screen" style={{ background: '#FFFCF8' }}>
 
-        <nav className="flex items-center gap-2 text-sm text-gray mb-6 font-semibold">
-          <Link href="/" className="hover:text-coral transition-colors">Domů</Link>
-          <span>·</span>
-          <Link href="/institutions" className="hover:text-coral transition-colors">Instituce</Link>
-          <span>·</span>
-          <span className="text-espresso truncate">{inst.name}</span>
-        </nav>
+      {/* ── Cover + header ── */}
+      <div className="relative">
 
-        {/* Hero */}
-        <div className={`rounded-lg p-5 md:p-8 mb-8 md:mb-10 ${isShelter ? 'bg-shelter-bg' : 'bg-rescue-bg'}`}>
-          <div className="flex flex-col md:flex-row items-start justify-between gap-6">
-            <div className="flex-1">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-pill text-xs font-bold mb-4
-                ${isShelter ? 'bg-white text-shelter-dark' : 'bg-white text-rescue-dark'}`}>
-                {isShelter ? '🏠 Útulok' : '🚑 Záchranná stanice'}
-              </span>
-              <h1 className="font-display font-extrabold text-3xl md:text-5xl text-espresso mb-2">{inst.name}</h1>
-              <p className={`font-display font-bold text-base md:text-lg mb-4 ${isShelter ? 'text-coral' : 'text-rescue'}`}>
-                {isShelter ? 'Zachraňme opuštěná zvířata' : 'Zachraňme ohrožená zvířata'}
-              </p>
-              {inst.description && (
-                <p className="text-sm md:text-base text-brown-mid leading-relaxed max-w-[600px]">{inst.description}</p>
-              )}
+        {/* Cover foto */}
+        <div className="h-48 md:h-64 relative overflow-hidden"
+          style={{ background: isShelter
+            ? 'linear-gradient(135deg, #3D2015 0%, #E8634A 100%)'
+            : 'linear-gradient(135deg, #1C2E28 0%, #2E9E8F 100%)' }}>
+          {i.cover_url && (
+            <Image src={i.cover_url} alt={i.name} fill className="object-cover opacity-60" />
+          )}
+          {/* Overlay gradient */}
+          <div className="absolute inset-0"
+            style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.5) 100%)' }} />
+        </div>
+
+        {/* Profile info přes cover */}
+        <div className="max-w-[1100px] mx-auto px-5 md:px-10">
+          <div className="relative -mt-16 md:-mt-20 mb-0 flex items-end gap-5">
+
+            {/* Logo */}
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl border-4 border-white flex-shrink-0 overflow-hidden flex items-center justify-center text-4xl shadow-lg"
+              style={{ background: isShelter ? '#FAECE7' : '#E1F5EE' }}>
+              {i.logo_url
+                ? <Image src={i.logo_url} alt={i.name} width={128} height={128} className="object-cover" />
+                : <span>{isShelter ? '🏠' : '🚑'}</span>
+              }
             </div>
 
-            {/* Kontakt + mapa */}
-            <div className="w-full md:w-auto md:min-w-[260px]">
-              <div className="bg-white rounded-lg p-4 md:p-5 shadow-sm">
-                <h3 className="font-display font-bold text-sm text-espresso mb-3 uppercase tracking-wider">Kontakt</h3>
-                {inst.city && (
-                  <div className="flex items-start gap-2 text-sm text-brown-mid mb-2">
-                    <span className="flex-shrink-0">📍</span>
-                    <span>{inst.street ? `${inst.street}, ` : ''}{inst.city}{inst.postal_code ? ` ${inst.postal_code}` : ''}</span>
-                  </div>
-                )}
-                {inst.phone && (
-                  <div className="flex items-center gap-2 text-sm text-brown-mid mb-2">
-                    <span>📞</span>
-                    <a href={`tel:${inst.phone}`} className="hover:text-coral transition-colors">{inst.phone}</a>
-                  </div>
-                )}
-                {inst.email && (
-                  <div className="flex items-center gap-2 text-sm text-brown-mid mb-2">
-                    <span>✉️</span>
-                    <a href={`mailto:${inst.email}`} className="hover:text-coral transition-colors truncate">{inst.email}</a>
-                  </div>
-                )}
-                {inst.website && (
-                  <div className="flex items-center gap-2 text-sm text-brown-mid">
-                    <span>🌐</span>
-                    <a href={inst.website} target="_blank" rel="noopener noreferrer" className="hover:text-coral transition-colors truncate">
-                      {inst.website.replace(/^https?:\/\//, '')}
-                    </a>
-                  </div>
-                )}
-
-                {/* Mapa — zobrazí se jen pokud má koordináty */}
-                {inst.lat && inst.lng && (
-                  <InstitutionMap
-                    lat={inst.lat}
-                    lng={inst.lng}
-                    name={inst.name}
-                    city={inst.city ?? ''}
-                  />
+            {/* Název */}
+            <div className="pb-2 flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold"
+                  style={isShelter
+                    ? { background: '#FAECE7', color: '#993C1D' }
+                    : { background: '#E1F5EE', color: '#0F6E56' }}>
+                  {isShelter ? '🏠 Útulok' : '🚑 Záchranná stanice'}
+                </span>
+                {i.approval_status === 'approved' && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
+                    style={{ background: '#EAF3DE', color: '#3B6D11' }}>
+                    ✓ Ověřeno
+                  </span>
                 )}
               </div>
+              <h1 className="font-display font-extrabold text-[#1A0F0A] leading-tight truncate"
+                style={{ fontSize: 'clamp(20px, 3.5vw, 32px)' }}>
+                {i.name}
+              </h1>
+              {i.city && (
+                <p className="text-sm mt-0.5" style={{ color: '#8B6550' }}>📍 {i.city}</p>
+              )}
             </div>
           </div>
+
+          {/* Statistiky */}
+          <div className="flex flex-wrap gap-6 py-5 border-b border-[#F0EDE8]">
+            {[
+              {
+                num:   isShelter ? (animals as any[]).length : (rescueCases as any[]).length,
+                label: isShelter ? 'zvířat' : 'záchranných případů',
+              },
+              { num: (fundraisers as any[]).filter((f: any) => f.active).length, label: 'aktivních sbírek' },
+              { num: volunteers, label: 'dobrovolníků' },
+              { num: (articles as any[]).length, label: 'příběhů' },
+            ].map(({ num, label }) => (
+              <div key={label} className="text-center">
+                <div className="font-display font-extrabold text-2xl text-[#1A0F0A]">{num}</div>
+                <div className="text-xs" style={{ color: '#8B6550' }}>{label}</div>
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
 
-        {/* Sbírky */}
-        {fundraisers.length > 0 && (
-          <section className="mb-10 md:mb-12">
-            <h2 className="font-display font-extrabold text-2xl md:text-3xl text-espresso mb-5">💛 Aktivní sbírky</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-              {fundraisers.map(f => (
-                <FundraiserBar key={f.id} fundraiser={f} variant={isShelter ? 'shelter' : 'rescue'} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Zvířata */}
-        {isShelter && animals.length > 0 && (
-          <section>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-display font-extrabold text-2xl md:text-3xl text-espresso">🐾 Zvířata k adopci</h2>
-              <span className="text-sm text-gray font-semibold">{animals.length} zvířat</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-              {animals.map(animal => <AnimalCard key={animal.id} animal={animal} />)}
-            </div>
-          </section>
-        )}
-
-        {/* Záchranné případy */}
-        {!isShelter && rescueCases.length > 0 && (
-          <section>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-display font-extrabold text-2xl md:text-3xl text-espresso">🦉 Záchranné případy</h2>
-              <span className="text-sm text-gray font-semibold">{rescueCases.length} případů</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-              {rescueCases.map(c => <RescueCard key={c.id} rescueCase={c} />)}
-            </div>
-          </section>
-        )}
-
-        {/* CTA */}
-        <div className={`mt-12 md:mt-16 rounded-lg p-6 md:p-8 text-center ${isShelter ? 'bg-coral' : 'bg-rescue'}`}>
-          <h2 className="font-display font-extrabold text-2xl md:text-3xl text-white mb-3">Jsi z tohoto útulku?</h2>
-          <p className="text-white/80 mb-6 text-sm md:text-base">Přidej se k Zozio a spravuj profil, zvířata a adopce online.</p>
-          <Link href="/auth/login">
-            <Button variant="dark" size="lg">Přihlásit se</Button>
-          </Link>
-        </div>
+      {/* ── Taby + obsah ── */}
+      <div className="max-w-[1100px] mx-auto px-5 md:px-10 pb-16">
+        <InstitutionTabs
+          tabs={tabs}
+          activeTab={activeTab}
+          slug={slug}
+          institution={i}
+          isShelter={isShelter}
+          animals={animals as any[]}
+          rescueCases={rescueCases as any[]}
+          fundraisers={fundraisers as any[]}
+          articles={articles as any[]}
+        />
       </div>
     </main>
   )
 }
 
-async function getInstitution(slug: string): Promise<Institution | null> {
+/* ── Data ── */
+
+async function getInstitution(slug: string) {
   const supabase = await createClient()
   const { data } = await supabase
-    .from('institutions').select('*')
-    .eq('slug', slug).eq('approval_status', 'approved').single()
-  return data as Institution | null
+    .from('institutions')
+    .select('*')
+    .eq('slug', slug)
+    .eq('approval_status', 'approved')
+    .single()
+  return data
 }
 
-async function getAnimals(id: string): Promise<Animal[]> {
+async function getAnimals(id: string) {
   const supabase = await createClient()
   const { data } = await supabase
     .from('animals')
-    .select('*, institution:institutions(id,name,city,type,slug), species:animal_species(id,name_cs,icon)')
-    .eq('institution_id', id).eq('published', true)
-    .in('adoption_status', ['available', 'reserved'])
-    .neq('in_quarantine', true)
+    .select('id, name, breed, birth_year, primary_photo, urgent, adoption_status, vaccinated, neutered, species:animal_species(name_cs,icon)')
+    .eq('institution_id', id)
+    .eq('published', true)
+    .in('adoption_status', ['available', 'reserved', 'foster'])
+    .or('in_quarantine.is.null,in_quarantine.eq.false')
     .order('urgent', { ascending: false })
-  return (data as Animal[]) ?? []
+    .order('created_at', { ascending: false })
+  return data ?? []
 }
 
-async function getRescueCases(id: string): Promise<RescueCase[]> {
+async function getRescueCases(id: string) {
   const supabase = await createClient()
   const { data } = await supabase
     .from('rescue_cases')
-    .select('*, institution:institutions(id,name,city,type,slug), species:animal_species(id,name_cs,icon)')
-    .eq('institution_id', id).eq('published', true).not('status', 'eq', 'deceased')
-  return (data as RescueCase[]) ?? []
+    .select('id, name, case_number, status, cause_of_injury, primary_photo, species:animal_species(name_cs,icon)')
+    .eq('institution_id', id)
+    .eq('published', true)
+    .not('status', 'in', '("deceased")')
+    .order('created_at', { ascending: false })
+  return data ?? []
 }
 
-async function getFundraisers(id: string): Promise<Fundraiser[]> {
+async function getFundraisers(id: string) {
   const supabase = await createClient()
   const { data } = await supabase
-    .from('fundraisers').select('*')
-    .eq('institution_id', id).eq('active', true)
+    .from('fundraisers')
+    .select('id, title, description, goal_amount, current_amount, active')
+    .eq('institution_id', id)
+    .order('active', { ascending: false })
+    .order('created_at', { ascending: false })
   return data ?? []
+}
+
+async function getArticles(id: string) {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('articles')
+    .select('id, title, slug, perex, cover_url, category, published_at')
+    .eq('institution_id', id)
+    .eq('published', true)
+    .order('published_at', { ascending: false })
+  return data ?? []
+}
+
+async function getVolunteerCount(id: string) {
+  const supabase = await createClient()
+  const { count } = await supabase
+    .from('volunteers')
+    .select('id', { count: 'exact', head: true })
+    .eq('institution_id', id)
+    .eq('status', 'active')
+  return count ?? 0
 }
