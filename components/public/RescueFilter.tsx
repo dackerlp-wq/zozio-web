@@ -1,76 +1,145 @@
 'use client'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useState } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 interface RescueFilterProps {
   species: { id: string; name_cs: string; icon: string | null }[]
-  cities: string[]
-  params: { species?: string; status?: string; city?: string }
+  cities:  string[]
+  params:  Record<string, string | undefined>
+}
+
+function buildUrl(params: any, overrides: Record<string, string | undefined>) {
+  const next = { ...params, ...overrides, page: undefined }
+  const qs   = new URLSearchParams()
+  Object.entries(next).forEach(([k, v]) => { if (v) qs.set(k, v as string) })
+  const str = qs.toString()
+  return `/rescue${str ? `?${str}` : ''}`
 }
 
 export function RescueFilter({ species, cities, params }: RescueFilterProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [open, setOpen] = useState(false)
+  const activeCount = [params.species, params.status, params.city].filter(Boolean).length
 
-  const updateFilter = useCallback((key: string, value: string) => {
-    const current = new URLSearchParams(searchParams.toString())
-    if (value) current.set(key, value)
-    else current.delete(key)
-    router.push(`/rescue?${current.toString()}`)
-  }, [router, searchParams])
+  const chip = (active: boolean) =>
+    `inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-all
+    ${active
+      ? 'border-[#2E9E8F] text-[#0F6E56] bg-[#E1F5EE]'
+      : 'border-[#F0EDE8] text-[#6B4030] bg-white hover:border-[#2E9E8F]/40'}`
 
-  const clearAll = () => router.push('/rescue')
-  const hasFilters = params.species || params.status || params.city
-  const selectCls = 'px-3 py-2.5 border-2 border-gray-pale rounded-sm font-body text-sm text-espresso bg-white outline-none focus:border-rescue transition-colors cursor-pointer w-full'
+  const divider = <div className="h-px bg-[#F0EDE8] my-4" />
+
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="mb-4">
+      <span className="text-[10px] font-bold uppercase tracking-widest mb-2 block" style={{ color: '#8B6550' }}>
+        {title}
+      </span>
+      {children}
+    </div>
+  )
+
+  const panel = (
+    <div className="bg-white rounded-2xl border border-[#F0EDE8] p-4">
+
+      {/* Stav léčby */}
+      <Section title="Stav léčby">
+        <div className="flex flex-wrap gap-1.5">
+          <Link href={buildUrl(params, { status: undefined })} className={`${chip(!params.status)} no-underline`}>
+            Všechny
+          </Link>
+          {[
+            { value: 'intake',         label: '🚑 Příjem' },
+            { value: 'treatment',      label: '🩺 Léčba' },
+            { value: 'rehabilitation', label: '💪 Rehabilitace' },
+            { value: 'released',       label: '🌿 Propuštěno' },
+          ].map(({ value, label }) => (
+            <Link key={value}
+              href={buildUrl(params, { status: params.status === value ? undefined : value })}
+              className={`${chip(params.status === value)} no-underline`}>
+              {label}
+            </Link>
+          ))}
+        </div>
+      </Section>
+
+      {/* Druh */}
+      {species.length > 0 && (
+        <>
+          {divider}
+          <Section title="Druh zvířete">
+            <div className="flex flex-wrap gap-1.5">
+              <Link href={buildUrl(params, { species: undefined })} className={`${chip(!params.species)} no-underline`}>
+                Všechna
+              </Link>
+              {species.map(s => (
+                <Link key={s.id}
+                  href={buildUrl(params, { species: params.species === s.id ? undefined : s.id })}
+                  className={`${chip(params.species === s.id)} no-underline`}>
+                  {s.icon && <span>{s.icon}</span>}{s.name_cs}
+                </Link>
+              ))}
+            </div>
+          </Section>
+        </>
+      )}
+
+      {/* Město */}
+      {cities.length > 0 && (
+        <>
+          {divider}
+          <Section title="Město">
+            <div className="flex flex-col gap-0.5">
+              <Link href={buildUrl(params, { city: undefined })}
+                className={`text-left px-3 py-1.5 rounded-lg text-xs font-semibold no-underline transition-all
+                  ${!params.city ? 'text-[#0F6E56] bg-[#E1F5EE]' : 'text-[#6B4030] hover:bg-[#FAFAF8]'}`}>
+                Celá ČR a SR
+              </Link>
+              {cities.map(city => (
+                <Link key={city}
+                  href={buildUrl(params, { city: params.city === city ? undefined : city })}
+                  className={`text-left px-3 py-1.5 rounded-lg text-xs font-semibold no-underline transition-all
+                    ${params.city === city ? 'text-[#0F6E56] bg-[#E1F5EE]' : 'text-[#6B4030] hover:bg-[#FAFAF8]'}`}>
+                  {city}
+                </Link>
+              ))}
+            </div>
+          </Section>
+        </>
+      )}
+
+      {/* Zrušit */}
+      {activeCount > 0 && (
+        <>
+          {divider}
+          <Link href="/rescue" className="block w-full py-2.5 rounded-xl text-xs font-bold text-center no-underline hover:opacity-80 transition-all"
+            style={{ background: '#F0EDE8', color: '#6B4030' }}>
+            Zrušit filtry ({activeCount})
+          </Link>
+        </>
+      )}
+    </div>
+  )
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-pale p-4 mb-6">
-      <div className="flex items-center justify-between md:hidden mb-2">
-        <span className="font-display font-bold text-sm text-espresso">
-          Filtry {hasFilters && <span className="text-rescue">({[params.species, params.status, params.city].filter(Boolean).length})</span>}
-        </span>
-        <button onClick={() => setOpen(!open)} className="text-xs font-bold text-rescue cursor-pointer bg-transparent border-none">
-          {open ? 'Zavřít ▲' : 'Zobrazit ▼'}
-        </button>
+    <>
+      <div className="hidden lg:block sticky top-24">{panel}</div>
+      <div className="lg:hidden">
+        <details className="group">
+          <summary className="flex items-center justify-between px-4 py-3 rounded-xl border font-semibold text-sm cursor-pointer list-none"
+            style={{ background: 'white', borderColor: '#E0DDD8', color: '#1A0F0A' }}>
+            <span className="flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              Filtry
+              {activeCount > 0 && (
+                <span className="w-5 h-5 rounded-full text-[10px] font-bold text-white flex items-center justify-center"
+                  style={{ background: '#2E9E8F' }}>{activeCount}</span>
+              )}
+            </span>
+            <span className="text-[#8B6550] group-open:rotate-180 transition-transform">↓</span>
+          </summary>
+          <div className="mt-2">{panel}</div>
+        </details>
       </div>
-
-      <div className={`${open ? 'block' : 'hidden'} md:block`}>
-        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-end">
-          <div className="flex flex-col gap-1.5 w-full sm:w-auto sm:min-w-[150px]">
-            <label className="font-body text-xs font-bold text-brown uppercase tracking-wider">Druh</label>
-            <select value={params.species ?? ''} onChange={e => updateFilter('species', e.target.value)} className={selectCls}>
-              <option value="">Všechna zvířata</option>
-              {species.map(s => <option key={s.id} value={s.id}>{s.icon} {s.name_cs}</option>)}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5 w-full sm:w-auto sm:min-w-[150px]">
-            <label className="font-body text-xs font-bold text-brown uppercase tracking-wider">Stav léčby</label>
-            <select value={params.status ?? ''} onChange={e => updateFilter('status', e.target.value)} className={selectCls}>
-              <option value="">Všechny stavy</option>
-              <option value="intake">🚑 Příjem</option>
-              <option value="treatment">🩺 Léčba</option>
-              <option value="rehabilitation">💪 Rehabilitace</option>
-              <option value="released">✓ Propuštěn</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5 w-full sm:w-auto sm:min-w-[150px]">
-            <label className="font-body text-xs font-bold text-brown uppercase tracking-wider">Záchranná stanice</label>
-            <select value={params.city ?? ''} onChange={e => updateFilter('city', e.target.value)} className={selectCls}>
-              <option value="">Celá ČR a SR</option>
-              {cities.map(city => <option key={city} value={city}>{city}</option>)}
-            </select>
-          </div>
-
-          {hasFilters && (
-            <button onClick={clearAll} className="text-sm font-bold text-gray hover:text-rescue transition-colors cursor-pointer bg-transparent border-none self-end pb-2.5">
-              ✕ Zrušit
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    </>
   )
 }
