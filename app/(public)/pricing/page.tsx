@@ -3,120 +3,154 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Ceník | Zozio',
-  description: 'Transparentní ceník pro útulky a záchranné stanice.',
+  description: 'Transparentní ceník pro útulky a záchranné stanice. Základní plán zdarma.',
 }
 
-const plans = [
+const PLANS = [
   {
-    tier: 'Free', price: '0 Kč', period: 'navždy zdarma', hot: false,
+    id: 'free',
+    name: 'Zdarma',
+    price: 0,
+    desc: 'Pro malé útulky a stanice začínající na Zozio.',
+    color: '#F0EDE8',
+    textColor: '#5F5E5A',
+    btnStyle: { background: 'white', color: '#1A0F0A', border: '1px solid #E0DDD8' },
     features: [
-      { ok: true,  text: 'Do 15 zvířat / pacientů' },
-      { ok: true,  text: 'Veřejný profil instituce' },
-      { ok: true,  text: 'Adopční / příjmový formulář' },
-      { ok: false, text: 'E-mail notifikace' },
-      { ok: false, text: 'Sbírky' },
-      { ok: false, text: 'Dobrovolníci' },
+      'Až 20 zvířat / případů',
+      'Veřejný profil instituce',
+      'Adopční žádosti',
+      'Základní statistiky',
+      '1 aktivní sbírka',
     ],
-    cta: 'Začít zdarma', href: '/auth/register',
+    missing: ['Neomezená zvířata', 'Prioritní zobrazení', 'Export dat', 'API přístup'],
   },
   {
-    tier: 'Standard', price: '490 Kč', period: 'měsíčně · bez závazků', hot: true,
+    id: 'standard',
+    name: 'Standard',
+    price: 790,
+    desc: 'Pro aktivní útulky s pravidelným provozem.',
+    color: '#E8634A',
+    textColor: '#fff',
+    featured: true,
+    btnStyle: { background: '#E8634A', color: 'white' },
     features: [
-      { ok: true, text: 'Neomezená zvířata' },
-      { ok: true, text: 'E-mail notifikace' },
-      { ok: true, text: '1 aktivní sbírka' },
-      { ok: true, text: 'Správa dobrovolníků' },
-      { ok: true, text: 'Export dat (CSV)' },
-      { ok: false, text: 'Více poboček' },
+      'Neomezená zvířata / případy',
+      'Prioritní zobrazení v katalogu',
+      'Neomezené sbírky',
+      'Neomezení dobrovolníci',
+      'Export dat (CSV)',
+      'Pokročilé statistiky',
+      'E-mailové notifikace',
     ],
-    cta: '30 dní zdarma →', href: '/auth/register',
+    missing: ['API přístup', 'Vlastní doména'],
   },
   {
-    tier: 'Pro', price: '990 Kč', period: 'měsíčně · bez závazků', hot: false,
+    id: 'pro',
+    name: 'Pro',
+    price: 1990,
+    desc: 'Pro velké instituce s vysokým provozem.',
+    color: '#1A0F0A',
+    textColor: '#fff',
+    btnStyle: { background: '#1A0F0A', color: 'white' },
     features: [
-      { ok: true, text: 'Vše ze Standard' },
-      { ok: true, text: 'Neomezené sbírky' },
-      { ok: true, text: 'Až 5 poboček' },
-      { ok: true, text: 'Statistiky & analytika' },
-      { ok: true, text: 'Prioritní podpora' },
-      { ok: true, text: 'Prioritní zobrazení' },
+      'Vše ze Standard',
+      'API přístup',
+      'Vlastní doména',
+      'Dedikovaná podpora',
+      'SLA 99.9%',
+      'Prioritní onboarding',
     ],
-    cta: 'Kontaktovat nás', href: 'mailto:info@zozio.cz',
+    missing: [],
   },
 ]
 
 export default function PricingPage() {
   return (
-    <main className="min-h-screen bg-warm pt-20 md:pt-24 pb-16 md:pb-20">
-      <div className="max-w-[1000px] mx-auto px-4 md:px-6">
+    <main className="min-h-screen pt-20" style={{ background: '#FFFCF8' }}>
 
-        <div className="text-center mb-10 md:mb-14">
-          <span className="inline-flex items-center gap-1.5 bg-amber-light text-warning font-body text-xs font-bold px-4 py-1.5 rounded-pill uppercase tracking-wider mb-4">
-            💰 Ceník
-          </span>
-          <h1 className="font-display font-extrabold text-3xl md:text-5xl text-espresso mb-3 leading-tight">
-            Féroví pro útulky<br />i záchranné stanice
+      {/* Header */}
+      <section className="py-16 md:py-20 px-5 md:px-10 text-center">
+        <div className="max-w-[700px] mx-auto">
+          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#E8634A' }}>Ceník</p>
+          <h1 className="font-display font-extrabold text-[#1A0F0A] mb-4"
+            style={{ fontSize: 'clamp(28px, 5vw, 48px)' }}>
+            Transparentní ceny<br />bez překvapení
           </h1>
-          <p className="text-base md:text-lg text-brown-mid max-w-[480px] mx-auto leading-relaxed">
-            Začni zdarma. Plať jen když rosteš. Bez závazků, bez skrytých poplatků.
+          <p className="text-lg" style={{ color: '#8B6550' }}>
+            Začněte zdarma. Upgradujte až budete potřebovat víc.
           </p>
         </div>
+      </section>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5 mb-8">
-          {plans.map(plan => (
-            <div key={plan.tier} className={`relative rounded-lg p-6 md:p-7 border-2 transition-all
-              ${plan.hot
-                ? 'bg-coral border-coral sm:scale-[1.03] shadow-lg'
-                : 'bg-white border-gray-pale hover:border-gray-light'
-              }`}>
-              {plan.hot && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber text-espresso font-display font-extrabold text-[11px] px-4 py-1 rounded-pill whitespace-nowrap">
-                  ⭐ NEJOBLÍBENĚJŠÍ
+      {/* Plans */}
+      <section className="pb-20 px-5 md:px-10">
+        <div className="max-w-[1000px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-5">
+          {PLANS.map(plan => (
+            <div key={plan.id} className={`rounded-2xl overflow-hidden border ${plan.featured ? 'border-[#E8634A]' : 'border-[#F0EDE8]'}`}
+              style={{ boxShadow: plan.featured ? '0 8px 32px rgba(232,99,74,0.15)' : undefined }}>
+
+              {plan.featured && (
+                <div className="text-center py-2 text-xs font-bold text-white" style={{ background: '#E8634A' }}>
+                  Nejoblíbenější
                 </div>
               )}
-              <div className={`text-xs font-bold uppercase tracking-widest mb-2 ${plan.hot ? 'text-white/75' : 'text-gray'}`}>
-                {plan.tier}
-              </div>
-              <div className={`font-display font-extrabold text-4xl mb-1 ${plan.hot ? 'text-white' : 'text-espresso'}`}>
-                {plan.price}
-              </div>
-              <div className={`text-xs mb-5 ${plan.hot ? 'text-white/70' : 'text-gray'}`}>{plan.period}</div>
-              <div className={`h-px mb-4 ${plan.hot ? 'bg-white/30' : 'bg-gray-pale'}`} />
-              <ul className="list-none space-y-2.5 mb-6">
-                {plan.features.map(({ ok, text }) => (
-                  <li key={text} className={`flex items-center gap-2.5 text-sm ${plan.hot ? 'text-white/88' : 'text-brown-mid'}`}>
-                    <span className={ok ? 'text-amber font-bold' : plan.hot ? 'text-white/25' : 'text-gray-light'}>
-                      {ok ? '✓' : '✗'}
+
+              <div className="p-6 bg-white">
+                <div className="mb-5">
+                  <div className="font-display font-extrabold text-xl text-[#1A0F0A] mb-1">{plan.name}</div>
+                  <div className="flex items-baseline gap-1 mb-2">
+                    <span className="font-display font-extrabold text-4xl text-[#1A0F0A]">
+                      {plan.price === 0 ? 'Zdarma' : plan.price.toLocaleString('cs-CZ')}
                     </span>
-                    {text}
-                  </li>
-                ))}
-              </ul>
-              <Link href={plan.href}>
-                <button className={`w-full py-3 rounded-pill font-display font-extrabold text-sm cursor-pointer border-none transition-all
-                  ${plan.hot
-                    ? 'bg-white text-coral-dark hover:bg-cream'
-                    : 'bg-espresso text-white hover:bg-brown'
-                  }`}>
-                  {plan.cta}
-                </button>
-              </Link>
+                    {plan.price > 0 && <span className="text-sm font-medium" style={{ color: '#8B6550' }}>Kč / měs.</span>}
+                  </div>
+                  <p className="text-sm" style={{ color: '#8B6550' }}>{plan.desc}</p>
+                </div>
+
+                <Link href={`/auth/register?plan=${plan.id}`}>
+                  <button className="w-full py-3 rounded-xl font-bold text-sm cursor-pointer border-none hover:opacity-90 transition-all mb-5"
+                    style={plan.btnStyle as any}>
+                    {plan.price === 0 ? 'Začít zdarma' : `Vybrat ${plan.name}`}
+                  </button>
+                </Link>
+
+                <div className="space-y-2">
+                  {plan.features.map(f => (
+                    <div key={f} className="flex items-center gap-2 text-sm">
+                      <span className="text-base font-bold" style={{ color: '#3B6D11' }}>✓</span>
+                      <span className="text-[#1A0F0A]">{f}</span>
+                    </div>
+                  ))}
+                  {plan.missing.map(f => (
+                    <div key={f} className="flex items-center gap-2 text-sm opacity-35">
+                      <span className="text-base">—</span>
+                      <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           ))}
         </div>
 
-        <div className="text-center space-y-3">
-          <p className="text-sm text-gray">
-            🏛️ Neziskové organizace a obecní útulky:{' '}
-            <strong className="text-espresso">30% sleva</strong> po ověření.
-            Napiš nám na{' '}
-            <a href="mailto:info@zozio.cz" className="text-coral hover:text-coral-dark font-semibold">
-              info@zozio.cz
-            </a>
-          </p>
-          <p className="text-xs text-gray">Ceny jsou uvedeny bez DPH. Fakturace měsíčně nebo ročně (roční platba = 2 měsíce zdarma).</p>
+        {/* FAQ */}
+        <div className="max-w-[700px] mx-auto mt-16">
+          <h2 className="font-display font-extrabold text-2xl text-[#1A0F0A] mb-8 text-center">Časté dotazy</h2>
+          <div className="space-y-4">
+            {[
+              { q: 'Musím zadat kreditní kartu?', a: 'Ne. Základní plán je zcela zdarma bez kreditní karty.' },
+              { q: 'Mohu kdykoli přejít na vyšší plán?', a: 'Ano, upgrade proběhne okamžitě. Platíte jen rozdíl za zbývající dny měsíce.' },
+              { q: 'Jsou neziskové organizace zvýhodněny?', a: 'Ano. Registrované neziskové organizace a spolky dostanou 30% slevu. Napište nám.' },
+              { q: 'Co se stane s daty pokud odejdu?', a: 'Vaše data vám patří. Export je možný kdykoli. Po ukončení je uchováváme 90 dní.' },
+            ].map(({ q, a }) => (
+              <div key={q} className="p-5 bg-white rounded-2xl border border-[#F0EDE8]">
+                <div className="font-bold text-[#1A0F0A] mb-1">{q}</div>
+                <p className="text-sm" style={{ color: '#8B6550' }}>{a}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
     </main>
   )
 }
