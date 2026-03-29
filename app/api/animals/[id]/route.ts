@@ -21,6 +21,37 @@ async function checkAccess(userId: string, animalId: string, service: ReturnType
   return membership ? animal : null
 }
 
+// Whitelist — pouze skutečné sloupce tabulky animals
+// Odstraní nested join objekty (species:{...}, institution:{...}) které Supabase odmítne
+const ALLOWED_COLUMNS = new Set([
+  'name', 'species_id', 'sex', 'birth_year', 'size', 'breed', 'color',
+  'weight_kg', 'description', 'published', 'adoption_status', 'urgent',
+  'adoption_fee', 'health_status', 'in_quarantine', 'quarantine_until',
+  'quarantine_reason', 'in_foster', 'foster_name', 'foster_phone', 'foster_since',
+  'vaccinated', 'neutered', 'microchipped', 'chip_number', 'chip_date',
+  'passport_number', 'vet_name', 'vet_phone', 'last_vet_visit', 'medications',
+  'medical_notes', 'good_with_kids', 'good_with_dogs', 'good_with_cats',
+  'good_with_other_animals', 'special_needs',
+  'suitable_for_flat', 'suitable_for_house', 'activity_level', 'care_difficulty',
+  'intake_reason', 'intake_date', 'intake_notes', 'found_location', 'found_date',
+  'finder_name', 'finder_phone', 'previous_owner', 'previous_owner_phone',
+  'internal_notes', 'staff_assigned', 'photos', 'primary_photo',
+  'status', 'case_number', 'estimated_age', 'cause_of_injury', 'diagnosis',
+  'treatment_notes', 'public_description', 'weight_g', 'ring_number',
+  'release_location', 'release_date', 'found_by',
+])
+
+function sanitizePayload(body: Record<string, unknown>): Record<string, unknown> {
+  const payload: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(body)) {
+    if (!ALLOWED_COLUMNS.has(key)) continue
+    // Odmítni nested objekty — povol primitives, null, arrays
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) continue
+    payload[key] = value
+  }
+  return payload
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -36,12 +67,19 @@ export async function PUT(
     if (!animal) return NextResponse.json({ error: 'Nemáš přístup' }, { status: 403 })
 
     const body = await request.json()
+    const payload = sanitizePayload(body)
+    payload.updated_at = new Date().toISOString()
+
     const { error } = await service
       .from('animals')
-      .update({ ...body, updated_at: new Date().toISOString() })
+      .update(payload)
       .eq('id', id)
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase update error:', JSON.stringify(error))
+      throw error
+    }
+
     return NextResponse.json({ success: true })
 
   } catch (error) {
