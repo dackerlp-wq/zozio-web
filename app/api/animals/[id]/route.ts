@@ -26,19 +26,16 @@ async function checkAccess(userId: string, animalId: string, service: ReturnType
 const ALLOWED_COLUMNS = new Set([
   'name', 'species_id', 'sex', 'birth_year', 'size', 'breed', 'color',
   'weight_kg', 'description', 'published', 'adoption_status', 'urgent',
-  'adoption_fee', 'health_status', 'in_quarantine', 'quarantine_until',
-  'quarantine_reason', 'in_foster', 'foster_name', 'foster_phone', 'foster_since',
+  'adoption_fee', 'in_quarantine', 'quarantine_until', 'quarantine_reason',
+  'in_foster', 'foster_name', 'foster_phone', 'foster_since',
   'vaccinated', 'neutered', 'microchipped', 'chip_number', 'chip_date',
   'passport_number', 'vet_name', 'vet_phone', 'last_vet_visit', 'medications',
   'medical_notes', 'good_with_kids', 'good_with_dogs', 'good_with_cats',
   'good_with_other_animals', 'special_needs',
   'suitable_for_flat', 'suitable_for_house', 'activity_level', 'care_difficulty',
-  'intake_reason', 'intake_date', 'intake_notes', 'found_location', 'found_date',
-  'finder_name', 'finder_phone', 'previous_owner', 'previous_owner_phone',
-  'internal_notes', 'staff_assigned', 'photos', 'primary_photo',
-  'status', 'case_number', 'estimated_age', 'cause_of_injury', 'diagnosis',
-  'treatment_notes', 'public_description', 'weight_g', 'ring_number',
-  'release_location', 'release_date', 'found_by',
+  'found_location', 'found_date', 'finder_name', 'finder_phone',
+  'previous_owner', 'previous_owner_phone',
+  'internal_notes', 'staff_assigned', 'photos', 'primary_photo', 'institution_id',
 ])
 
 function sanitizePayload(body: Record<string, unknown>): Record<string, unknown> {
