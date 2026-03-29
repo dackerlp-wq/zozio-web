@@ -2,11 +2,11 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
-import { Badge } from '@/components/ui/Badge'
-import { SearchInput } from './SearchInput'
+import { SearchInput } from '@/components/public/SearchInput'
 
 export const metadata: Metadata = {
   title: 'Vyhledávání | Zozio',
+  description: 'Hledej zvířata k adopci, záchranné případy, útulky a příběhy.',
 }
 
 interface PageProps {
@@ -15,131 +15,280 @@ interface PageProps {
 
 export default async function SearchPage({ searchParams }: PageProps) {
   const { q } = await searchParams
-  const query = q?.trim() ?? ''
+  const query  = q?.trim() ?? ''
 
-  const [animals, institutions] = query.length >= 2
-    ? await Promise.all([searchAnimals(query), searchInstitutions(query)])
-    : [[], []]
+  const results = query.length >= 2 ? await search(query) : null
 
-  const total = animals.length + institutions.length
+  const totalCount = results
+    ? results.animals.length + results.rescueCases.length + results.institutions.length + results.articles.length
+    : 0
 
   return (
-    <main className="min-h-screen bg-warm pt-20 md:pt-24 pb-16 md:pb-20">
-      <div className="max-w-[1100px] mx-auto px-4 md:px-6">
+    <main className="min-h-screen pt-20 md:pt-24" style={{ background: '#FFFCF8' }}>
+      <div className="max-w-[800px] mx-auto px-5 md:px-10 pb-16">
 
-        {/* Hledací pole */}
-        <div className="max-w-[620px] mx-auto mb-10 md:mb-12">
-          <h1 className="font-display font-extrabold text-3xl md:text-4xl text-espresso text-center mb-6">
-            Vyhledávání
+        {/* Searchbar */}
+        <div className="py-8 md:py-12">
+          <h1 className="font-display font-extrabold text-[#1A0F0A] mb-6"
+            style={{ fontSize: 'clamp(24px, 4vw, 36px)' }}>
+            {query ? `Výsledky pro „${query}"` : 'Vyhledávání'}
           </h1>
-          <SearchInput defaultValue={query} />
+          <SearchInput initialValue={query} />
+          {query.length >= 2 && (
+            <p className="text-sm mt-3" style={{ color: '#8B6550' }}>
+              {totalCount === 0
+                ? 'Žádné výsledky'
+                : `Nalezeno ${totalCount} výsledků`}
+            </p>
+          )}
         </div>
 
-        {/* Výsledky */}
-        {query.length >= 2 ? (
-          <>
-            {total === 0 ? (
-              <div className="text-center py-16">
-                <div className="text-5xl mb-4">🔍</div>
-                <h3 className="font-display font-bold text-xl text-espresso mb-2">
-                  Nic nenalezeno pro „{query}"
-                </h3>
-                <p className="text-gray text-sm">Zkus jiný výraz nebo prohlédni celý katalog.</p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
-                  <Link href="/adopt" className="text-coral font-bold hover:text-coral-dark transition-colors">
-                    → Zvířata k adopci
-                  </Link>
-                  <Link href="/institutions" className="text-coral font-bold hover:text-coral-dark transition-colors">
-                    → Adresář útulků
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <p className="text-sm text-gray mb-8 font-semibold">
-                  Nalezeno {total} výsledků pro „{query}"
-                </p>
-
-                {/* Zvířata */}
-                {animals.length > 0 && (
-                  <section className="mb-10">
-                    <h2 className="font-display font-extrabold text-2xl text-espresso mb-5">
-                      🐾 Zvířata ({animals.length})
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {animals.map((animal: any) => (
-                        <Link key={animal.id} href={`/animals/${animal.id}`} className="no-underline">
-                          <div className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-pale hover:-translate-y-1 hover:shadow-md transition-all">
-                            <div className="relative h-40 bg-gradient-to-br from-sand to-coral-light">
-                              {animal.primary_photo ? (
-                                <Image src={animal.primary_photo} alt={animal.name} fill className="object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-4xl">
-                                  {animal.species?.icon ?? '🐾'}
-                                </div>
-                              )}
-                              {animal.urgent && <Badge variant="urgent" className="absolute top-2 left-2" />}
-                            </div>
-                            <div className="p-3">
-                              <div className="font-display font-bold text-base text-espresso">{animal.name}</div>
-                              <div className="text-xs text-gray">
-                                {animal.species?.name_cs} · {animal.institution?.city}
-                              </div>
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* Instituce */}
-                {institutions.length > 0 && (
-                  <section>
-                    <h2 className="font-display font-extrabold text-2xl text-espresso mb-5">
-                      🏠 Instituce ({institutions.length})
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {institutions.map((inst: any) => (
-                        <Link key={inst.id} href={`/institutions/${inst.slug}`} className="no-underline">
-                          <div className="bg-white rounded-lg p-5 border border-gray-pale hover:-translate-y-1 hover:shadow-md transition-all">
-                            <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-pill text-[10px] font-bold mb-3
-                              ${inst.type === 'shelter' ? 'bg-shelter-bg text-shelter-dark' : 'bg-rescue-bg text-rescue-dark'}`}>
-                              {inst.type === 'shelter' ? '🏠 Útulok' : '🚑 Záchranná st.'}
-                            </div>
-                            <div className="font-display font-bold text-lg text-espresso mb-1">{inst.name}</div>
-                            <div className="text-xs text-gray">📍 {inst.city}</div>
-                            {inst.short_description && (
-                              <div className="text-sm text-brown-mid mt-2 line-clamp-2">{inst.short_description}</div>
-                            )}
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </section>
-                )}
-              </div>
-            )}
-          </>
-        ) : (
-          /* Prázdný stav — nápověda */
-          <div className="max-w-[500px] mx-auto text-center">
-            <p className="text-gray mb-8 font-semibold">Zadej alespoň 2 znaky pro vyhledávání</p>
-            <div className="grid grid-cols-2 gap-3 text-left">
-              {[
-                { href: '/adopt?urgent=true', icon: '🆘', label: 'Urgentní adopce' },
-                { href: '/adopt',             icon: '🐕', label: 'Psi k adopci' },
-                { href: '/rescue',            icon: '🦉', label: 'Záchranné stanice' },
-                { href: '/fundraisers',       icon: '💛', label: 'Aktivní sbírky' },
-              ].map(({ href, icon, label }) => (
-                <Link key={label} href={href} className="no-underline">
-                  <div className="bg-white rounded-lg p-4 border border-gray-pale hover:border-coral hover:-translate-y-0.5 transition-all flex items-center gap-3">
-                    <span className="text-xl">{icon}</span>
-                    <span className="font-display font-bold text-sm text-espresso">{label}</span>
-                  </div>
+        {/* Prázdný stav */}
+        {!query && (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🔍</div>
+            <p className="text-base font-semibold text-[#1A0F0A] mb-2">Co hledáš?</p>
+            <p className="text-sm" style={{ color: '#8B6550' }}>
+              Zadej jméno zvířete, útulku, města nebo druh.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2 mt-6">
+              {['Labrador', 'Praha', 'Výr velký', 'Sova', 'Lišák', 'Kočka'].map(s => (
+                <Link key={s} href={`/search?q=${encodeURIComponent(s)}`}
+                  className="px-4 py-2 rounded-full text-sm font-semibold no-underline border hover:opacity-80 transition-all"
+                  style={{ borderColor: '#E0DDD8', color: '#6B4030', background: 'white' }}>
+                  {s}
                 </Link>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Krátký dotaz */}
+        {query && query.length < 2 && (
+          <div className="text-center py-12">
+            <p className="text-sm" style={{ color: '#8B6550' }}>Zadej alespoň 2 znaky.</p>
+          </div>
+        )}
+
+        {/* Výsledky */}
+        {results && totalCount === 0 && (
+          <div className="text-center py-12">
+            <div className="text-5xl mb-4">😔</div>
+            <p className="font-bold text-xl text-[#1A0F0A] mb-2">Nic jsme nenašli</p>
+            <p className="text-sm mb-6" style={{ color: '#8B6550' }}>
+              Zkus jiné slovo nebo se podívej na celý katalog.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link href="/adopt" className="px-5 py-2.5 rounded-xl font-bold text-sm text-white no-underline"
+                style={{ background: '#E8634A' }}>
+                Zvířata k adopci
+              </Link>
+              <Link href="/rescue" className="px-5 py-2.5 rounded-xl font-bold text-sm text-white no-underline"
+                style={{ background: '#2E9E8F' }}>
+                Záchranné stanice
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {results && totalCount > 0 && (
+          <div className="space-y-10">
+
+            {/* ── Zvířata k adopci ── */}
+            {results.animals.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-bold text-lg text-[#1A0F0A] flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
+                      style={{ background: '#FAECE7' }}>🐾</span>
+                    Zvířata k adopci
+                    <span className="text-sm font-medium px-2 py-0.5 rounded-full"
+                      style={{ background: '#FAECE7', color: '#993C1D' }}>
+                      {results.animals.length}
+                    </span>
+                  </h2>
+                  <Link href={`/adopt?q=${encodeURIComponent(query)}`}
+                    className="text-xs font-bold no-underline hover:opacity-70"
+                    style={{ color: '#E8634A' }}>
+                    Zobrazit vše →
+                  </Link>
+                </div>
+                <div className="space-y-2">
+                  {results.animals.map((a: any) => (
+                    <Link key={a.id} href={`/animals/${a.id}`} className="no-underline group">
+                      <div className="flex items-center gap-4 p-3.5 bg-white rounded-xl border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-0.5 transition-all">
+                        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 relative"
+                          style={{ background: '#FAECE7' }}>
+                          {a.primary_photo
+                            ? <Image src={a.primary_photo} alt={a.name} fill className="object-cover" />
+                            : <div className="w-full h-full flex items-center justify-center text-2xl">
+                                {a.species?.icon ?? '🐾'}
+                              </div>
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-[#1A0F0A] truncate">{a.name}</div>
+                          <div className="text-xs mt-0.5 truncate" style={{ color: '#8B6550' }}>
+                            {[a.species?.name_cs, a.breed, a.institution?.city].filter(Boolean).join(' · ')}
+                          </div>
+                        </div>
+                        {a.urgent && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                            style={{ background: '#E8634A', color: 'white' }}>Urgentní</span>
+                        )}
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: '#C8C5BF', flexShrink: 0 }}>
+                          <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ── Záchranné případy ── */}
+            {results.rescueCases.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-bold text-lg text-[#1A0F0A] flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
+                      style={{ background: '#E1F5EE' }}>🦉</span>
+                    Záchranné případy
+                    <span className="text-sm font-medium px-2 py-0.5 rounded-full"
+                      style={{ background: '#E1F5EE', color: '#0F6E56' }}>
+                      {results.rescueCases.length}
+                    </span>
+                  </h2>
+                  <Link href={`/rescue`} className="text-xs font-bold no-underline hover:opacity-70"
+                    style={{ color: '#2E9E8F' }}>
+                    Záchranné stanice →
+                  </Link>
+                </div>
+                <div className="space-y-2">
+                  {results.rescueCases.map((c: any) => {
+                    const statusLabel: Record<string, string> = {
+                      intake: 'Příjem', treatment: 'Léčba',
+                      rehabilitation: 'Rehabilitace', released: 'Propuštěno',
+                    }
+                    return (
+                      <Link key={c.id} href={`/rescue/${c.id}`} className="no-underline group">
+                        <div className="flex items-center gap-4 p-3.5 bg-white rounded-xl border border-[#F0EDE8] hover:border-[#2E9E8F]/40 hover:-translate-y-0.5 transition-all">
+                          <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 relative"
+                            style={{ background: '#E1F5EE' }}>
+                            {c.primary_photo
+                              ? <Image src={c.primary_photo} alt={c.name ?? ''} fill className="object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center text-2xl">
+                                  {c.species?.icon ?? '🐾'}
+                                </div>
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-[#1A0F0A] truncate">{c.name ?? c.case_number}</div>
+                            <div className="text-xs mt-0.5 truncate" style={{ color: '#8B6550' }}>
+                              {[c.species?.name_cs, c.institution?.name].filter(Boolean).join(' · ')}
+                            </div>
+                          </div>
+                          {c.status && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                              style={{ background: '#E1F5EE', color: '#0F6E56' }}>
+                              {statusLabel[c.status] ?? c.status}
+                            </span>
+                          )}
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: '#C8C5BF', flexShrink: 0 }}>
+                            <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* ── Útulky a stanice ── */}
+            {results.institutions.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-bold text-lg text-[#1A0F0A] flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
+                      style={{ background: '#F1EFE8' }}>🏠</span>
+                    Útulky a záchranné stanice
+                    <span className="text-sm font-medium px-2 py-0.5 rounded-full"
+                      style={{ background: '#F1EFE8', color: '#5F5E5A' }}>
+                      {results.institutions.length}
+                    </span>
+                  </h2>
+                </div>
+                <div className="space-y-2">
+                  {results.institutions.map((i: any) => (
+                    <Link key={i.id} href={`/institutions/${i.slug}`} className="no-underline group">
+                      <div className="flex items-center gap-4 p-3.5 bg-white rounded-xl border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-0.5 transition-all">
+                        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center text-2xl"
+                          style={{ background: i.type === 'shelter' ? '#FAECE7' : '#E1F5EE' }}>
+                          {i.logo_url
+                            ? <Image src={i.logo_url} alt={i.name} width={56} height={56} className="object-cover" />
+                            : i.type === 'shelter' ? '🏠' : '🚑'
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-[#1A0F0A] truncate">{i.name}</div>
+                          <div className="text-xs mt-0.5" style={{ color: '#8B6550' }}>
+                            📍 {i.city} · {i.type === 'shelter' ? 'Útulek' : 'Záchranná stanice'}
+                          </div>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: '#C8C5BF', flexShrink: 0 }}>
+                          <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ── Příběhy ── */}
+            {results.articles.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-bold text-lg text-[#1A0F0A] flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
+                      style={{ background: '#FAEEDA' }}>📖</span>
+                    Příběhy
+                    <span className="text-sm font-medium px-2 py-0.5 rounded-full"
+                      style={{ background: '#FAEEDA', color: '#854F0B' }}>
+                      {results.articles.length}
+                    </span>
+                  </h2>
+                </div>
+                <div className="space-y-2">
+                  {results.articles.map((a: any) => (
+                    <Link key={a.id} href={`/articles/${a.slug}`} className="no-underline group">
+                      <div className="flex items-center gap-4 p-3.5 bg-white rounded-xl border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-0.5 transition-all">
+                        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 relative flex items-center justify-center"
+                          style={{ background: '#FAEEDA' }}>
+                          {a.cover_url
+                            ? <Image src={a.cover_url} alt={a.title} fill className="object-cover" />
+                            : <span className="text-2xl">📖</span>
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-[#1A0F0A] truncate">{a.title}</div>
+                          {a.perex && (
+                            <div className="text-xs mt-0.5 line-clamp-1" style={{ color: '#8B6550' }}>
+                              {a.perex}
+                            </div>
+                          )}
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: '#C8C5BF', flexShrink: 0 }}>
+                          <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
           </div>
         )}
       </div>
@@ -147,25 +296,52 @@ export default async function SearchPage({ searchParams }: PageProps) {
   )
 }
 
-async function searchAnimals(q: string) {
+/* ── Hledání ── */
+async function search(q: string) {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('animals')
-    .select('id, name, primary_photo, urgent, adoption_status, species:animal_species(name_cs,icon), institution:institutions(name,city,slug)')
-    .eq('published', true)
-    .eq('adoption_status', 'available')
-    .or(`name.ilike.%${q}%,breed.ilike.%${q}%,color.ilike.%${q}%,description.ilike.%${q}%`)
-    .limit(12)
-  return data ?? []
-}
+  const like     = `%${q}%`
 
-async function searchInstitutions(q: string) {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('institutions')
-    .select('id, name, slug, type, city, short_description')
-    .eq('approval_status', 'approved')
-    .or(`name.ilike.%${q}%,city.ilike.%${q}%,short_description.ilike.%${q}%,description.ilike.%${q}%`)
-    .limit(9)
-  return data ?? []
+  const [animals, rescueCases, institutions, articles] = await Promise.all([
+    // Zvířata — jméno, plemeno, popis
+    supabase
+      .from('animals')
+      .select('id, name, breed, primary_photo, urgent, species:animal_species(name_cs,icon), institution:institutions(name,city)')
+      .eq('published', true)
+      .eq('adoption_status', 'available')
+      .or(`name.ilike.${like},breed.ilike.${like},description.ilike.${like}`)
+      .order('urgent', { ascending: false })
+      .limit(8),
+
+    // Záchranné případy — jméno, příčina, popis
+    supabase
+      .from('rescue_cases')
+      .select('id, name, case_number, status, primary_photo, species:animal_species(name_cs,icon), institution:institutions(name,city)')
+      .eq('published', true)
+      .not('status', 'in', '("deceased")')
+      .or(`name.ilike.${like},cause_of_injury.ilike.${like},public_description.ilike.${like},case_number.ilike.${like}`)
+      .limit(6),
+
+    // Instituce — název, město, popis
+    supabase
+      .from('institutions')
+      .select('id, name, slug, city, type, logo_url')
+      .eq('approval_status', 'approved')
+      .or(`name.ilike.${like},city.ilike.${like},description.ilike.${like}`)
+      .limit(5),
+
+    // Články — název, perex
+    supabase
+      .from('articles')
+      .select('id, title, slug, perex, cover_url')
+      .eq('published', true)
+      .or(`title.ilike.${like},perex.ilike.${like}`)
+      .limit(5),
+  ])
+
+  return {
+    animals:      animals.data      ?? [],
+    rescueCases:  rescueCases.data  ?? [],
+    institutions: institutions.data ?? [],
+    articles:     articles.data     ?? [],
+  }
 }
