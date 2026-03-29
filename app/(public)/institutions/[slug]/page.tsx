@@ -55,76 +55,73 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
   return (
     <main className="min-h-screen" style={{ background: '#FFFCF8' }}>
 
-      {/* ── Cover + header ── */}
-      <div className="relative">
-
-        {/* Cover foto */}
-        <div className="h-40 md:h-56 relative overflow-hidden"
-          style={{ background: isShelter
-            ? 'linear-gradient(135deg, #3D2015 0%, #E8634A 100%)'
-            : 'linear-gradient(135deg, #1C2E28 0%, #2E9E8F 100%)' }}>
-          {i.cover_url && (
-            <Image src={i.cover_url} alt={i.name} fill className="object-cover opacity-60" />
-          )}
-          <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.4) 100%)' }} />
-        </div>
-
-        {/* Profile info — pod coverem */}
-        <div className="max-w-[1100px] mx-auto px-5 md:px-10">
-
-          {/* Logo + název */}
-          <div className="flex items-start gap-5 py-5 border-b border-[#F0EDE8]">
-
-            {/* Logo — vystupuje z coveru */}
-            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl border-4 border-white flex-shrink-0 overflow-hidden flex items-center justify-center text-3xl shadow-md -mt-10 md:-mt-12"
+      {/* ── Cover ── */}
+      <div className="relative h-44 md:h-60 overflow-hidden"
+        style={{ background: isShelter
+          ? 'linear-gradient(135deg, #2C1810 0%, #E8634A 100%)'
+          : 'linear-gradient(135deg, #1C2E28 0%, #2E9E8F 100%)' }}>
+        {i.cover_url && (
+          <Image src={i.cover_url} alt={i.name} fill className="object-cover opacity-50" />
+        )}
+        {/* Gradient overlay dole */}
+        <div className="absolute inset-0"
+          style={{ background: 'linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.55) 100%)' }} />
+        {/* Název přímo v coveru dole */}
+        <div className="absolute bottom-0 left-0 right-0 px-5 md:px-10 pb-5 max-w-[1100px] mx-auto">
+          <div className="flex items-end gap-4">
+            {/* Logo */}
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl border-4 border-white flex-shrink-0 overflow-hidden flex items-center justify-center text-3xl shadow-lg"
               style={{ background: isShelter ? '#FAECE7' : '#E1F5EE' }}>
               {i.logo_url
                 ? <Image src={i.logo_url} alt={i.name} width={96} height={96} className="object-cover" />
                 : <span>{isShelter ? '🏠' : '🚑'}</span>
               }
             </div>
-
-            {/* Název + meta */}
-            <div className="flex-1 min-w-0 pt-1">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
+            {/* Název na tmavém pozadí coveru */}
+            <div className="pb-1">
+              <div className="flex flex-wrap items-center gap-2 mb-1.5">
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold"
                   style={isShelter
-                    ? { background: '#FAECE7', color: '#993C1D' }
-                    : { background: '#E1F5EE', color: '#0F6E56' }}>
+                    ? { background: 'rgba(232,99,74,0.25)', color: '#FFD4C2', border: '1px solid rgba(232,99,74,0.35)' }
+                    : { background: 'rgba(46,158,143,0.25)', color: '#A8F0E4', border: '1px solid rgba(46,158,143,0.35)' }}>
                   {isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
                 </span>
                 {i.approval_status === 'approved' && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
-                    style={{ background: '#EAF3DE', color: '#3B6D11' }}>
+                    style={{ background: 'rgba(59,109,17,0.30)', color: '#AADDA8', border: '1px solid rgba(59,109,17,0.35)' }}>
                     ✓ Ověřeno
                   </span>
                 )}
               </div>
-              <h1 className="font-display font-extrabold text-[#1A0F0A] leading-tight"
-                style={{ fontSize: 'clamp(20px, 3.5vw, 32px)' }}>
+              <h1 className="font-display font-extrabold text-white leading-tight"
+                style={{ fontSize: 'clamp(18px, 3vw, 30px)', textShadow: '0 1px 4px rgba(0,0,0,0.4)' }}>
                 {i.name}
               </h1>
               {i.city && (
-                <p className="text-sm mt-1" style={{ color: '#8B6550' }}>📍 {i.city}</p>
+                <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.70)' }}>📍 {i.city}</p>
               )}
             </div>
           </div>
+        </div>
+      </div>
 
-          {/* Statistiky */}
-          <div className="flex flex-wrap gap-8 py-5 border-b border-[#F0EDE8]">
+      {/* ── Statistiky ── */}
+      <div className="border-b border-[#F0EDE8] bg-white">
+        <div className="max-w-[1100px] mx-auto px-5 md:px-10">
+          <div className="flex flex-wrap gap-0">
             {[
               {
                 num:   isShelter ? (animals as any[]).length : (rescueCases as any[]).length,
                 label: isShelter ? 'zvířat' : 'záchranných případů',
+                color: isShelter ? '#E8634A' : '#2E9E8F',
               },
-              { num: (fundraisers as any[]).filter((f: any) => f.active).length, label: 'aktivních sbírek' },
-              { num: volunteers, label: 'dobrovolníků' },
-              { num: (articles as any[]).length, label: 'příběhů' },
-            ].map(({ num, label }) => (
-              <div key={label}>
-                <div className="font-display font-extrabold text-2xl text-[#1A0F0A]">{num}</div>
-                <div className="text-xs mt-0.5" style={{ color: '#8B6550' }}>{label}</div>
+              { num: (fundraisers as any[]).filter((f: any) => f.active).length, label: 'aktivních sbírek', color: '#F0A500' },
+              { num: volunteers, label: 'dobrovolníků', color: '#8B6550' },
+              { num: (articles as any[]).length, label: 'příběhů', color: '#8B6550' },
+            ].map(({ num, label, color }) => (
+              <div key={label} className="px-6 py-4 border-r border-[#F0EDE8] last:border-r-0 first:pl-0">
+                <div className="font-display font-extrabold text-2xl" style={{ color }}>{num}</div>
+                <div className="text-xs font-medium mt-0.5" style={{ color: '#8B6550' }}>{label}</div>
               </div>
             ))}
           </div>

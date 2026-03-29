@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
+import { NearbyInstitutions } from '@/components/public/NearbyInstitutions'
 
 export const metadata: Metadata = {
   title: 'Útulky a záchranné stanice | Zozio',
@@ -21,14 +21,16 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
     getCities(),
   ])
 
-  const shelters  = institutions.filter((i: any) => i.type === 'shelter')
-  const rescues   = institutions.filter((i: any) => i.type === 'rescue_station')
+  const shelters = institutions.filter((i: any) => i.type === 'shelter')
+  const rescues  = institutions.filter((i: any) => i.type === 'rescue_station')
 
   const tabs = [
-    { id: 'all',            label: 'Všechny',            count: institutions.length },
-    { id: 'shelter',        label: 'Útulky',             count: shelters.length },
-    { id: 'rescue_station', label: 'Záchranné stanice',  count: rescues.length },
+    { id: 'all',            label: 'Všechny',           count: institutions.length },
+    { id: 'shelter',        label: 'Útulky',            count: shelters.length },
+    { id: 'rescue_station', label: 'Záchranné stanice', count: rescues.length },
   ]
+
+  const withGeo = institutions.filter((i: any) => i.lat && i.lng).length
 
   return (
     <main className="min-h-screen pt-20 md:pt-24" style={{ background: '#FFFCF8' }}>
@@ -44,7 +46,7 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
 
           {/* Search */}
           <form method="GET" action="/institutions" className="flex gap-2 max-w-[480px]">
-            <input type="hidden" name="type" value={type !== 'all' ? type : ''} />
+            {type !== 'all' && <input type="hidden" name="type" value={type} />}
             <input
               type="search" name="q"
               defaultValue={params.q ?? ''}
@@ -68,7 +70,8 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
         </div>
 
         {/* Taby */}
-        <div className="flex gap-0 border-b border-[#F0EDE8] mb-8 overflow-x-auto">
+        <div className="flex gap-0 border-b border-[#F0EDE8] mb-6 overflow-x-auto"
+          style={{ scrollbarWidth: 'none' } as any}>
           {tabs.map(tab => (
             <Link key={tab.id}
               href={`/institutions?type=${tab.id}${params.q ? `&q=${params.q}` : ''}${params.city ? `&city=${params.city}` : ''}`}
@@ -108,121 +111,20 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
           </div>
         )}
 
-        {/* Výsledky */}
-        {institutions.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-5xl mb-4">🏠</div>
-            <p className="font-bold text-xl text-[#1A0F0A] mb-2">Žádné instituce nenalezeny</p>
-            <p className="text-sm mb-6" style={{ color: '#8B6550' }}>Zkus jiné hledání nebo filtr.</p>
-            <Link href="/institutions" className="px-5 py-2.5 rounded-xl font-bold text-sm text-white no-underline"
-              style={{ background: '#E8634A' }}>
-              Zobrazit vše
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {institutions.map((inst: any) => (
-              <InstitutionCard key={inst.id} inst={inst} />
-            ))}
+        {/* Hint pokud žádná instituce nemá souřadnice */}
+        {withGeo === 0 && institutions.length > 0 && (
+          <div className="mb-5 p-3 rounded-xl flex items-center gap-3"
+            style={{ background: '#F0EDE8', border: '1px solid #E0DDD8' }}>
+            <span className="text-sm" style={{ color: '#8B6550' }}>
+              💡 Tip: Aby fungovalo řazení podle vzdálenosti, musí mít útulky vyplněné GPS souřadnice v nastavení.
+            </span>
           </div>
         )}
 
-        {/* CTA pro nové instituce */}
-        <div className="mt-14 p-6 rounded-2xl text-center border border-dashed border-[#E0DDD8]"
-          style={{ background: '#FAFAF8' }}>
-          <p className="font-bold text-[#1A0F0A] mb-1">Chybí zde vaše instituce?</p>
-          <p className="text-sm mb-4" style={{ color: '#8B6550' }}>
-            Registrace je zdarma a trvá 5 minut.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/auth/register?type=shelter">
-              <button className="px-5 py-2.5 rounded-xl font-bold text-sm text-white border-none cursor-pointer hover:opacity-90 transition-all"
-                style={{ background: '#E8634A' }}>
-                Registrovat útulek →
-              </button>
-            </Link>
-            <Link href="/auth/register?type=rescue_station">
-              <button className="px-5 py-2.5 rounded-xl font-bold text-sm cursor-pointer border hover:opacity-80 transition-all"
-                style={{ background: 'white', color: '#1A0F0A', borderColor: '#E0DDD8' }}>
-                Záchrannou stanici →
-              </button>
-            </Link>
-          </div>
-        </div>
+        {/* Výsledky s geolokací */}
+        <NearbyInstitutions institutions={institutions as any} />
       </div>
     </main>
-  )
-}
-
-/* ── Karta instituce ── */
-function InstitutionCard({ inst }: { inst: any }) {
-  const isShelter = inst.type === 'shelter'
-  const accent    = isShelter ? '#E8634A' : '#2E9E8F'
-  const accentBg  = isShelter ? '#FAECE7' : '#E1F5EE'
-  const accentText = isShelter ? '#993C1D' : '#0F6E56'
-
-  return (
-    <Link href={`/institutions/${inst.slug}`} className="no-underline group">
-      <div className="bg-white rounded-2xl overflow-hidden border border-[#F0EDE8] hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
-        style={{ borderTop: `3px solid ${accent}` }}>
-
-        {/* Cover / logo oblast */}
-        <div className="relative h-28 flex items-center justify-center overflow-hidden"
-          style={{ background: `linear-gradient(135deg, ${accentBg}, white)` }}>
-          {inst.cover_url ? (
-            <Image src={inst.cover_url} alt={inst.name} fill className="object-cover opacity-50" />
-          ) : null}
-          {/* Logo */}
-          <div className="relative z-10 w-16 h-16 rounded-xl border-2 border-white shadow-sm flex items-center justify-center text-2xl overflow-hidden"
-            style={{ background: accentBg }}>
-            {inst.logo_url
-              ? <Image src={inst.logo_url} alt={inst.name} width={64} height={64} className="object-cover" />
-              : <span>{isShelter ? '🏠' : '🚑'}</span>
-            }
-          </div>
-        </div>
-
-        {/* Info */}
-        <div className="p-4 flex flex-col flex-1">
-          {/* Badge */}
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
-              style={{ background: accentBg, color: accentText }}>
-              {isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
-            </span>
-            {inst.approval_status === 'approved' && (
-              <span className="text-[10px] font-bold" style={{ color: '#3B6D11' }}>✓ Ověřeno</span>
-            )}
-          </div>
-
-          <div className="font-bold text-[#1A0F0A] leading-tight mb-1 group-hover:opacity-80 transition-opacity">
-            {inst.name}
-          </div>
-          <div className="text-xs mb-3" style={{ color: '#8B6550' }}>
-            📍 {inst.city}{inst.street ? `, ${inst.street}` : ''}
-          </div>
-
-          {/* Statistiky */}
-          <div className="flex gap-4 mt-auto pt-3 border-t border-[#F0EDE8]">
-            {isShelter ? (
-              <Stat num={inst.animals_count ?? 0} label="zvířat" />
-            ) : (
-              <Stat num={inst.rescue_count ?? 0} label="případů" />
-            )}
-            <Stat num={inst.active_fundraisers ?? 0} label="sbírek" />
-          </div>
-        </div>
-      </div>
-    </Link>
-  )
-}
-
-function Stat({ num, label }: { num: number; label: string }) {
-  return (
-    <div>
-      <div className="font-bold text-base text-[#1A0F0A]">{num}</div>
-      <div className="text-[10px]" style={{ color: '#8B6550' }}>{label}</div>
-    </div>
   )
 }
 
@@ -232,12 +134,7 @@ async function getInstitutions(params: { type?: string; city?: string; q?: strin
 
   let query = supabase
     .from('institutions')
-    .select(`
-      id, name, slug, type, city, street, logo_url, cover_url, approval_status,
-      animals_count:animals(count),
-      rescue_count:rescue_cases(count),
-      active_fundraisers:fundraisers(count)
-    `)
+    .select('id, name, slug, type, city, lat, lng, logo_url, cover_url, approval_status')
     .eq('approval_status', 'approved')
     .order('name', { ascending: true })
 
@@ -252,14 +149,7 @@ async function getInstitutions(params: { type?: string; city?: string; q?: strin
   }
 
   const { data } = await query
-
-  // Přepočítej počty z nested response
-  return (data ?? []).map((inst: any) => ({
-    ...inst,
-    animals_count:      inst.animals_count?.[0]?.count ?? 0,
-    rescue_count:       inst.rescue_count?.[0]?.count ?? 0,
-    active_fundraisers: inst.active_fundraisers?.[0]?.count ?? 0,
-  }))
+  return data ?? []
 }
 
 async function getCities() {

@@ -28,7 +28,8 @@ export function InstitutionTabs({
   return (
     <div>
       {/* Tab navigace */}
-      <div className="flex gap-0 border-b border-[#F0EDE8] mb-8 overflow-x-auto">
+      <div className="flex gap-0 border-b border-[#F0EDE8] mb-8 overflow-x-auto"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as any}>
         {tabs.map(tab => (
           <button
             key={tab.id}
