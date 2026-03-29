@@ -59,39 +59,40 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
       <div className="relative">
 
         {/* Cover foto */}
-        <div className="h-48 md:h-64 relative overflow-hidden"
+        <div className="h-40 md:h-56 relative overflow-hidden"
           style={{ background: isShelter
             ? 'linear-gradient(135deg, #3D2015 0%, #E8634A 100%)'
             : 'linear-gradient(135deg, #1C2E28 0%, #2E9E8F 100%)' }}>
           {i.cover_url && (
             <Image src={i.cover_url} alt={i.name} fill className="object-cover opacity-60" />
           )}
-          {/* Overlay gradient */}
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.5) 100%)' }} />
+            style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.4) 100%)' }} />
         </div>
 
-        {/* Profile info přes cover */}
+        {/* Profile info — pod coverem */}
         <div className="max-w-[1100px] mx-auto px-5 md:px-10">
-          <div className="relative -mt-16 md:-mt-20 mb-0 flex items-end gap-5">
 
-            {/* Logo */}
-            <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl border-4 border-white flex-shrink-0 overflow-hidden flex items-center justify-center text-4xl shadow-lg"
+          {/* Logo + název */}
+          <div className="flex items-start gap-5 py-5 border-b border-[#F0EDE8]">
+
+            {/* Logo — vystupuje z coveru */}
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl border-4 border-white flex-shrink-0 overflow-hidden flex items-center justify-center text-3xl shadow-md -mt-10 md:-mt-12"
               style={{ background: isShelter ? '#FAECE7' : '#E1F5EE' }}>
               {i.logo_url
-                ? <Image src={i.logo_url} alt={i.name} width={128} height={128} className="object-cover" />
+                ? <Image src={i.logo_url} alt={i.name} width={96} height={96} className="object-cover" />
                 : <span>{isShelter ? '🏠' : '🚑'}</span>
               }
             </div>
 
-            {/* Název */}
-            <div className="pb-2 flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
+            {/* Název + meta */}
+            <div className="flex-1 min-w-0 pt-1">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold"
                   style={isShelter
                     ? { background: '#FAECE7', color: '#993C1D' }
                     : { background: '#E1F5EE', color: '#0F6E56' }}>
-                  {isShelter ? '🏠 Útulok' : '🚑 Záchranná stanice'}
+                  {isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
                 </span>
                 {i.approval_status === 'approved' && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
@@ -100,18 +101,18 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
                   </span>
                 )}
               </div>
-              <h1 className="font-display font-extrabold text-[#1A0F0A] leading-tight truncate"
+              <h1 className="font-display font-extrabold text-[#1A0F0A] leading-tight"
                 style={{ fontSize: 'clamp(20px, 3.5vw, 32px)' }}>
                 {i.name}
               </h1>
               {i.city && (
-                <p className="text-sm mt-0.5" style={{ color: '#8B6550' }}>📍 {i.city}</p>
+                <p className="text-sm mt-1" style={{ color: '#8B6550' }}>📍 {i.city}</p>
               )}
             </div>
           </div>
 
           {/* Statistiky */}
-          <div className="flex flex-wrap gap-6 py-5 border-b border-[#F0EDE8]">
+          <div className="flex flex-wrap gap-8 py-5 border-b border-[#F0EDE8]">
             {[
               {
                 num:   isShelter ? (animals as any[]).length : (rescueCases as any[]).length,
@@ -121,9 +122,9 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
               { num: volunteers, label: 'dobrovolníků' },
               { num: (articles as any[]).length, label: 'příběhů' },
             ].map(({ num, label }) => (
-              <div key={label} className="text-center">
+              <div key={label}>
                 <div className="font-display font-extrabold text-2xl text-[#1A0F0A]">{num}</div>
-                <div className="text-xs" style={{ color: '#8B6550' }}>{label}</div>
+                <div className="text-xs mt-0.5" style={{ color: '#8B6550' }}>{label}</div>
               </div>
             ))}
           </div>

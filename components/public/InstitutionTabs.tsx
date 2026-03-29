@@ -71,13 +71,13 @@ export function InstitutionTabs({
                       {a.urgent && (
                         <div className="absolute top-2 left-2 bg-[#E8634A] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Urgentní</div>
                       )}
-                      <div className="absolute bottom-2 right-2">
-                        <StatusPill status={a.adoption_status} />
-                      </div>
                     </div>
                     <div className="p-3">
-                      <div className="font-bold text-sm text-[#1A0F0A] truncate">{a.name}</div>
-                      <div className="text-xs truncate mt-0.5" style={{ color: '#8B6550' }}>
+                      <div className="flex items-center justify-between gap-2 mb-0.5">
+                        <div className="font-bold text-sm text-[#1A0F0A] truncate">{a.name}</div>
+                        <StatusPill status={a.adoption_status} />
+                      </div>
+                      <div className="text-xs truncate" style={{ color: '#8B6550' }}>
                         {[a.species?.name_cs, a.breed].filter(Boolean).join(' · ')}
                       </div>
                     </div>
