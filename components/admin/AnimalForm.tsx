@@ -87,6 +87,12 @@ export function AnimalForm({
     previous_owner_phone: animal?.previous_owner_phone ?? '',
     internal_notes:     animal?.internal_notes     ?? '',
     staff_assigned:     animal?.staff_assigned     ?? '',
+    // Nová pole — aktivita, náročnost, bydlení
+    activity_level:          animal?.activity_level          ?? '',
+    care_difficulty:          animal?.care_difficulty          ?? '',
+    suitable_for_flat:        animal?.suitable_for_flat        ?? null,
+    suitable_for_house:       animal?.suitable_for_house       ?? null,
+    good_with_other_animals:  animal?.good_with_other_animals  ?? null,
   })
 
   const [photos, setPhotos]             = useState<string[]>(animal?.photos ?? [])
@@ -189,6 +195,11 @@ export function AnimalForm({
       previous_owner_phone: form.previous_owner_phone || null,
       internal_notes:      form.internal_notes      || null,
       staff_assigned:      form.staff_assigned      || null,
+      activity_level:          form.activity_level          || null,
+      care_difficulty:          form.care_difficulty          || null,
+      suitable_for_flat:        form.suitable_for_flat        ?? null,
+      suitable_for_house:       form.suitable_for_house       ?? null,
+      good_with_other_animals:  form.good_with_other_animals  ?? null,
       photos,
       primary_photo:       primaryPhoto             || null,
       published:           form.published,
@@ -399,6 +410,109 @@ export function AnimalForm({
                 <Field label="Speciální potřeby">
                   <input value={form.special_needs} onChange={e => update('special_needs', e.target.value)} placeholder="Dieta, léky, alergie..." className={inputCls} />
                 </Field>
+
+                {/* ── Nová pole ── */}
+                <div className="pt-4 border-t border-gray-pale">
+                  <h3 className="font-display font-bold text-base text-espresso mb-4">Povaha a potřeby</h3>
+
+                  {/* Bydlení */}
+                  <div className="mb-4">
+                    <label className="text-xs font-bold text-brown uppercase tracking-wider block mb-2">Vhodný pro</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { key: 'suitable_for_flat',  label: '🏢 Byt',          desc: 'Bez zahrady' },
+                        { key: 'suitable_for_house', label: '🏡 Dům / zahrada', desc: 'Se zahradou' },
+                      ].map(({ key, label, desc }) => (
+                        <label key={key} className="flex items-center gap-3 cursor-pointer p-3 rounded-md border-2 transition-all"
+                          style={(form as any)[key] === true
+                            ? { borderColor: '#E8634A', background: '#FAECE7' }
+                            : { borderColor: '#F0EDE8', background: 'white' }
+                          }>
+                          <input type="checkbox"
+                            checked={(form as any)[key] === true}
+                            onChange={e => update(key, e.target.checked ? true : null)}
+                            className={checkCls} />
+                          <div>
+                            <div className="text-sm font-bold text-espresso">{label}</div>
+                            <div className="text-xs text-gray">{desc}</div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* S jinými zvířaty */}
+                  <div className="mb-4">
+                    <label className="text-xs font-bold text-brown uppercase tracking-wider block mb-2">S jinými zvířaty</label>
+                    <div className="flex gap-2">
+                      {[
+                        { value: true,  label: '✓ Ano' },
+                        { value: false, label: '✗ Ne' },
+                        { value: null,  label: '? Neznámo' },
+                      ].map(({ value, label }) => (
+                        <button key={String(value)} type="button"
+                          onClick={() => update('good_with_other_animals', value)}
+                          className="flex-1 py-2 rounded-md border-2 text-xs font-bold cursor-pointer transition-all"
+                          style={form.good_with_other_animals === value
+                            ? { borderColor: '#E8634A', background: '#FAECE7', color: '#993C1D' }
+                            : { borderColor: '#F0EDE8', background: 'white', color: '#6B4030' }
+                          }>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Aktivita */}
+                  <div className="mb-4">
+                    <Field label="Úroveň aktivity">
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { value: 'low',       label: '😴 Nízká',       desc: 'Klidná povaha' },
+                          { value: 'medium',    label: '🚶 Střední',      desc: 'Denní vycházky' },
+                          { value: 'high',      label: '🏃 Vysoká',       desc: 'Sport a pohyb' },
+                          { value: 'very_high', label: '⚡ Velmi vysoká', desc: 'Intenzivní sport' },
+                        ].map(({ value, label, desc }) => (
+                          <button key={value} type="button"
+                            onClick={() => update('activity_level', form.activity_level === value ? '' : value)}
+                            className="text-left p-2.5 rounded-md border-2 cursor-pointer transition-all"
+                            style={form.activity_level === value
+                              ? { borderColor: '#E8634A', background: '#FAECE7' }
+                              : { borderColor: '#F0EDE8', background: 'white' }
+                            }>
+                            <div className="text-xs font-bold text-espresso">{label}</div>
+                            <div className="text-[10px] text-gray mt-0.5">{desc}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                  </div>
+
+                  {/* Náročnost chovu */}
+                  <div>
+                    <Field label="Náročnost chovu">
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { value: 'easy',      label: '⭐ Nenáročný',   desc: 'Pro začátečníky' },
+                          { value: 'medium',    label: '⭐⭐ Střední',    desc: 'Mírná zkušenost' },
+                          { value: 'demanding', label: '⭐⭐⭐ Náročný',  desc: 'Pro zkušené' },
+                          { value: 'expert',    label: '⭐⭐⭐⭐ Expert', desc: 'Odborná péče' },
+                        ].map(({ value, label, desc }) => (
+                          <button key={value} type="button"
+                            onClick={() => update('care_difficulty', form.care_difficulty === value ? '' : value)}
+                            className="text-left p-2.5 rounded-md border-2 cursor-pointer transition-all"
+                            style={form.care_difficulty === value
+                              ? { borderColor: '#E8634A', background: '#FAECE7' }
+                              : { borderColor: '#F0EDE8', background: 'white' }
+                            }>
+                            <div className="text-xs font-bold text-espresso">{label}</div>
+                            <div className="text-[10px] text-gray mt-0.5">{desc}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+                  </div>
+                </div>
               </>
             ) : (
               <>
