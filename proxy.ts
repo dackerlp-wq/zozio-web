@@ -27,6 +27,9 @@ export async function proxy(request: NextRequest) {
 
   const path = request.nextUrl.pathname
 
+  // Předej pathname do server components přes header (pro FooterWrapper)
+  supabaseResponse.headers.set('x-pathname', path)
+
   // Chráněné routes — přesměruj nepřihlášeného na login
   const isProtected =
     path.startsWith('/admin') ||

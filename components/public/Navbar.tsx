@@ -1,45 +1,65 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useState, useRef, useEffect } from 'react'
 import { ZozLogo } from '@/components/ui/ZozLogo'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 
 const mainLinks = [
-  {
-    href: '/adopt',
-    label: '🐾 Zvířata k adopci',
-    desc: 'Psi, kočky a další hledají domov',
-  },
-  {
-    href: '/rescue',
-    label: '🦉 Záchranné stanice',
-    desc: 'Volně žijící zvířata v léčbě',
-  },
-  {
-    href: '/institutions',
-    label: '🏠 Útulky a stanice',
-    desc: 'Adresář všech institucí v ČR/SR',
-  },
-  {
-    href: '/fundraisers',
-    label: '💛 Sbírky',
-    desc: 'Přispěj konkrétnímu zvířeti',
-  },
-  {
-    href: '/articles',
-    label: '📖 Příběhy',
-    desc: 'Úspěšné adopce a záchranné příběhy',
-  },
+  { href: '/adopt',        label: '🐾 Zvířata k adopci',  desc: 'Psi, kočky a další hledají domov' },
+  { href: '/rescue',       label: '🦉 Záchranné stanice',  desc: 'Volně žijící zvířata v léčbě' },
+  { href: '/institutions', label: '🏠 Útulky a stanice',   desc: 'Adresář všech institucí v ČR/SR' },
+  { href: '/fundraisers',  label: '💛 Sbírky',             desc: 'Přispěj konkrétnímu zvířeti' },
+  { href: '/articles',     label: '📖 Příběhy',            desc: 'Úspěšné adopce a záchranné příběhy' },
 ]
 
-export function Navbar() {
-  const pathname = usePathname()
-  const [open, setOpen] = useState(false)
+interface NavUser {
+  email: string
+  name: string
+  role: string | null
+  institutionSlug: string | null
+}
+
+interface NavbarProps {
+  user?: NavUser | null
+}
+
+export function Navbar({ user }: NavbarProps) {
+  const pathname  = usePathname()
+  const router    = useRouter()
+  const [open,    setOpen]    = useState(false)
+  const [dropdown, setDropdown] = useState(false)
+  const dropRef = useRef<HTMLDivElement>(null)
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
+
+  // Skrýt na admin routách
+  const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/superadmin')
+  if (isAdminRoute) return null
+
+  // Zavři dropdown při kliknutí mimo
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
+        setDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const handleLogout = async () => {
+    await fetch('/auth/logout', { method: 'POST' })
+    router.push('/')
+    router.refresh()
+  }
+
+  // Initiály pro avatar
+  const initials = user?.name
+    ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+    : '?'
 
   return (
     <>
@@ -73,9 +93,78 @@ export function Navbar() {
 
           {/* Desktop actions */}
           <div className="hidden lg:flex items-center gap-2 flex-shrink-0">
-            <Link href="/auth/login">
-              <Button variant="sand" size="sm">Přihlásit</Button>
-            </Link>
+            {user ? (
+              /* Přihlášený uživatel — avatar dropdown */
+              <div className="relative" ref={dropRef}>
+                <button
+                  onClick={() => setDropdown(!dropdown)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#E0DDD8] bg-white hover:bg-sand transition-all cursor-pointer"
+                >
+                  <div className="w-6 h-6 rounded-full bg-[#E8634A] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                    {initials}
+                  </div>
+                  <span className="text-sm font-semibold text-espresso max-w-[100px] truncate">
+                    {user.name.split(' ')[0]}
+                  </span>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={cn('transition-transform', dropdown && 'rotate-180')}>
+                    <path d="M2 4l4 4 4-4" stroke="#8B6550" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+
+                {dropdown && (
+                  <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-lg border border-[#F0EDE8] overflow-hidden z-50">
+                    {/* Hlavička */}
+                    <div className="px-4 py-3 border-b border-[#F0EDE8]">
+                      <div className="font-bold text-sm text-espresso truncate">{user.name}</div>
+                      <div className="text-xs text-gray truncate">{user.email}</div>
+                    </div>
+
+                    {/* Menu položky */}
+                    <div className="py-1">
+                      <Link href="/profil" onClick={() => setDropdown(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-espresso no-underline hover:bg-sand transition-colors">
+                        <span>👤</span> Můj profil
+                      </Link>
+
+                      {user.role === 'institution_admin' && user.institutionSlug && (
+                        <Link href={`/admin/dashboard`} onClick={() => setDropdown(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-espresso no-underline hover:bg-sand transition-colors">
+                          <span>🏠</span> Administrace instituce
+                        </Link>
+                      )}
+
+                      {user.role === 'staff' && (
+                        <Link href="/admin/dashboard" onClick={() => setDropdown(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-espresso no-underline hover:bg-sand transition-colors">
+                          <span>🏠</span> Admin panel
+                        </Link>
+                      )}
+
+                      {user.role === 'superadmin' && (
+                        <Link href="/superadmin" onClick={() => setDropdown(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-espresso no-underline hover:bg-sand transition-colors">
+                          <span>⚡</span> Superadmin
+                        </Link>
+                      )}
+                    </div>
+
+                    <div className="border-t border-[#F0EDE8] py-1">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-[#993C1D] hover:bg-[#FAECE7] transition-colors cursor-pointer bg-transparent border-none text-left"
+                      >
+                        <span>↩</span> Odhlásit se
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Nepřihlášený */
+              <Link href="/auth/login">
+                <Button variant="sand" size="sm">Přihlásit</Button>
+              </Link>
+            )}
             <Link href="/pro-instituce">
               <Button variant="primary" size="sm">Pro útulky</Button>
             </Link>
@@ -98,6 +187,19 @@ export function Navbar() {
       {open && (
         <div className="fixed inset-0 z-40 bg-warm flex flex-col pt-16 overflow-y-auto lg:hidden">
           <div className="px-4 py-4 flex-1">
+
+            {/* Přihlášený user info */}
+            {user && (
+              <div className="mb-5 flex items-center gap-3 px-3 py-3 bg-sand rounded-xl">
+                <div className="w-9 h-9 rounded-full bg-[#E8634A] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                  {initials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm text-espresso truncate">{user.name}</div>
+                  <div className="text-xs text-gray truncate">{user.email}</div>
+                </div>
+              </div>
+            )}
 
             {/* Hlavní sekce */}
             <div className="mb-6">
@@ -132,16 +234,53 @@ export function Navbar() {
                 <span className="text-xs text-gray mt-0.5">Registrace, ceník a funkce platformy</span>
               </Link>
             </div>
+
+            {/* Přihlášený — admin linky */}
+            {user && (
+              <div className="border-t border-gray-pale pt-5 mb-5">
+                <div className="text-xs font-bold text-gray uppercase tracking-widest mb-3 px-2">Můj účet</div>
+                <Link href="/profil" onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 px-3 py-3 rounded-md no-underline hover:bg-sand transition-colors">
+                  <span>👤</span>
+                  <span className="font-bold text-espresso">Můj profil</span>
+                </Link>
+                {(user.role === 'institution_admin' || user.role === 'staff') && (
+                  <Link href="/admin/dashboard" onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-md no-underline hover:bg-sand transition-colors">
+                    <span>🏠</span>
+                    <span className="font-bold text-espresso">Admin panel</span>
+                  </Link>
+                )}
+                {user.role === 'superadmin' && (
+                  <Link href="/superadmin" onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-md no-underline hover:bg-sand transition-colors">
+                    <span>⚡</span>
+                    <span className="font-bold text-espresso">Superadmin</span>
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Mobile CTA */}
           <div className="px-4 py-5 border-t border-gray-pale space-y-3">
-            <Link href="/auth/register" onClick={() => setOpen(false)}>
-              <Button variant="primary" className="w-full justify-center">Registrovat instituci</Button>
-            </Link>
-            <Link href="/auth/login" onClick={() => setOpen(false)}>
-              <Button variant="sand" className="w-full justify-center">Přihlásit se</Button>
-            </Link>
+            {user ? (
+              <button
+                onClick={handleLogout}
+                className="w-full px-4 py-3 rounded-xl text-sm font-bold border border-[#E0DDD8] text-[#993C1D] bg-white cursor-pointer hover:bg-[#FAECE7] transition-colors"
+              >
+                ↩ Odhlásit se
+              </button>
+            ) : (
+              <>
+                <Link href="/auth/register" onClick={() => setOpen(false)}>
+                  <Button variant="primary" className="w-full justify-center">Registrovat instituci</Button>
+                </Link>
+                <Link href="/auth/login" onClick={() => setOpen(false)}>
+                  <Button variant="sand" className="w-full justify-center">Přihlásit se</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}
