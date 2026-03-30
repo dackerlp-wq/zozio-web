@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Baloo_2, Nunito } from 'next/font/google'
 import { NavbarWrapper, FooterWrapper } from '@/components/admin/NavbarWrapper'
+import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 
 const baloo = Baloo_2({
@@ -75,6 +77,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <NavbarWrapper />
         {children}
         <FooterWrapper />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
