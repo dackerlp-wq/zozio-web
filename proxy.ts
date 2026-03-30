@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -23,7 +23,37 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const path = request.nextUrl.pathname
+
+  // Chráněné routes — přesměruj nepřihlášeného na login
+  const isProtected =
+    path.startsWith('/admin') ||
+    path.startsWith('/superadmin') ||
+    path.startsWith('/profil')
+
+  if (!user && isProtected) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/login'
+    url.searchParams.set('next', path)
+    return NextResponse.redirect(url)
+  }
+
+  // Přihlášený na login/register → přesměruj pryč
+  const isAuthPage =
+    path === '/auth/login' ||
+    path === '/auth/register'
+
+  if (user && isAuthPage) {
+    const next = request.nextUrl.searchParams.get('next')
+    if (next) return NextResponse.redirect(new URL(next, request.url))
+    const role = user.user_metadata?.role
+    return NextResponse.redirect(new URL(
+      role === 'visitor' ? '/profil' : '/admin/dashboard',
+      request.url
+    ))
+  }
 
   return supabaseResponse
 }
