@@ -7,6 +7,7 @@ import { PhotoGallery } from '@/components/public/PhotoGallery'
 import { AdoptionForm } from '@/components/public/AdoptionForm'
 import { ShareButtons } from '@/components/public/ShareButtons'
 import { StickyPanel } from '@/components/public/StickyPanel'
+import { FavoriteButton } from '@/components/public/FavoriteButton'
 
 const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://zozio.cz'
 
@@ -40,6 +41,20 @@ export default async function AnimalDetailPage({ params }: PageProps) {
   const species     = a.species     as any
   const similar     = await getSimilarAnimals(id, a.species_id, a.institution_id)
   const article     = await getLinkedArticle(id)
+
+  // Zjisti jestli je zvíře v oblíbených přihlášeného uživatele
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  let initialFav = false
+  if (user) {
+    const { data } = await supabase
+      .from('animal_favorites')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('animal_id', id)
+      .maybeSingle()
+    initialFav = !!data
+  }
 
   const isAvailable = a.adoption_status === 'available'
   const isReserved  = a.adoption_status === 'reserved'
@@ -79,13 +94,14 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                 animalName={a.name}
                 icon={species?.icon}
               />
-              {/* Share pod galerií */}
-              <div className="mt-4">
+              {/* Share + oblíbené pod galerií */}
+              <div className="mt-4 flex items-center gap-3">
                 <ShareButtons
                   url={shareUrl}
                   title={`${a.name} hledá domov`}
                   text={a.description?.slice(0, 100) ?? `Adoptuj ${a.name} z útulku ${institution?.name}.`}
                 />
+                <FavoriteButton type="animal" id={a.id} initialFav={initialFav} size="md" />
               </div>
             </div>
 

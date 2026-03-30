@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { InstitutionTabs } from '@/components/public/InstitutionTabs'
+import { FavoriteButton } from '@/components/public/FavoriteButton'
 
 interface PageProps {
   params:       Promise<{ slug: string }>
@@ -66,6 +67,12 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
         {/* Gradient overlay dole */}
         <div className="absolute inset-0"
           style={{ background: 'linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.55) 100%)' }} />
+
+        {/* ❤️ Favorite button vpravo nahoře */}
+        <div className="absolute top-4 right-4 md:right-10 z-10">
+          <FavoriteButton type="institution" id={i.id} />
+        </div>
+
         {/* Název přímo v coveru dole */}
         <div className="absolute bottom-0 left-0 right-0 px-5 md:px-10 pb-5 max-w-[1100px] mx-auto">
           <div className="flex items-end gap-4">

@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { Badge } from '@/components/ui/Badge'
 import { Tag } from '@/components/ui/Tag'
 import { Button } from '@/components/ui/Button'
+import { FavoriteButton } from '@/components/public/FavoriteButton'
 import type { Animal } from '@/types/database'
 
 interface AnimalCardProps {
@@ -33,6 +34,10 @@ export function AnimalCard({ animal }: AnimalCardProps) {
         {animal.urgent && (
           <Badge variant="urgent" className="absolute top-3 left-3" />
         )}
+
+        <div className="absolute top-3 right-3">
+          <FavoriteButton type="animal" id={animal.id} size="sm" />
+        </div>
 
         <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-pill text-[10px] font-bold bg-shelter-bg text-shelter-dark">
           🏠 {animal.institution?.name ?? 'Útulok'}

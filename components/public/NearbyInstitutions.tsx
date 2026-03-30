@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { FavoriteButton } from '@/components/public/FavoriteButton'
 
 interface Institution {
   id:              string
@@ -222,56 +223,63 @@ function InstitutionCard({ inst }: { inst: Institution & { distKm: number | null
   const accentText = isShelter ? '#993C1D' : '#0F6E56'
 
   return (
-    <Link href={`/institutions/${inst.slug}`} className="no-underline group">
-      <div className="bg-white rounded-2xl overflow-hidden border border-[#F0EDE8] hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
-        style={{ borderTop: `3px solid ${accent}` }}>
+    <div className="relative group">
+      <Link href={`/institutions/${inst.slug}`} className="no-underline">
+        <div className="bg-white rounded-2xl overflow-hidden border border-[#F0EDE8] hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
+          style={{ borderTop: `3px solid ${accent}` }}>
 
-        {/* Cover oblast */}
-        <div className="relative h-28 flex items-center justify-center overflow-hidden"
-          style={{ background: `linear-gradient(135deg, ${accentBg}, white)` }}>
-          {/* Logo */}
-          <div className="relative z-10 w-16 h-16 rounded-xl border-2 border-white shadow-sm flex items-center justify-center text-2xl overflow-hidden"
-            style={{ background: accentBg }}>
-            {inst.logo_url
-              ? <Image src={inst.logo_url} alt={inst.name} width={64} height={64} className="object-cover" />
-              : <span>{isShelter ? '🏠' : '🚑'}</span>
-            }
-          </div>
-
-          {/* Vzdálenost badge */}
-          {inst.distKm !== null && (
-            <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1"
-              style={{ background: '#1A0F0A', color: 'white' }}>
-              📍 {formatKm(inst.distKm)}
+          {/* Cover oblast */}
+          <div className="relative h-28 flex items-center justify-center overflow-hidden"
+            style={{ background: `linear-gradient(135deg, ${accentBg}, white)` }}>
+            {/* Logo */}
+            <div className="relative z-10 w-16 h-16 rounded-xl border-2 border-white shadow-sm flex items-center justify-center text-2xl overflow-hidden"
+              style={{ background: accentBg }}>
+              {inst.logo_url
+                ? <Image src={inst.logo_url} alt={inst.name} width={64} height={64} className="object-cover" />
+                : <span>{isShelter ? '🏠' : '🚑'}</span>
+              }
             </div>
-          )}
-        </div>
 
-        {/* Info */}
-        <div className="p-4 flex flex-col flex-1">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
-              style={{ background: accentBg, color: accentText }}>
-              {isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
-            </span>
-            {inst.approval_status === 'approved' && (
-              <span className="text-[10px] font-bold" style={{ color: '#3B6D11' }}>✓ Ověřeno</span>
-            )}
-          </div>
-
-          <div className="font-bold text-[#1A0F0A] leading-tight mb-1 group-hover:opacity-80 transition-opacity">
-            {inst.name}
-          </div>
-          <div className="text-xs" style={{ color: '#8B6550' }}>
-            📍 {inst.city}
+            {/* Vzdálenost badge */}
             {inst.distKm !== null && (
-              <span className="ml-2 font-semibold" style={{ color: accent }}>
-                · {formatKm(inst.distKm)} od tebe
-              </span>
+              <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1"
+                style={{ background: '#1A0F0A', color: 'white' }}>
+                📍 {formatKm(inst.distKm)}
+              </div>
             )}
+
+            {/* ❤️ Favorite button */}
+            <div className="absolute top-2.5 right-2.5 z-10">
+              <FavoriteButton type="institution" id={inst.id} size="sm" />
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="p-4 flex flex-col flex-1">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
+                style={{ background: accentBg, color: accentText }}>
+                {isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
+              </span>
+              {inst.approval_status === 'approved' && (
+                <span className="text-[10px] font-bold" style={{ color: '#3B6D11' }}>✓ Ověřeno</span>
+              )}
+            </div>
+
+            <div className="font-bold text-[#1A0F0A] leading-tight mb-1 group-hover:opacity-80 transition-opacity">
+              {inst.name}
+            </div>
+            <div className="text-xs" style={{ color: '#8B6550' }}>
+              📍 {inst.city}
+              {inst.distKm !== null && (
+                <span className="ml-2 font-semibold" style={{ color: accent }}>
+                  · {formatKm(inst.distKm)} od tebe
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   )
 }
