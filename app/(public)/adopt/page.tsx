@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { AnimalFilter } from '@/components/public/AnimalFilter'
-import { FavoriteButton } from '@/components/public/FavoriteButton'
+import { FavoriteButtonWrapper } from '@/components/public/FavoriteButtonWrapper'
 
 export const metadata: Metadata = {
   title: 'Zvířata k adopci | Zozio',
@@ -187,9 +187,7 @@ function AnimalCard({ animal }: { animal: any }) {
               Urgentní
             </div>
           )}
-          <div className="absolute top-2.5 right-2.5" onClick={e => e.preventDefault()}>
-            <FavoriteButton type="animal" id={animal.id} size="sm" />
-          </div>
+          <FavoriteButtonWrapper type="animal" id={animal.id} size="sm" className="absolute top-2.5 right-2.5" />
           {/* Housing badge */}
           {animal.suitable_for_flat && !animal.suitable_for_house && (
             <div className="absolute top-2.5 right-2.5 bg-white/90 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ color: '#1A0F0A' }}>

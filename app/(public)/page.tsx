@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Tag } from '@/components/ui/Tag'
-import { FavoriteButton } from '@/components/public/FavoriteButton'
+import { FavoriteButtonWrapper } from '@/components/public/FavoriteButtonWrapper'
 
 export const metadata: Metadata = {
   title: 'Zozio — Najdi svého nového přítele',
@@ -210,9 +210,7 @@ function AnimalCard({ animal }: { animal: any }) {
             </div>
           )}
           {animal.urgent && <Badge variant="urgent" className="absolute top-2 left-2" />}
-          <div className="absolute top-2 right-2" onClick={e => e.preventDefault()}>
-            <FavoriteButton type="animal" id={animal.id} size="sm" />
-          </div>
+          <FavoriteButtonWrapper type="animal" id={animal.id} size="sm" className="absolute top-2 right-2" />
           <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm rounded-pill px-2 py-0.5">
             <span className="text-[10px] font-bold text-espresso">{animal.institution?.city}</span>
           </div>
