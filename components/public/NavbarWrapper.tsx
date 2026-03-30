@@ -1,9 +1,9 @@
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { Navbar } from '@/components/public/Navbar'
 import { Footer } from '@/components/public/Footer'
 
-// Server Component — načte user + roli a předá do client Navbar
 export async function NavbarWrapper() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -12,8 +12,10 @@ export async function NavbarWrapper() {
   let institutionSlug: string | null = null
 
   if (user) {
-    // Zjisti superadmin z profiles
-    const { data: profile } = await supabase
+    const service = createServiceClient()
+
+    // Zjisti roli z profiles (service role kvůli RLS)
+    const { data: profile } = await service
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -22,12 +24,13 @@ export async function NavbarWrapper() {
     if (profile?.role === 'superadmin') {
       role = 'superadmin'
     } else {
-      // Zjisti institution_admin nebo staff
-      const { data: member } = await supabase
+      // Zjisti membership v instituci
+      const { data: member } = await service
         .from('institution_members')
         .select('role, institution:institutions(slug)')
         .eq('user_id', user.id)
         .maybeSingle()
+
       role = member?.role ?? null
       institutionSlug = (member?.institution as any)?.slug ?? null
     }
