@@ -1,124 +1,114 @@
 'use client'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { ZozLogo } from '@/components/ui/ZozLogo'
 import { Button } from '@/components/ui/Button'
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState('')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState<string | null>(null)
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      setError('Vyplň e-mail a heslo')
-      return
-    }
+    if (!email || !password) { setError('Vyplň e-mail a heslo'); return }
     setLoading(true)
     setError(null)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (error) {
+    if (authError || !data.session) {
       setError('Nesprávný e-mail nebo heslo')
       setLoading(false)
       return
     }
 
-    router.push('/admin/dashboard')
-    router.refresh()
+    // ✅ Klíčová oprava — full page reload aby server přečetl nové cookies
+    const next = new URLSearchParams(window.location.search).get('next')
+    window.location.href = next ?? '/admin/dashboard'
   }
 
   return (
-    <div className="min-h-screen bg-warm flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#FFFCF8' }}>
       <div className="w-full max-w-[420px]">
 
-        {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex flex-col items-center gap-2 no-underline">
             <ZozLogo size="lg" />
-            <span className="text-sm text-gray font-semibold">zozio.cz</span>
+            <span className="text-sm font-semibold" style={{ color: '#8B6550' }}>zozio.cz</span>
           </Link>
         </div>
 
-        {/* Karta */}
-        <div className="bg-white rounded-lg shadow-md border border-gray-pale p-8">
-          <h1 className="font-display font-extrabold text-3xl text-espresso mb-1">
-            Přihlásit se
-          </h1>
-          <p className="text-sm text-gray mb-6 font-semibold">
-            Admin panel pro útulky a záchranné stanice
+        <div className="bg-white rounded-2xl shadow-sm border border-[#F0EDE8] p-8">
+          <h1 className="font-display font-extrabold text-2xl text-[#1A0F0A] mb-1">Přihlásit se</h1>
+          <p className="text-sm mb-6" style={{ color: '#8B6550' }}>
+            Pro útulky, záchranné stanice i návštěvníky
           </p>
 
           <div className="space-y-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-brown uppercase tracking-wider">
-                E-mail
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
+            <Field label="E-mail">
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                placeholder="vas@email.cz"
-                className="px-4 py-3 border-2 border-gray-pale rounded-sm font-body text-sm outline-none focus:border-coral transition-colors"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <div className="flex justify-between items-center">
-                <label className="text-xs font-bold text-brown uppercase tracking-wider">
-                  Heslo
-                </label>
-                <Link href="/auth/forgot-password" className="text-xs text-coral hover:text-coral-dark transition-colors font-semibold">
-                  Zapomněl/a jsem heslo
-                </Link>
+                placeholder="vas@email.cz" className={inputCls} />
+            </Field>
+            <Field label="Heslo">
+              <div className="relative">
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                  placeholder="••••••••" className={inputCls} />
               </div>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                placeholder="••••••••"
-                className="px-4 py-3 border-2 border-gray-pale rounded-sm font-body text-sm outline-none focus:border-coral transition-colors"
-              />
-            </div>
+              <Link href="/auth/forgot-password"
+                className="text-xs font-semibold no-underline hover:opacity-70 mt-1 block text-right"
+                style={{ color: '#E8634A' }}>
+                Zapomněl/a jsem heslo
+              </Link>
+            </Field>
 
             {error && (
-              <div className="bg-coral-light text-coral-dark text-sm font-semibold px-4 py-3 rounded-sm">
+              <div className="text-sm font-semibold px-4 py-3 rounded-xl"
+                style={{ background: '#FAECE7', color: '#993C1D' }}>
                 ⚠️ {error}
               </div>
             )}
 
-            <Button
-              variant="primary"
-              className="w-full justify-center"
-              loading={loading}
-              onClick={handleLogin}
-            >
+            <Button variant="primary" className="w-full justify-center" loading={loading} onClick={handleLogin}>
               Přihlásit se
             </Button>
           </div>
 
-          <div className="mt-6 pt-6 border-t border-gray-pale text-center">
-            <p className="text-sm text-gray">
-              Ještě nemáš účet?{' '}
-              <Link href="/auth/register" className="text-coral font-bold hover:text-coral-dark transition-colors">
-                Zaregistrovat instituci
+          <div className="mt-6 pt-6 border-t border-[#F0EDE8] space-y-2 text-center">
+            <p className="text-sm" style={{ color: '#8B6550' }}>
+              Nemáš účet?{' '}
+              <Link href="/auth/register" className="font-bold no-underline hover:opacity-70" style={{ color: '#E8634A' }}>
+                Zaregistrovat se
+              </Link>
+            </p>
+            <p className="text-sm" style={{ color: '#8B6550' }}>
+              Registruješ útulek?{' '}
+              <Link href="/auth/register?type=shelter" className="font-bold no-underline hover:opacity-70" style={{ color: '#E8634A' }}>
+                Registrace instituce →
               </Link>
             </p>
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray mt-6">
-          <Link href="/" className="hover:text-coral transition-colors">← Zpět na web</Link>
+        <p className="text-center text-xs mt-6" style={{ color: '#8B6550' }}>
+          <Link href="/" className="hover:opacity-70 no-underline" style={{ color: '#8B6550' }}>← Zpět na web</Link>
         </p>
       </div>
+    </div>
+  )
+}
+
+const inputCls = 'w-full px-4 py-3 border-2 border-[#F0EDE8] rounded-xl text-sm outline-none focus:border-[#E8634A] transition-colors bg-white text-[#1A0F0A]'
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#8B6550' }}>{label}</label>
+      {children}
     </div>
   )
 }

@@ -8,9 +8,23 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (!error && data.session) {
+      // Zkontroluj roli uživatele a přesměruj správně
+      const user     = data.session.user
+      const role     = user.user_metadata?.role
+      const instType = user.user_metadata?.institution_type
+
+      let redirectTo = next
+
+      if (role === 'visitor') {
+        redirectTo = '/profil'
+      } else if (role === 'institution' && next === '/admin/dashboard') {
+        redirectTo = '/admin/dashboard'
+      }
+
+      return NextResponse.redirect(`${origin}${redirectTo}`)
     }
   }
 
