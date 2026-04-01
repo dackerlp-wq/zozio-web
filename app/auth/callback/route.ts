@@ -18,9 +18,9 @@ export async function GET(request: NextRequest) {
 
       let redirectTo = next
 
-      if (role === 'visitor') {
+      if (role === 'public') {
         redirectTo = '/profil'
-      } else if (role === 'institution' && next === '/admin/dashboard') {
+      } else if (role === 'institution_admin' && next === '/admin/dashboard') {
         redirectTo = '/admin/dashboard'
       }
 

@@ -53,7 +53,7 @@ export async function proxy(request: NextRequest) {
     if (next) return NextResponse.redirect(new URL(next, request.url))
     const role = user.user_metadata?.role
     return NextResponse.redirect(new URL(
-      role === 'visitor' ? '/profil' : '/admin/dashboard',
+      role === 'public' ? '/profil' : '/admin/dashboard',
       request.url
     ))
   }

@@ -48,7 +48,7 @@ function RegisterForm() {
       options: {
         data: {
           full_name:        name,
-          role:             isInstitution ? 'institution' : 'visitor',
+          role:             isInstitution ? 'institution_admin' : 'public',
           institution_type: isInstitution ? mode : null,
         },
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${isInstitution ? '/admin/dashboard' : '/profil'}`,
