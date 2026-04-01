@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -58,6 +59,11 @@ interface FeedArticle {
   cover_url: string | null
   published_at: string | null
   institution: { name: string; slug: string } | null
+}
+
+export const metadata: Metadata = {
+  title: 'Můj profil | Zozio',
+  description: 'Moje oblíbená zvířata a instituce na Zozio.',
 }
 
 export default async function ProfilPage() {

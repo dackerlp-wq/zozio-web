@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"req.query\\\\|req.body\\\\|dangerouslySetInnerHTML\\\\|innerHTML\" /c/Users/dacke/zozio/zozio-web/.claude/worktrees/pensive-mirzakhani/app --include=*.ts --include=*.tsx)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)"
+    ]
+  }
+}
