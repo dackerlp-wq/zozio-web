@@ -3,6 +3,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
+import MiniBarChart from '@/components/admin/MiniBarChart'
+import MiniDonutChart from '@/components/admin/MiniDonutChart'
 import type { Animal, RescueCase, AdoptionApplication, Fundraiser, Volunteer } from '@/types/database'
 
 type AnimalRow = Pick<Animal, 'adoption_status' | 'intake_date' | 'created_at'>
@@ -45,8 +47,9 @@ export default async function DashboardPage() {
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
   const longStayDate   = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 90 dní
+  const fourWeeksAgo  = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000).toISOString()
 
-  const [animalsData, applicationsData, fundraisersData, volunteersData, longStayData] =
+  const [animalsData, applicationsData, fundraisersData, volunteersData, longStayData, weeklyAppsData] =
     await Promise.all([
       isShelter
         ? service.from('animals').select('adoption_status, intake_date, created_at').eq('institution_id', institution.id)
@@ -60,6 +63,10 @@ export default async function DashboardPage() {
       isShelter
         ? service.from('animals').select('id, name, intake_date').eq('institution_id', institution.id).eq('adoption_status', 'available').lt('intake_date', longStayDate).order('intake_date', { ascending: true }).limit(5)
         : service.from('rescue_cases').select('id, name, case_number, intake_date').eq('institution_id', institution.id).in('status', ['intake', 'treatment', 'rehabilitation']).lt('intake_date', longStayDate).order('intake_date', { ascending: true }).limit(5),
+      // Žádosti za poslední 4 týdny (shelter only)
+      isShelter
+        ? service.from('adoption_applications').select('created_at').eq('institution_id', institution.id).gte('created_at', fourWeeksAgo)
+        : Promise.resolve({ data: [] }),
     ])
 
   const animals      = (animalsData.data    ?? []) as AnimalOrRescueRow[]
@@ -67,6 +74,7 @@ export default async function DashboardPage() {
   const fundraisers  = (fundraisersData.data ?? []) as FundraiserRow[]
   const volunteers   = (volunteersData.data  ?? []) as VolunteerRow[]
   const longStay     = (longStayData.data    ?? []) as LongStayRow[]
+  const weeklyApps   = ((weeklyAppsData as { data: { created_at: string }[] | null }).data ?? []) as { created_at: string }[]
 
   // Aktuální statistiky
   const availableAnimals = isShelter
@@ -110,6 +118,61 @@ export default async function DashboardPage() {
   const pendingApplications = applications.filter((a) => a.status === 'pending').length
   const activeVolunteers    = volunteers.filter((v) => v.status === 'active').length
   const pendingVolunteers   = volunteers.filter((v) => v.status === 'pending').length
+
+  // ── Data pro grafy ──
+
+  // Shelter: počty zvířat podle adoption_status
+  const shelterStatusChart = isShelter
+    ? [
+        { label: 'K adopci',    value: animals.filter((a) => 'adoption_status' in a && a.adoption_status === 'available').length,  color: 'bg-coral' },
+        { label: 'Rezervováno', value: animals.filter((a) => 'adoption_status' in a && a.adoption_status === 'reserved').length,   color: 'bg-amber' },
+        { label: 'Adoptováno',  value: animals.filter((a) => 'adoption_status' in a && a.adoption_status === 'adopted').length,    color: 'bg-success' },
+        { label: 'Pěstounská',  value: animals.filter((a) => 'adoption_status' in a && a.adoption_status === 'foster').length,     color: 'bg-rescue' },
+      ].filter((s) => s.value > 0)
+    : []
+
+  // Shelter: donut data pro adoption_status
+  const shelterDonutData = [
+    { label: 'K adopci',    value: animals.filter((a) => 'adoption_status' in a && a.adoption_status === 'available').length,  color: '#E8634A' },
+    { label: 'Rezervováno', value: animals.filter((a) => 'adoption_status' in a && a.adoption_status === 'reserved').length,   color: '#F0A500' },
+    { label: 'Adoptováno',  value: animals.filter((a) => 'adoption_status' in a && a.adoption_status === 'adopted').length,    color: '#1A7A45' },
+    { label: 'Pěstounská',  value: animals.filter((a) => 'adoption_status' in a && a.adoption_status === 'foster').length,     color: '#2E9E8F' },
+  ]
+
+  // Rescue: počty případů podle status
+  const rescueStatusChart = !isShelter
+    ? [
+        { label: 'Příjem',       value: animals.filter((a) => 'status' in a && a.status === 'intake').length,          color: 'bg-amber' },
+        { label: 'Léčba',        value: animals.filter((a) => 'status' in a && a.status === 'treatment').length,       color: 'bg-coral' },
+        { label: 'Rehabilitace', value: animals.filter((a) => 'status' in a && a.status === 'rehabilitation').length,  color: 'bg-rescue' },
+        { label: 'Propuštěno',   value: animals.filter((a) => 'status' in a && a.status === 'released').length,        color: 'bg-success' },
+        { label: 'Uhynulo',      value: animals.filter((a) => 'status' in a && a.status === 'deceased').length,        color: 'bg-gray' },
+      ].filter((s) => s.value > 0)
+    : []
+
+  // Rescue: donut data
+  const rescueDonutData = [
+    { label: 'Příjem',       value: animals.filter((a) => 'status' in a && a.status === 'intake').length,          color: '#F0A500' },
+    { label: 'Léčba',        value: animals.filter((a) => 'status' in a && a.status === 'treatment').length,       color: '#E8634A' },
+    { label: 'Rehabilitace', value: animals.filter((a) => 'status' in a && a.status === 'rehabilitation').length,  color: '#2E9E8F' },
+    { label: 'Propuštěno',   value: animals.filter((a) => 'status' in a && a.status === 'released').length,        color: '#1A7A45' },
+    { label: 'Uhynulo',      value: animals.filter((a) => 'status' in a && a.status === 'deceased').length,        color: '#8B7355' },
+  ]
+
+  // Shelter: žádosti podle týdnů (posl. 4 týdny)
+  const weeklyAppChart = (() => {
+    const weeks = [0, 1, 2, 3].map((wIdx) => {
+      const weekStart = new Date(now.getTime() - (wIdx + 1) * 7 * 24 * 60 * 60 * 1000)
+      const weekEnd   = new Date(now.getTime() - wIdx * 7 * 24 * 60 * 60 * 1000)
+      const count = weeklyApps.filter((a) => {
+        const d = new Date(a.created_at)
+        return d >= weekStart && d < weekEnd
+      }).length
+      const label = wIdx === 0 ? 'Tento týden' : `Před ${wIdx} týd.`
+      return { label, value: count, color: 'bg-coral' }
+    }).reverse()
+    return weeks
+  })()
 
   return (
     <div>
@@ -284,6 +347,59 @@ export default async function DashboardPage() {
           </div>
         </section>
       )}
+
+      {/* ── Vizuální statistiky ── */}
+      <section className="mb-6">
+        <h2 className="font-display font-extrabold text-xl text-espresso mb-4">
+          📊 Přehled statistik
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Stav zvířat — bar chart + donut */}
+          <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm">
+            <div className="text-xs font-bold text-gray uppercase tracking-wider mb-3">
+              {isShelter ? 'Zvířata podle stavu' : 'Záchranné případy'}
+            </div>
+            {isShelter ? (
+              shelterStatusChart.length > 0
+                ? <MiniBarChart data={shelterStatusChart} height={130} />
+                : <p className="text-xs text-gray">Žádná data</p>
+            ) : (
+              rescueStatusChart.length > 0
+                ? <MiniBarChart data={rescueStatusChart} height={160} />
+                : <p className="text-xs text-gray">Žádná data</p>
+            )}
+          </div>
+
+          {/* Donut chart — rozložení stavů */}
+          <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm flex flex-col items-center justify-center">
+            <div className="text-xs font-bold text-gray uppercase tracking-wider mb-3 self-start">
+              Rozložení stavů
+            </div>
+            {isShelter ? (
+              shelterDonutData.some((d) => d.value > 0)
+                ? <MiniDonutChart data={shelterDonutData} size={130} />
+                : <p className="text-xs text-gray">Žádná data</p>
+            ) : (
+              rescueDonutData.some((d) => d.value > 0)
+                ? <MiniDonutChart data={rescueDonutData} size={130} />
+                : <p className="text-xs text-gray">Žádná data</p>
+            )}
+          </div>
+
+          {/* Žádosti tento měsíc — jen shelter */}
+          {isShelter && (
+            <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm md:col-span-2">
+              <div className="text-xs font-bold text-gray uppercase tracking-wider mb-3">
+                Žádosti o adopci — poslední 4 týdny
+              </div>
+              {weeklyAppChart.some((w) => w.value > 0)
+                ? <MiniBarChart data={weeklyAppChart} height={100} />
+                : <p className="text-xs text-gray">Žádné žádosti za posledních 28 dní</p>}
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* ── Rychlé akce ── */}
       <section>
