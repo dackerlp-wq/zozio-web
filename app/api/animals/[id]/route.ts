@@ -1,0 +1,110 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
+
+async function checkAccess(userId: string, animalId: string, service: ReturnType<typeof createServiceClient>) {
+  const { data: animal } = await service
+    .from('animals')
+    .select('institution_id')
+    .eq('id', animalId)
+    .single()
+
+  if (!animal) return null
+
+  const { data: membership } = await service
+    .from('institution_members')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('institution_id', animal.institution_id)
+    .single()
+
+  return membership ? animal : null
+}
+
+// Whitelist — pouze skutečné sloupce tabulky animals
+// Odstraní nested join objekty (species:{...}, institution:{...}) které Supabase odmítne
+const ALLOWED_COLUMNS = new Set([
+  'name', 'species_id', 'sex', 'birth_year', 'size', 'breed', 'color',
+  'weight_kg', 'description', 'published', 'adoption_status', 'urgent',
+  'adoption_fee', 'in_quarantine', 'quarantine_until', 'quarantine_reason',
+  'in_foster', 'foster_name', 'foster_phone', 'foster_since',
+  'vaccinated', 'neutered', 'microchipped', 'chip_number', 'chip_date',
+  'passport_number', 'vet_name', 'vet_phone', 'last_vet_visit', 'medications',
+  'medical_notes', 'good_with_kids', 'good_with_dogs', 'good_with_cats',
+  'good_with_other_animals', 'special_needs',
+  'suitable_for_flat', 'suitable_for_house', 'activity_level', 'care_difficulty',
+  'found_location', 'found_date', 'finder_name', 'finder_phone',
+  'previous_owner', 'previous_owner_phone',
+  'internal_notes', 'staff_assigned', 'photos', 'primary_photo', 'institution_id',
+])
+
+function sanitizePayload(body: Record<string, unknown>): Record<string, unknown> {
+  const payload: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(body)) {
+    if (!ALLOWED_COLUMNS.has(key)) continue
+    // Odmítni nested objekty — povol primitives, null, arrays
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) continue
+    payload[key] = value
+  }
+  return payload
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Nepřihlášen' }, { status: 401 })
+
+    const service = createServiceClient()
+    const animal = await checkAccess(user.id, id, service)
+    if (!animal) return NextResponse.json({ error: 'Nemáš přístup' }, { status: 403 })
+
+    const body = await request.json()
+    const payload = sanitizePayload(body)
+    payload.updated_at = new Date().toISOString()
+
+    const { error } = await service
+      .from('animals')
+      .update(payload)
+      .eq('id', id)
+
+    if (error) {
+      console.error('Supabase update error:', JSON.stringify(error))
+      throw error
+    }
+
+    return NextResponse.json({ success: true })
+
+  } catch (error) {
+    console.error('PUT /api/animals/[id] error:', error)
+    return NextResponse.json({ error: 'Interní chyba' }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Nepřihlášen' }, { status: 401 })
+
+    const service = createServiceClient()
+    const animal = await checkAccess(user.id, id, service)
+    if (!animal) return NextResponse.json({ error: 'Nemáš přístup' }, { status: 403 })
+
+    const { error } = await service.from('animals').delete().eq('id', id)
+    if (error) throw error
+    return NextResponse.json({ success: true })
+
+  } catch (error) {
+    console.error('DELETE /api/animals/[id] error:', error)
+    return NextResponse.json({ error: 'Interní chyba' }, { status: 500 })
+  }
+}
