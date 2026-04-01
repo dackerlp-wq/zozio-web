@@ -25,25 +25,25 @@ export default function LoginPage() {
       return
     }
 
-    // ✅ Klíčová oprava — full page reload aby server přečetl nové cookies
+    // full page reload aby server přečetl nové cookies
     const next = new URLSearchParams(window.location.search).get('next')
     window.location.href = next ?? '/admin/dashboard'
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#FFFCF8' }}>
+    <div className="min-h-screen flex items-center justify-center px-4 bg-warm">
       <div className="w-full max-w-[420px]">
 
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex flex-col items-center gap-2 no-underline">
             <ZozLogo size="lg" />
-            <span className="text-sm font-semibold" style={{ color: '#8B6550' }}>zozio.cz</span>
+            <span className="text-sm font-semibold text-text-muted">zozio.cz</span>
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-[#F0EDE8] p-8">
-          <h1 className="font-display font-extrabold text-2xl text-[#1A0F0A] mb-1">Přihlásit se</h1>
-          <p className="text-sm mb-6" style={{ color: '#8B6550' }}>
+        <div className="bg-white rounded-2xl shadow-sm border border-border p-8">
+          <h1 className="font-display font-extrabold text-2xl text-text-primary mb-1">Přihlásit se</h1>
+          <p className="text-sm mb-6 text-text-muted">
             Pro útulky, záchranné stanice i návštěvníky
           </p>
 
@@ -60,15 +60,13 @@ export default function LoginPage() {
                   placeholder="••••••••" className={inputCls} />
               </div>
               <Link href="/auth/forgot-password"
-                className="text-xs font-semibold no-underline hover:opacity-70 mt-1 block text-right"
-                style={{ color: '#E8634A' }}>
+                className="text-xs font-semibold no-underline hover:opacity-70 mt-1 block text-right text-coral">
                 Zapomněl/a jsem heslo
               </Link>
             </Field>
 
             {error && (
-              <div className="text-sm font-semibold px-4 py-3 rounded-xl"
-                style={{ background: '#FAECE7', color: '#993C1D' }}>
+              <div className="text-sm font-semibold px-4 py-3 rounded-xl bg-coral-tag-bg text-coral-tag-text">
                 ⚠️ {error}
               </div>
             )}
@@ -78,36 +76,36 @@ export default function LoginPage() {
             </Button>
           </div>
 
-          <div className="mt-6 pt-6 border-t border-[#F0EDE8] space-y-2 text-center">
-            <p className="text-sm" style={{ color: '#8B6550' }}>
+          <div className="mt-6 pt-6 border-t border-border space-y-2 text-center">
+            <p className="text-sm text-text-muted">
               Nemáš účet?{' '}
-              <Link href="/auth/register" className="font-bold no-underline hover:opacity-70" style={{ color: '#E8634A' }}>
+              <Link href="/auth/register" className="font-bold no-underline hover:opacity-70 text-coral">
                 Zaregistrovat se
               </Link>
             </p>
-            <p className="text-sm" style={{ color: '#8B6550' }}>
+            <p className="text-sm text-text-muted">
               Registruješ útulek?{' '}
-              <Link href="/auth/register?type=shelter" className="font-bold no-underline hover:opacity-70" style={{ color: '#E8634A' }}>
+              <Link href="/auth/register?type=shelter" className="font-bold no-underline hover:opacity-70 text-coral">
                 Registrace instituce →
               </Link>
             </p>
           </div>
         </div>
 
-        <p className="text-center text-xs mt-6" style={{ color: '#8B6550' }}>
-          <Link href="/" className="hover:opacity-70 no-underline" style={{ color: '#8B6550' }}>← Zpět na web</Link>
+        <p className="text-center text-xs mt-6 text-text-muted">
+          <Link href="/" className="hover:opacity-70 no-underline text-text-muted">← Zpět na web</Link>
         </p>
       </div>
     </div>
   )
 }
 
-const inputCls = 'w-full px-4 py-3 border-2 border-[#F0EDE8] rounded-xl text-sm outline-none focus:border-[#E8634A] transition-colors bg-white text-[#1A0F0A]'
+const inputCls = 'w-full px-4 py-3 border-2 border-border rounded-xl text-sm outline-none focus:border-coral transition-colors bg-white text-text-primary'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#8B6550' }}>{label}</label>
+      <label className="text-xs font-bold uppercase tracking-wider text-text-muted">{label}</label>
       {children}
     </div>
   )

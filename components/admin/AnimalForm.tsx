@@ -8,14 +8,27 @@ import {
   ADOPTION_STATUS_LABEL, RESCUE_STATUS_LABEL,
   HEALTH_STATUS_LABEL, INTAKE_REASON_LABEL, SIZE_LABEL,
 } from '@/lib/animal-labels'
+import type { Animal, RescueCase } from '@/types/database'
+
+interface StatusHistoryEntry {
+  id: string
+  action?: string
+  old_status: string | null
+  new_status: string
+  changed_by?: string | null
+  changed_at?: string
+  note: string | null
+  created_at?: string
+}
 
 interface AnimalFormProps {
   institutionId: string
   institutionType: string
   species: { id: string; name_cs: string; icon: string | null }[]
   mode: 'create' | 'edit'
-  animal?: any
-  statusHistory?: any[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  animal?: Record<string, any>
+  statusHistory?: StatusHistoryEntry[]
   currentUser?: { id: string; email: string }
 }
 
@@ -102,9 +115,9 @@ export function AnimalForm({
   const [error, setError]               = useState<string | null>(null)
   const [success, setSuccess]           = useState(false)
   const [changeNote, setChangeNote]     = useState('')  // poznámka ke každé změně
-  const [localHistory, setLocalHistory] = useState<any[]>(statusHistory)
+  const [localHistory, setLocalHistory] = useState<StatusHistoryEntry[]>(statusHistory)
 
-  const update = (key: string, value: any) =>
+  const update = (key: string, value: string | boolean | number | null) =>
     setForm(prev => ({ ...prev, [key]: value }))
 
   // Upload fotek
@@ -140,7 +153,7 @@ export function AnimalForm({
     setError(null)
 
     const table  = isShelter ? 'animals' : 'rescue_cases'
-    const url    = mode === 'create' ? `/api/${table}` : `/api/${table}/${animal.id}`
+    const url    = mode === 'create' ? `/api/${table}` : `/api/${table}/${animal!.id}`
     const method = mode === 'create' ? 'POST' : 'PUT'
 
     const oldStatus = isShelter ? animal?.adoption_status : animal?.status
@@ -249,7 +262,7 @@ export function AnimalForm({
     }
 
     // Zaznamenej do historie — VŽDY při uložení (ne jen při změně stavu)
-    const animalId = mode === 'create' ? data.id : animal.id
+    const animalId = mode === 'create' ? data.id : animal!.id
 
     await fetch('/api/animal-status-history', {
       method: 'POST',
@@ -398,7 +411,7 @@ export function AnimalForm({
                     { key: 'good_with_cats', label: '🐈 Vychází s kočkami' },
                   ].map(({ key, label }) => (
                     <label key={key} className="flex items-center gap-2 cursor-pointer bg-sand rounded-md p-3">
-                      <input type="checkbox" checked={(form as any)[key]} onChange={e => update(key, e.target.checked)} className={checkCls} />
+                      <input type="checkbox" checked={(form as Record<string, unknown>)[key] as boolean} onChange={e => update(key, e.target.checked)} className={checkCls} />
                       <span className="text-sm font-semibold text-espresso">{label}</span>
                     </label>
                   ))}
@@ -419,13 +432,13 @@ export function AnimalForm({
                         { key: 'suitable_for_flat',  label: '🏢 Byt',          desc: 'Bez zahrady' },
                         { key: 'suitable_for_house', label: '🏡 Dům / zahrada', desc: 'Se zahradou' },
                       ].map(({ key, label, desc }) => (
-                        <label key={key} className="flex items-center gap-3 cursor-pointer p-3 rounded-md border-2 transition-all"
-                          style={(form as any)[key] === true
-                            ? { borderColor: '#E8634A', background: '#FAECE7' }
-                            : { borderColor: '#F0EDE8', background: 'white' }
-                          }>
+                        <label key={key} className={`flex items-center gap-3 cursor-pointer p-3 rounded-md border-2 transition-all
+                          ${(form as Record<string, unknown>)[key] === true
+                            ? 'border-coral bg-coral-tag-bg'
+                            : 'border-border bg-white'
+                          }`}>
                           <input type="checkbox"
-                            checked={(form as any)[key] === true}
+                            checked={(form as Record<string, unknown>)[key] === true}
                             onChange={e => update(key, e.target.checked ? true : null)}
                             className={checkCls} />
                           <div>
@@ -448,11 +461,11 @@ export function AnimalForm({
                       ].map(({ value, label }) => (
                         <button key={String(value)} type="button"
                           onClick={() => update('good_with_other_animals', value)}
-                          className="flex-1 py-2 rounded-md border-2 text-xs font-bold cursor-pointer transition-all"
-                          style={form.good_with_other_animals === value
-                            ? { borderColor: '#E8634A', background: '#FAECE7', color: '#993C1D' }
-                            : { borderColor: '#F0EDE8', background: 'white', color: '#6B4030' }
-                          }>
+                          className={`flex-1 py-2 rounded-md border-2 text-xs font-bold cursor-pointer transition-all
+                            ${form.good_with_other_animals === value
+                              ? 'border-coral bg-coral-tag-bg text-coral-tag-text'
+                              : 'border-border bg-white text-text-body'
+                            }`}>
                           {label}
                         </button>
                       ))}
@@ -471,11 +484,11 @@ export function AnimalForm({
                         ].map(({ value, label, desc }) => (
                           <button key={value} type="button"
                             onClick={() => update('activity_level', form.activity_level === value ? '' : value)}
-                            className="text-left p-2.5 rounded-md border-2 cursor-pointer transition-all"
-                            style={form.activity_level === value
-                              ? { borderColor: '#E8634A', background: '#FAECE7' }
-                              : { borderColor: '#F0EDE8', background: 'white' }
-                            }>
+                            className={`text-left p-2.5 rounded-md border-2 cursor-pointer transition-all
+                              ${form.activity_level === value
+                                ? 'border-coral bg-coral-tag-bg'
+                                : 'border-border bg-white'
+                              }`}>
                             <div className="text-xs font-bold text-espresso">{label}</div>
                             <div className="text-[10px] text-gray mt-0.5">{desc}</div>
                           </button>
@@ -496,11 +509,11 @@ export function AnimalForm({
                         ].map(({ value, label, desc }) => (
                           <button key={value} type="button"
                             onClick={() => update('care_difficulty', form.care_difficulty === value ? '' : value)}
-                            className="text-left p-2.5 rounded-md border-2 cursor-pointer transition-all"
-                            style={form.care_difficulty === value
-                              ? { borderColor: '#E8634A', background: '#FAECE7' }
-                              : { borderColor: '#F0EDE8', background: 'white' }
-                            }>
+                            className={`text-left p-2.5 rounded-md border-2 cursor-pointer transition-all
+                              ${form.care_difficulty === value
+                                ? 'border-coral bg-coral-tag-bg'
+                                : 'border-border bg-white'
+                              }`}>
                             <div className="text-xs font-bold text-espresso">{label}</div>
                             <div className="text-[10px] text-gray mt-0.5">{desc}</div>
                           </button>
@@ -592,7 +605,7 @@ export function AnimalForm({
                   { key: 'microchipped', label: '📡 Čipovaný' },
                 ].map(({ key, label }) => (
                   <label key={key} className="flex items-center gap-2 cursor-pointer bg-sand rounded-md p-3">
-                    <input type="checkbox" checked={(form as any)[key]} onChange={e => update(key, e.target.checked)} className={checkCls} />
+                    <input type="checkbox" checked={(form as Record<string, unknown>)[key] as boolean} onChange={e => update(key, e.target.checked)} className={checkCls} />
                     <span className="text-sm font-semibold text-espresso">{label}</span>
                   </label>
                 ))}
@@ -751,7 +764,7 @@ export function AnimalForm({
               </div>
             ) : (
               <div className="space-y-3">
-                {localHistory.map((h: any, i: number) => {
+                {localHistory.map((h: StatusHistoryEntry, i: number) => {
                   const labelMap = isShelter ? ADOPTION_STATUS_LABEL : RESCUE_STATUS_LABEL
                   const isStatusChange = h.action === 'status_change' || (h.old_status && h.old_status !== h.new_status)
                   const isCreate = h.action === 'create'
@@ -779,7 +792,7 @@ export function AnimalForm({
                           </p>
                         )}
                         <p className="text-[11px] text-gray mt-1">
-                          {new Date(h.changed_at).toLocaleString('cs-CZ', {
+                          {new Date(h.changed_at ?? h.created_at ?? '').toLocaleString('cs-CZ', {
                             day: 'numeric', month: 'short', year: 'numeric',
                             hour: '2-digit', minute: '2-digit'
                           })}
@@ -868,7 +881,7 @@ export function AnimalForm({
           <button onClick={async () => {
             if (!confirm('Opravdu smazat?')) return
             const table = isShelter ? 'animals' : 'rescue_cases'
-            await fetch(`/api/${table}/${animal.id}`, { method: 'DELETE' })
+            await fetch(`/api/${table}/${animal!.id}`, { method: 'DELETE' })
             router.push('/admin/animals')
           }}
             className="w-full py-2.5 text-sm text-gray hover:text-coral transition-colors font-semibold cursor-pointer bg-transparent border-none">

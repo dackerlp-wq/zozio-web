@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
+import type { Fundraiser } from '@/types/database'
 
 interface FundraiserFormProps {
   institutionId: string
@@ -9,7 +10,7 @@ interface FundraiserFormProps {
   animals: { id: string; name: string }[]
   rescueCases: { id: string; name: string | null; case_number: string | null }[]
   mode: 'create' | 'edit'
-  fundraiser?: any
+  fundraiser?: Partial<Fundraiser>
 }
 
 export function FundraiserForm({
@@ -32,7 +33,7 @@ export function FundraiserForm({
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
 
-  const update = (key: string, value: any) =>
+  const update = (key: string, value: string | boolean) =>
     setForm(prev => ({ ...prev, [key]: value }))
 
   const handleSubmit = async () => {
@@ -47,15 +48,15 @@ export function FundraiserForm({
       institution_id:  institutionId,
       title:           form.title,
       description:     form.description || null,
-      goal_amount:     parseInt(form.goal_amount),
-      current_amount:  parseInt(form.current_amount) || 0,
+      goal_amount:     parseInt(String(form.goal_amount)),
+      current_amount:  parseInt(String(form.current_amount)) || 0,
       deadline:        form.deadline || null,
       active:          form.active,
       animal_id:       form.animal_id      || null,
       rescue_case_id:  form.rescue_case_id || null,
     }
 
-    const url  = mode === 'create' ? '/api/fundraisers' : `/api/fundraisers/${fundraiser.id}`
+    const url  = mode === 'create' ? '/api/fundraisers' : `/api/fundraisers/${fundraiser!.id}`
     const method = mode === 'create' ? 'POST' : 'PUT'
 
     const res = await fetch(url, {
@@ -73,7 +74,7 @@ export function FundraiserForm({
 
   const handleDelete = async () => {
     if (!confirm('Opravdu smazat tuto sbírku?')) return
-    await fetch(`/api/fundraisers/${fundraiser.id}`, { method: 'DELETE' })
+    await fetch(`/api/fundraisers/${fundraiser!.id}`, { method: 'DELETE' })
     router.push('/admin/fundraisers')
     router.refresh()
   }

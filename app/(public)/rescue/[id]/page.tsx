@@ -6,6 +6,24 @@ import { createClient } from '@/lib/supabase/server'
 import { PhotoGallery } from '@/components/public/PhotoGallery'
 import { ShareButtons } from '@/components/public/ShareButtons'
 import { DonationWidget } from '@/components/public/DonationWidget'
+import type { RescueCase, Institution, AnimalSpecies, Fundraiser } from '@/types/database'
+
+/* ── Query-specific types ── */
+interface RescueCaseDetail extends Omit<RescueCase, 'institution' | 'species'> {
+  institution: Pick<Institution, 'id' | 'name' | 'city' | 'type' | 'slug' | 'email' | 'phone'> | null
+  species: Pick<AnimalSpecies, 'id' | 'name_cs' | 'icon'> | null
+  weight_g?: number | null
+  release_location?: string | null
+}
+
+interface SimilarCase {
+  id: string
+  name: string | null
+  case_number: string | null
+  primary_photo: string | null
+  status: string
+  species: { name_cs: string; icon: string | null } | null
+}
 
 const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://zozio.cz'
 
@@ -15,9 +33,8 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params
-  const c = await getRescueCase(id)
-  if (!c) return { title: 'Případ nenalezen | Zozio' }
-  const r = c as any
+  const r = await getRescueCase(id)
+  if (!r) return { title: 'Případ nenalezen | Zozio' }
   return {
     title:       `${r.name ?? r.case_number} | Záchranná stanice | Zozio`,
     description: r.public_description?.slice(0, 155) ?? '',
@@ -38,12 +55,11 @@ const STEP_ORDER: Record<string, number> = {
 
 export default async function RescueCaseDetailPage({ params }: PageProps) {
   const { id } = await params
-  const rescueCase = await getRescueCase(id)
-  if (!rescueCase) notFound()
+  const r = await getRescueCase(id)
+  if (!r) notFound()
 
-  const r           = rescueCase as any
-  const institution = r.institution as any
-  const species     = r.species     as any
+  const institution = r.institution
+  const species     = r.species
   const fundraiser  = await getFundraiser(id)
   const similar     = await getSimilarCases(id, r.institution_id)
 
@@ -60,16 +76,16 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
     : null
 
   return (
-    <main className="min-h-screen pt-20 md:pt-24" style={{ background: '#FFFCF8' }}>
+    <main className="min-h-screen pt-20 md:pt-24 bg-warm">
       <div className="max-w-[1100px] mx-auto px-5 md:px-10 pb-20">
 
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 py-5 text-sm" style={{ color: '#8B6550' }}>
-          <Link href="/" className="no-underline hover:opacity-70" style={{ color: '#8B6550' }}>Domů</Link>
+        <nav className="flex items-center gap-2 py-5 text-sm text-text-muted">
+          <Link href="/" className="no-underline hover:opacity-70 text-text-muted">Domů</Link>
           <span>·</span>
-          <Link href="/rescue" className="no-underline hover:opacity-70" style={{ color: '#8B6550' }}>Záchranné stanice</Link>
+          <Link href="/rescue" className="no-underline hover:opacity-70 text-text-muted">Záchranné stanice</Link>
           <span>·</span>
-          <span className="font-semibold" style={{ color: '#1A0F0A' }}>{r.name ?? r.case_number}</span>
+          <span className="font-semibold text-text-primary">{r.name ?? r.case_number}</span>
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 lg:gap-12 items-start">
@@ -136,26 +152,26 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
 
               {isDeceased ? (
                 <div className="p-5 rounded-2xl text-center"
-                  style={{ background: '#F0EDE8', border: '1px solid #E0DDD8' }}>
+                  style={{ background: 'var(--border)', border: '1px solid #E0DDD8' }}>
                   <div className="text-3xl mb-2">💔</div>
-                  <p className="font-bold text-[#1A0F0A]">Toto zvíře bohužel nepřežilo.</p>
+                  <p className="font-bold text-text-primary">Toto zvíře bohužel nepřežilo.</p>
                   {r.treatment_notes && (
-                    <p className="text-sm mt-2" style={{ color: '#8B6550' }}>{r.treatment_notes}</p>
+                    <p className="text-sm mt-2 text-text-muted">{r.treatment_notes}</p>
                   )}
                 </div>
               ) : r.status === 'transferred' ? (
                 <div className="p-5 rounded-2xl"
-                  style={{ background: '#F0EDE8', border: '1px solid #E0DDD8' }}>
-                  <div className="font-bold text-[#1A0F0A] mb-1">🚐 Přemístěno jinam</div>
+                  style={{ background: 'var(--border)', border: '1px solid #E0DDD8' }}>
+                  <div className="font-bold text-text-primary mb-1">🚐 Přemístěno jinam</div>
                   {r.treatment_notes && (
-                    <p className="text-sm" style={{ color: '#8B6550' }}>{r.treatment_notes}</p>
+                    <p className="text-sm text-text-muted">{r.treatment_notes}</p>
                   )}
                 </div>
               ) : (
                 <div className="relative">
                   {/* Spojovací linka */}
                   <div className="absolute left-[23px] top-8 bottom-8 w-0.5"
-                    style={{ background: '#F0EDE8' }} />
+                    style={{ background: 'var(--border)' }} />
 
                   <div className="space-y-0">
                     {RESCUE_STEPS.map((step, idx) => {
@@ -169,9 +185,9 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
                           <div className="flex-shrink-0 w-12 flex justify-center pt-1">
                             <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg border-2 transition-all"
                               style={isActive
-                                ? { background: '#2E9E8F', borderColor: '#2E9E8F', boxShadow: '0 0 0 4px rgba(46,158,143,0.15)' }
+                                ? { background: 'var(--rescue)', borderColor: 'var(--rescue)', boxShadow: '0 0 0 4px rgba(46,158,143,0.15)' }
                                 : isDone
-                                ? { background: '#EAF3DE', borderColor: '#BDE8D0' }
+                                ? { background: 'var(--success-tag-bg)', borderColor: '#BDE8D0' }
                                 : { background: 'white', borderColor: '#E0DDD8' }
                               }>
                               <span style={{ opacity: isFuture ? 0.35 : 1 }}>{step.icon}</span>
@@ -181,29 +197,29 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
                           {/* Obsah */}
                           <div className={`flex-1 min-w-0 pt-1 ${isFuture ? 'opacity-40' : ''}`}>
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-bold text-base text-[#1A0F0A]">{step.label}</span>
+                              <span className="font-bold text-base text-text-primary">{step.label}</span>
                               {isActive && (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                                  style={{ background: '#E1F5EE', color: '#0F6E56' }}>
-                                  <span className="w-1.5 h-1.5 rounded-full bg-[#2E9E8F] animate-pulse" />
+                                  style={{ background: 'var(--rescue-tag-bg)', color: 'var(--rescue-tag-text)' }}>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rescue animate-pulse" />
                                   Aktuální stav
                                 </span>
                               )}
                               {isDone && (
-                                <span className="text-[#3B6D11] text-sm">✓</span>
+                                <span className="text-success-tag-text text-sm">✓</span>
                               )}
                             </div>
-                            <p className="text-sm" style={{ color: '#8B6550' }}>
+                            <p className="text-sm text-text-muted">
                               {isActive && r.treatment_notes ? r.treatment_notes : step.desc}
                             </p>
                             {/* Datum */}
                             {step.key === 'intake' && intakeDate && (
-                              <p className="text-xs mt-1 font-medium" style={{ color: '#8B6550' }}>
+                              <p className="text-xs mt-1 font-medium text-text-muted">
                                 📅 {intakeDate}
                               </p>
                             )}
                             {step.key === 'released' && isReleased && releaseDate && (
-                              <p className="text-xs mt-1 font-medium" style={{ color: '#3B6D11' }}>
+                              <p className="text-xs mt-1 font-medium text-success-tag-text">
                                 📅 {releaseDate}
                               </p>
                             )}
@@ -220,13 +236,13 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
             {isReleased && (
               <section className="mb-8">
                 <div className="p-6 rounded-2xl text-center"
-                  style={{ background: 'linear-gradient(135deg, #EAF3DE, #E1F5EE)', border: '1px solid #BDE8D0' }}>
+                  style={{ background: 'linear-gradient(135deg, var(--success-tag-bg), var(--rescue-tag-bg))', border: '1px solid #BDE8D0' }}>
                   <div className="text-5xl mb-3">🎉</div>
-                  <h3 className="font-display font-extrabold text-xl text-[#1A0F0A] mb-2">
+                  <h3 className="font-display font-extrabold text-xl text-text-primary mb-2">
                     {r.name ?? 'Toto zvíře'} se vrátilo domů!
                   </h3>
                   {releaseDate && (
-                    <p className="text-sm" style={{ color: '#3B6D11' }}>
+                    <p className="text-sm text-success-tag-text">
                       Propuštěno {releaseDate}
                       {r.release_location && ` · ${r.release_location}`}
                     </p>
@@ -240,20 +256,20 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
               <section className="mb-8">
                 <SectionTitle>Další záchranné případy</SectionTitle>
                 <div className="flex gap-3 overflow-x-auto pb-2">
-                  {similar.map((s: any) => (
+                  {similar.map((s: SimilarCase) => (
                     <Link key={s.id} href={`/rescue/${s.id}`} className="no-underline group flex-shrink-0">
-                      <div className="w-36 bg-white rounded-xl overflow-hidden border border-[#F0EDE8] hover:border-[#2E9E8F]/40 transition-all">
+                      <div className="w-36 bg-white rounded-xl overflow-hidden border border-border hover:border-rescue/40 transition-all">
                         <div className="relative h-28 flex items-center justify-center overflow-hidden"
-                          style={{ background: '#E1F5EE' }}>
+                          style={{ background: 'var(--rescue-tag-bg)' }}>
                           {s.primary_photo
                             ? <Image src={s.primary_photo} alt={s.name ?? ''} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
-                            : <span className="text-3xl">{(s.species as any)?.icon ?? '🐾'}</span>
+                            : <span className="text-3xl">{s.species?.icon ?? '🐾'}</span>
                           }
                         </div>
                         <div className="p-2.5">
-                          <div className="font-bold text-sm text-[#1A0F0A] truncate">{s.name ?? s.case_number}</div>
-                          <div className="text-xs truncate mt-0.5" style={{ color: '#8B6550' }}>
-                            {(s.species as any)?.name_cs}
+                          <div className="font-bold text-sm text-text-primary truncate">{s.name ?? s.case_number}</div>
+                          <div className="text-xs truncate mt-0.5 text-text-muted">
+                            {s.species?.name_cs}
                           </div>
                         </div>
                       </div>
@@ -276,25 +292,25 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
             <div className="sticky top-24 space-y-4">
 
               {/* Info karta */}
-              <div className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden">
+              <div className="bg-white rounded-2xl border border-border overflow-hidden">
                 {/* Název + meta */}
-                <div className="p-5 border-b border-[#F0EDE8]">
+                <div className="p-5 border-b border-border">
                   <RescaseHeader r={r} species={species} />
                 </div>
 
                 {/* Instituce */}
                 {institution && (
-                  <div className="px-5 py-4 border-b border-[#F0EDE8] flex items-center justify-between gap-3">
+                  <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#8B6550' }}>
+                      <div className="text-[11px] font-bold uppercase tracking-wider mb-1 text-text-muted">
                         Záchranná stanice
                       </div>
-                      <div className="font-semibold text-sm text-[#1A0F0A]">{institution.name}</div>
-                      <div className="text-xs mt-0.5" style={{ color: '#8B6550' }}>📍 {institution.city}</div>
+                      <div className="font-semibold text-sm text-text-primary">{institution.name}</div>
+                      <div className="text-xs mt-0.5 text-text-muted">📍 {institution.city}</div>
                     </div>
                     <Link href={`/institutions/${institution.slug}`}
                       className="text-xs font-bold no-underline px-3 py-1.5 rounded-lg border transition-all hover:opacity-80"
-                      style={{ borderColor: '#E0DDD8', color: '#6B4030' }}>
+                      style={{ borderColor: '#E0DDD8', color: 'var(--text-body)' }}>
                       Profil →
                     </Link>
                   </div>
@@ -304,20 +320,20 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
                 <div className="px-5 py-4 space-y-2">
                   {intakeDate && (
                     <div className="flex items-center gap-2 text-sm">
-                      <span style={{ color: '#8B6550' }}>📅 Příjem:</span>
-                      <span className="font-medium text-[#1A0F0A]">{intakeDate}</span>
+                      <span className="text-text-muted">📅 Příjem:</span>
+                      <span className="font-medium text-text-primary">{intakeDate}</span>
                     </div>
                   )}
                   {r.found_location && (
                     <div className="flex items-center gap-2 text-sm">
-                      <span style={{ color: '#8B6550' }}>📍 Naleziště:</span>
-                      <span className="font-medium text-[#1A0F0A] truncate">{r.found_location}</span>
+                      <span className="text-text-muted">📍 Naleziště:</span>
+                      <span className="font-medium text-text-primary truncate">{r.found_location}</span>
                     </div>
                   )}
                   {r.found_by && (
                     <div className="flex items-center gap-2 text-sm">
-                      <span style={{ color: '#8B6550' }}>👤 Nalezl/a:</span>
-                      <span className="font-medium text-[#1A0F0A]">{r.found_by}</span>
+                      <span className="text-text-muted">👤 Nalezl/a:</span>
+                      <span className="font-medium text-text-primary">{r.found_by}</span>
                     </div>
                   )}
                 </div>
@@ -330,16 +346,15 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
 
               {/* CTA bez sbírky */}
               {!fundraiser && !isReleased && !isDeceased && (
-                <div className="bg-white rounded-2xl border border-[#F0EDE8] p-5 text-center">
+                <div className="bg-white rounded-2xl border border-border p-5 text-center">
                   <div className="text-3xl mb-2">💛</div>
-                  <p className="text-sm font-semibold text-[#1A0F0A] mb-1">Chceš pomoci?</p>
-                  <p className="text-xs mb-4" style={{ color: '#8B6550' }}>
+                  <p className="text-sm font-semibold text-text-primary mb-1">Chceš pomoci?</p>
+                  <p className="text-xs mb-4 text-text-muted">
                     Kontaktuj záchrannou stanici přímo.
                   </p>
                   {institution?.email && (
                     <a href={`mailto:${institution.email}`}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white no-underline hover:opacity-90"
-                      style={{ background: '#2E9E8F' }}>
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white no-underline hover:opacity-90 bg-rescue">
                       ✉️ Napsat stanici
                     </a>
                   )}
@@ -357,7 +372,7 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="font-bold text-lg text-[#1A0F0A] mb-4 pb-3 border-b border-[#F0EDE8]">
+    <h2 className="font-bold text-lg text-text-primary mb-4 pb-3 border-b border-border">
       {children}
     </h2>
   )
@@ -365,31 +380,36 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function InfoCard({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
-    <div className="flex items-start gap-3 p-3.5 bg-white rounded-xl border border-[#F0EDE8]">
+    <div className="flex items-start gap-3 p-3.5 bg-white rounded-xl border border-border">
       <span className="text-xl flex-shrink-0 mt-0.5">{icon}</span>
       <div>
-        <div className="text-[11px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#8B6550' }}>{label}</div>
-        <div className="text-sm font-medium text-[#1A0F0A]">{value}</div>
+        <div className="text-[11px] font-bold uppercase tracking-wider mb-0.5 text-text-muted">{label}</div>
+        <div className="text-sm font-medium text-text-primary">{value}</div>
       </div>
     </div>
   )
 }
 
-function RescueHeader({ r, species, institution, intakeDate }: any) {
+function RescueHeader({ r, species, institution, intakeDate }: {
+  r: RescueCaseDetail
+  species: Pick<AnimalSpecies, 'id' | 'name_cs' | 'icon'> | null
+  institution: Pick<Institution, 'id' | 'name' | 'city' | 'type' | 'slug' | 'email' | 'phone'> | null
+  intakeDate: string | null
+}) {
   const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
-    intake:         { label: '🚑 Příjem',       bg: '#FAECE7', color: '#993C1D' },
-    treatment:      { label: '🩺 Léčba',        bg: '#FAEEDA', color: '#854F0B' },
-    rehabilitation: { label: '💪 Rehabilitace', bg: '#E1F5EE', color: '#0F6E56' },
-    released:       { label: '🌿 Propuštěno',  bg: '#EAF3DE', color: '#3B6D11' },
-    transferred:    { label: '🚐 Přemístěno',  bg: '#F0EDE8', color: '#5F5E5A' },
-    deceased:       { label: '💔 Uhynulo',      bg: '#F0EDE8', color: '#5F5E5A' },
+    intake:         { label: '🚑 Příjem',       bg: 'var(--coral-tag-bg)', color: 'var(--coral-tag-text)' },
+    treatment:      { label: '🩺 Léčba',        bg: 'var(--warning-tag-bg)', color: 'var(--warning-tag-text)' },
+    rehabilitation: { label: '💪 Rehabilitace', bg: 'var(--rescue-tag-bg)', color: 'var(--rescue-tag-text)' },
+    released:       { label: '🌿 Propuštěno',  bg: 'var(--success-tag-bg)', color: 'var(--success-tag-text)' },
+    transferred:    { label: '🚐 Přemístěno',  bg: 'var(--border)', color: 'var(--text-neutral)' },
+    deceased:       { label: '💔 Uhynulo',      bg: 'var(--border)', color: 'var(--text-neutral)' },
   }
   const status = statusConfig[r.status] ?? statusConfig.intake
 
   return (
     <div>
       <div className="flex items-start justify-between gap-3 mb-2">
-        <h1 className="font-display font-extrabold text-[#1A0F0A] leading-tight"
+        <h1 className="font-display font-extrabold text-text-primary leading-tight"
           style={{ fontSize: 'clamp(22px, 4vw, 32px)' }}>
           {r.name ?? r.case_number}
         </h1>
@@ -398,7 +418,7 @@ function RescueHeader({ r, species, institution, intakeDate }: any) {
           {status.label}
         </span>
       </div>
-      <p className="text-sm" style={{ color: '#8B6550' }}>
+      <p className="text-sm text-text-muted">
         {[species?.name_cs, r.estimated_age, r.sex === 'male' ? '♂ Samec' : r.sex === 'female' ? '♀ Samice' : null]
           .filter(Boolean).join(' · ')}
       </p>
@@ -407,14 +427,17 @@ function RescueHeader({ r, species, institution, intakeDate }: any) {
 }
 
 // Desktop panel verze (kompaktnější)
-function RescaseHeader({ r, species }: any) {
+function RescaseHeader({ r, species }: {
+  r: RescueCaseDetail
+  species: Pick<AnimalSpecies, 'id' | 'name_cs' | 'icon'> | null
+}) {
   const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
-    intake:         { label: '🚑 Příjem',       bg: '#FAECE7', color: '#993C1D' },
-    treatment:      { label: '🩺 Léčba',        bg: '#FAEEDA', color: '#854F0B' },
-    rehabilitation: { label: '💪 Rehabilitace', bg: '#E1F5EE', color: '#0F6E56' },
-    released:       { label: '🌿 Propuštěno',  bg: '#EAF3DE', color: '#3B6D11' },
-    transferred:    { label: '🚐 Přemístěno',  bg: '#F0EDE8', color: '#5F5E5A' },
-    deceased:       { label: '💔 Uhynulo',      bg: '#F0EDE8', color: '#5F5E5A' },
+    intake:         { label: '🚑 Příjem',       bg: 'var(--coral-tag-bg)', color: 'var(--coral-tag-text)' },
+    treatment:      { label: '🩺 Léčba',        bg: 'var(--warning-tag-bg)', color: 'var(--warning-tag-text)' },
+    rehabilitation: { label: '💪 Rehabilitace', bg: 'var(--rescue-tag-bg)', color: 'var(--rescue-tag-text)' },
+    released:       { label: '🌿 Propuštěno',  bg: 'var(--success-tag-bg)', color: 'var(--success-tag-text)' },
+    transferred:    { label: '🚐 Přemístěno',  bg: 'var(--border)', color: 'var(--text-neutral)' },
+    deceased:       { label: '💔 Uhynulo',      bg: 'var(--border)', color: 'var(--text-neutral)' },
   }
   const status = statusConfig[r.status] ?? statusConfig.intake
 
@@ -424,8 +447,8 @@ function RescaseHeader({ r, species }: any) {
         style={{ background: status.bg, color: status.color }}>
         {status.label}
       </span>
-      <div className="font-bold text-lg text-[#1A0F0A] mb-1">{r.name ?? r.case_number}</div>
-      <div className="text-xs" style={{ color: '#8B6550' }}>
+      <div className="font-bold text-lg text-text-primary mb-1">{r.name ?? r.case_number}</div>
+      <div className="text-xs text-text-muted">
         {[species?.name_cs, r.estimated_age].filter(Boolean).join(' · ')}
       </div>
     </div>
@@ -434,7 +457,7 @@ function RescaseHeader({ r, species }: any) {
 
 /* ── Data ── */
 
-async function getRescueCase(id: string) {
+async function getRescueCase(id: string): Promise<RescueCaseDetail | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('rescue_cases')
@@ -442,10 +465,10 @@ async function getRescueCase(id: string) {
     .eq('id', id)
     .eq('published', true)
     .single()
-  return data
+  return data as RescueCaseDetail | null
 }
 
-async function getFundraiser(rescueCaseId: string) {
+async function getFundraiser(rescueCaseId: string): Promise<Fundraiser | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('fundraisers')
@@ -453,10 +476,10 @@ async function getFundraiser(rescueCaseId: string) {
     .eq('rescue_case_id', rescueCaseId)
     .eq('active', true)
     .single()
-  return data ?? null
+  return (data as Fundraiser | null) ?? null
 }
 
-async function getSimilarCases(id: string, institutionId: string) {
+async function getSimilarCases(id: string, institutionId: string): Promise<SimilarCase[]> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('rescue_cases')
@@ -466,5 +489,5 @@ async function getSimilarCases(id: string, institutionId: string) {
     .not('status', 'in', '("deceased")')
     .neq('id', id)
     .limit(5)
-  return data ?? []
+  return (data ?? []) as unknown as SimilarCase[]
 }

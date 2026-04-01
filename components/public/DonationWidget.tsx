@@ -21,9 +21,9 @@ export function DonationWidget({ fundraiser: f, variant = 'rescue' }: DonationWi
   const [custom,    setCustom]    = useState('')
   const [submitted, setSubmitted] = useState(false)
 
-  const accent = variant === 'rescue' ? '#2E9E8F' : '#E8634A'
-  const accentBg = variant === 'rescue' ? '#E1F5EE' : '#FAECE7'
-  const accentText = variant === 'rescue' ? '#0F6E56' : '#993C1D'
+  const accent = variant === 'rescue' ? 'var(--rescue)' : 'var(--coral)'
+  const accentBg = variant === 'rescue' ? 'var(--rescue-tag-bg)' : 'var(--coral-tag-bg)'
+  const accentText = variant === 'rescue' ? 'var(--rescue-tag-text)' : 'var(--coral-tag-text)'
 
   const pct      = Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100)
   const amount   = custom ? parseInt(custom) : (selected ?? 0)
@@ -41,11 +41,11 @@ export function DonationWidget({ fundraiser: f, variant = 'rescue' }: DonationWi
 
   if (!f.active) {
     return (
-      <div className="bg-white rounded-2xl border border-[#F0EDE8] p-5">
+      <div className="bg-white rounded-2xl border border-border p-5">
         <div className="text-center py-2">
           <div className="text-3xl mb-2">✅</div>
-          <p className="font-bold text-[#1A0F0A] mb-1">Sbírka ukončena</p>
-          <p className="text-sm" style={{ color: '#8B6550' }}>
+          <p className="font-bold text-text-primary mb-1">Sbírka ukončena</p>
+          <p className="text-sm text-text-muted">
             Vybralo se {f.current_amount.toLocaleString('cs-CZ')} Kč z {f.goal_amount.toLocaleString('cs-CZ')} Kč
           </p>
         </div>
@@ -54,28 +54,28 @@ export function DonationWidget({ fundraiser: f, variant = 'rescue' }: DonationWi
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden">
+    <div className="bg-white rounded-2xl border border-border overflow-hidden">
 
       {/* Header */}
-      <div className="p-5 border-b border-[#F0EDE8]">
-        <div className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#8B6550' }}>
+      <div className="p-5 border-b border-border">
+        <div className="text-[11px] font-bold uppercase tracking-wider mb-1 text-text-muted">
           Aktivní sbírka
         </div>
-        <div className="font-bold text-[#1A0F0A] leading-tight mb-3">{f.title}</div>
+        <div className="font-bold text-text-primary leading-tight mb-3">{f.title}</div>
 
         {/* Progress */}
         <div className="flex justify-between text-sm mb-1.5">
-          <span className="font-bold text-[#1A0F0A]">{f.current_amount.toLocaleString('cs-CZ')} Kč</span>
-          <span style={{ color: '#8B6550' }}>z {f.goal_amount.toLocaleString('cs-CZ')} Kč</span>
+          <span className="font-bold text-text-primary">{f.current_amount.toLocaleString('cs-CZ')} Kč</span>
+          <span className="text-text-muted">z {f.goal_amount.toLocaleString('cs-CZ')} Kč</span>
         </div>
-        <div className="h-2.5 rounded-full overflow-hidden mb-2" style={{ background: '#F0EDE8' }}>
+        <div className="h-2.5 rounded-full overflow-hidden mb-2 bg-border">
           <div className="h-full rounded-full transition-all duration-500"
             style={{ width: `${pct}%`, background: accent }} />
         </div>
         <div className="flex items-center justify-between">
           <span className="text-sm font-bold" style={{ color: accent }}>{pct}% vybráno</span>
           {daysLeft !== null && (
-            <span className="text-xs font-medium" style={{ color: '#8B6550' }}>
+            <span className="text-xs font-medium text-text-muted">
               {daysLeft > 0 ? `${daysLeft} dní zbývá` : 'Poslední den!'}
             </span>
           )}
@@ -87,14 +87,14 @@ export function DonationWidget({ fundraiser: f, variant = 'rescue' }: DonationWi
         {submitted ? (
           <div className="text-center py-6">
             <div className="text-4xl mb-3">🎉</div>
-            <p className="font-bold text-[#1A0F0A] mb-1">Děkujeme za příspěvek!</p>
-            <p className="text-sm" style={{ color: '#8B6550' }}>
+            <p className="font-bold text-text-primary mb-1">Děkujeme za příspěvek!</p>
+            <p className="text-sm text-text-muted">
               Vaše podpora pomáhá zachraňovat zvířata.
             </p>
           </div>
         ) : (
           <>
-            <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: '#8B6550' }}>
+            <div className="text-xs font-bold uppercase tracking-wider mb-3 text-text-muted">
               Vyberte částku
             </div>
 
@@ -107,7 +107,7 @@ export function DonationWidget({ fundraiser: f, variant = 'rescue' }: DonationWi
                   className="py-2.5 rounded-xl text-sm font-bold cursor-pointer border-2 transition-all"
                   style={selected === amt && !custom
                     ? { background: accentBg, borderColor: accent, color: accentText }
-                    : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
+                    : { background: 'white', borderColor: 'var(--border)', color: 'var(--text-body)' }
                   }
                 >
                   {amt}
@@ -123,15 +123,13 @@ export function DonationWidget({ fundraiser: f, variant = 'rescue' }: DonationWi
                 onChange={e => { setCustom(e.target.value); setSelected(null) }}
                 placeholder="Jiná částka..."
                 min="10"
-                className="w-full px-4 py-2.5 rounded-xl border-2 text-sm outline-none transition-all pr-10"
+                className="w-full px-4 py-2.5 rounded-xl border-2 text-sm outline-none transition-all pr-10 text-text-primary"
                 style={{
-                  borderColor: custom ? accent : '#F0EDE8',
+                  borderColor: custom ? accent : 'var(--border)',
                   background: custom ? accentBg : 'white',
-                  color: '#1A0F0A',
                 }}
               />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold"
-                style={{ color: '#8B6550' }}>Kč</span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-text-muted">Kč</span>
             </div>
 
             {/* Donate button */}
@@ -146,7 +144,7 @@ export function DonationWidget({ fundraiser: f, variant = 'rescue' }: DonationWi
                 : 'Zadejte částku'}
             </button>
 
-            <p className="text-center text-xs mt-3" style={{ color: '#8B6550' }}>
+            <p className="text-center text-xs mt-3 text-text-muted">
               Platba kartou přes Stripe · Bezpečné
             </p>
           </>

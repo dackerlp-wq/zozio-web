@@ -98,23 +98,23 @@ export function Navbar({ user }: NavbarProps) {
               <div className="relative" ref={dropRef}>
                 <button
                   onClick={() => setDropdown(!dropdown)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#E0DDD8] bg-white hover:bg-sand transition-all cursor-pointer"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-white hover:bg-sand transition-all cursor-pointer"
                 >
-                  <div className="w-6 h-6 rounded-full bg-[#E8634A] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-coral flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
                     {initials}
                   </div>
                   <span className="text-sm font-semibold text-espresso max-w-[100px] truncate">
                     {user.name.split(' ')[0]}
                   </span>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={cn('transition-transform', dropdown && 'rotate-180')}>
-                    <path d="M2 4l4 4 4-4" stroke="#8B6550" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={cn('transition-transform text-text-muted', dropdown && 'rotate-180')}>
+                    <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </button>
 
                 {dropdown && (
-                  <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-lg border border-[#F0EDE8] overflow-hidden z-50">
+                  <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-lg border border-border overflow-hidden z-50">
                     {/* Hlavička */}
-                    <div className="px-4 py-3 border-b border-[#F0EDE8]">
+                    <div className="px-4 py-3 border-b border-border">
                       <div className="font-bold text-sm text-espresso truncate">{user.name}</div>
                       <div className="text-xs text-gray truncate">{user.email}</div>
                     </div>
@@ -148,10 +148,10 @@ export function Navbar({ user }: NavbarProps) {
                       )}
                     </div>
 
-                    <div className="border-t border-[#F0EDE8] py-1">
+                    <div className="border-t border-border py-1">
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-[#993C1D] hover:bg-[#FAECE7] transition-colors cursor-pointer bg-transparent border-none text-left"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-coral-tag-text hover:bg-coral-tag-bg transition-colors cursor-pointer bg-transparent border-none text-left"
                       >
                         <span>↩</span> Odhlásit se
                       </button>
@@ -191,7 +191,7 @@ export function Navbar({ user }: NavbarProps) {
             {/* Přihlášený user info */}
             {user && (
               <div className="mb-5 flex items-center gap-3 px-3 py-3 bg-sand rounded-xl">
-                <div className="w-9 h-9 rounded-full bg-[#E8634A] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                <div className="w-9 h-9 rounded-full bg-coral flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
                   {initials}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -267,7 +267,7 @@ export function Navbar({ user }: NavbarProps) {
             {user ? (
               <button
                 onClick={handleLogout}
-                className="w-full px-4 py-3 rounded-xl text-sm font-bold border border-[#E0DDD8] text-[#993C1D] bg-white cursor-pointer hover:bg-[#FAECE7] transition-colors"
+                className="w-full px-4 py-3 rounded-xl text-sm font-bold border border-border text-coral-tag-text bg-white cursor-pointer hover:bg-coral-tag-bg transition-colors"
               >
                 ↩ Odhlásit se
               </button>

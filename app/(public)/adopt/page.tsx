@@ -4,6 +4,45 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { AnimalFilter } from '@/components/public/AnimalFilter'
 import { FavoriteButtonWrapper } from '@/components/public/FavoriteButtonWrapper'
+import type { InstitutionType } from '@/types/database'
+
+/* ── Query-specific types ── */
+interface AdoptAnimal {
+  id: string
+  name: string
+  breed: string | null
+  birth_year: number | null
+  primary_photo: string | null
+  urgent: boolean
+  adoption_status: string
+  vaccinated: boolean
+  neutered: boolean
+  good_with_kids: boolean | null
+  good_with_dogs: boolean | null
+  good_with_cats: boolean | null
+  good_with_other_animals: boolean | null
+  suitable_for_flat: boolean | null
+  suitable_for_house: boolean | null
+  activity_level: string | null
+  care_difficulty: string | null
+  species: { name_cs: string; icon: string | null } | null
+  institution: { name: string; city: string; type: InstitutionType } | null
+}
+
+interface FilterParams {
+  q?:             string
+  species?:       string
+  city?:          string
+  size?:          string
+  urgent?:        string
+  sort?:          string
+  page?:          string
+  housing?:       string
+  kids?:          string
+  other_animals?: string
+  activity?:      string
+  difficulty?:    string
+}
 
 export const metadata: Metadata = {
   title: 'Zvířata k adopci | Zozio',
@@ -41,19 +80,19 @@ export default async function AdoptPage({ searchParams }: PageProps) {
   ])
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
-  const hasUrgent  = animals.some((a: any) => a.urgent)
+  const hasUrgent  = animals.some((a: AdoptAnimal) => a.urgent)
 
   return (
-    <main className="min-h-screen pt-20 md:pt-24" style={{ background: '#FFFCF8' }}>
+    <main className="min-h-screen pt-20 md:pt-24 bg-warm">
       <div className="max-w-[1200px] mx-auto px-5 md:px-10 pb-16">
 
         {/* Header */}
         <div className="py-8 md:py-10">
-          <h1 className="font-display font-extrabold text-[#1A0F0A] mb-1"
+          <h1 className="font-display font-extrabold text-text-primary mb-1"
             style={{ fontSize: 'clamp(28px, 4vw, 42px)' }}>
             Zvířata k adopci
           </h1>
-          <p className="text-sm font-medium" style={{ color: '#8B6550' }}>
+          <p className="text-sm font-medium text-text-muted">
             {total === 0 ? 'Žádné výsledky' : `${total} zvířat čeká na domov`}
           </p>
         </div>
@@ -70,7 +109,7 @@ export default async function AdoptPage({ searchParams }: PageProps) {
 
             {/* Toolbar */}
             <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
-              <p className="text-sm font-medium" style={{ color: '#8B6550' }}>
+              <p className="text-sm font-medium text-text-muted">
                 {total > 0 && totalPages > 1 && `Strana ${page} z ${totalPages}`}
               </p>
               <SortSelect current={params.sort} params={params} />
@@ -81,13 +120,12 @@ export default async function AdoptPage({ searchParams }: PageProps) {
               <div className="mb-5 p-3 rounded-xl flex items-center gap-3"
                 style={{ background: 'rgba(232,99,74,0.07)', border: '1px solid rgba(232,99,74,0.18)' }}>
                 <span className="text-lg">🆘</span>
-                <p className="text-sm font-semibold flex-1" style={{ color: '#993C1D' }}>
+                <p className="text-sm font-semibold flex-1 text-coral-tag-text">
                   Některá zvířata potřebují urgentní adopci
                 </p>
                 <Link
                   href={buildFilterUrl(params, { urgent: 'true', page: undefined })}
-                  className="text-xs font-bold px-3 py-1.5 rounded-lg text-white no-underline"
-                  style={{ background: '#E8634A' }}>
+                  className="text-xs font-bold px-3 py-1.5 rounded-lg text-white no-underline bg-coral">
                   Zobrazit
                 </Link>
               </div>
@@ -98,7 +136,7 @@ export default async function AdoptPage({ searchParams }: PageProps) {
               <EmptyState hasFilters={hasActiveFilters(params)} />
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-                {animals.map((animal: any) => (
+                {animals.map((animal: AdoptAnimal) => (
                   <AnimalCard key={animal.id} animal={animal} />
                 ))}
               </div>
@@ -117,7 +155,7 @@ export default async function AdoptPage({ searchParams }: PageProps) {
 
 /* ── Helpers ── */
 
-function buildFilterUrl(params: any, overrides: Record<string, string | undefined>) {
+function buildFilterUrl(params: FilterParams, overrides: Record<string, string | undefined>) {
   const next = { ...params, ...overrides }
   const qs   = new URLSearchParams()
   Object.entries(next).forEach(([k, v]) => { if (v) qs.set(k, v as string) })
@@ -125,13 +163,13 @@ function buildFilterUrl(params: any, overrides: Record<string, string | undefine
   return `/adopt${str ? `?${str}` : ''}`
 }
 
-function hasActiveFilters(params: any) {
+function hasActiveFilters(params: FilterParams) {
   return !!(params.q || params.species || params.city || params.size || params.urgent ||
     params.housing || params.kids || params.other_animals || params.activity || params.difficulty)
 }
 
 /* ── Sort ── */
-function SortSelect({ current, params }: { current?: string; params: any }) {
+function SortSelect({ current, params }: { current?: string; params: FilterParams }) {
   const options = [
     { value: 'newest', label: 'Nejnovější' },
     { value: 'urgent', label: 'Urgentní' },
@@ -139,15 +177,15 @@ function SortSelect({ current, params }: { current?: string; params: any }) {
   ]
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs font-medium" style={{ color: '#8B6550' }}>Řadit:</span>
+      <span className="text-xs font-medium text-text-muted">Řadit:</span>
       <div className="flex gap-1.5">
         {options.map(o => (
           <Link key={o.value}
             href={buildFilterUrl(params, { sort: o.value, page: undefined })}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all no-underline"
             style={(current ?? 'newest') === o.value
-              ? { background: '#1A0F0A', color: 'white' }
-              : { background: '#F0EDE8', color: '#6B4030' }
+              ? { background: 'var(--text-primary)', color: 'white' }
+              : { background: 'var(--border)', color: 'var(--text-body)' }
             }>
             {o.label}
           </Link>
@@ -158,57 +196,57 @@ function SortSelect({ current, params }: { current?: string; params: any }) {
 }
 
 /* ── Animal card ── */
-function AnimalCard({ animal }: { animal: any }) {
-  const species     = animal.species     as any
-  const institution = animal.institution as any
+function AnimalCard({ animal }: { animal: AdoptAnimal }) {
+  const species     = animal.species
+  const institution = animal.institution
   const age         = animal.birth_year
     ? `${new Date().getFullYear() - animal.birth_year} let`
     : null
 
   // Aktivita badge
   const activityLabel: Record<string, { label: string; color: string; bg: string }> = {
-    low:       { label: '😴 Nízká',       color: '#3B6D11', bg: '#EAF3DE' },
-    medium:    { label: '🚶 Střední',      color: '#854F0B', bg: '#FAEEDA' },
-    high:      { label: '🏃 Vysoká',       color: '#993C1D', bg: '#FAECE7' },
-    very_high: { label: '⚡ Velmi vysoká', color: '#993C1D', bg: '#FAECE7' },
+    low:       { label: '😴 Nízká',       color: 'var(--success-tag-text)', bg: 'var(--success-tag-bg)' },
+    medium:    { label: '🚶 Střední',      color: 'var(--warning-tag-text)', bg: 'var(--warning-tag-bg)' },
+    high:      { label: '🏃 Vysoká',       color: 'var(--coral-tag-text)', bg: 'var(--coral-tag-bg)' },
+    very_high: { label: '⚡ Velmi vysoká', color: 'var(--coral-tag-text)', bg: 'var(--coral-tag-bg)' },
   }
   const activity = animal.activity_level ? activityLabel[animal.activity_level] : null
 
   return (
     <Link href={`/animals/${animal.id}`} className="no-underline group">
-      <div className="bg-white rounded-2xl overflow-hidden border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-1 transition-all duration-200 h-full flex flex-col">
-        <div className="relative h-40 sm:h-44 overflow-hidden flex-shrink-0" style={{ background: '#FAECE7' }}>
+      <div className="bg-white rounded-2xl overflow-hidden border border-border hover:border-coral/40 hover:-translate-y-1 transition-all duration-200 h-full flex flex-col">
+        <div className="relative h-40 sm:h-44 overflow-hidden flex-shrink-0 bg-coral-tag-bg">
           {animal.primary_photo
             ? <Image src={animal.primary_photo} alt={animal.name} fill sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,25vw" className="object-cover group-hover:scale-105 transition-transform duration-300" />
             : <div className="w-full h-full flex items-center justify-center text-5xl">{species?.icon ?? '🐾'}</div>
           }
           {animal.urgent && (
-            <div className="absolute top-2.5 left-2.5 bg-[#E8634A] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+            <div className="absolute top-2.5 left-2.5 bg-coral text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
               Urgentní
             </div>
           )}
           <FavoriteButtonWrapper type="animal" id={animal.id} size="sm" className="absolute top-2.5 right-2.5" />
           {/* Housing badge */}
           {animal.suitable_for_flat && !animal.suitable_for_house && (
-            <div className="absolute top-2.5 right-2.5 bg-white/90 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ color: '#1A0F0A' }}>
+            <div className="absolute top-2.5 right-2.5 bg-white/90 text-[10px] font-bold px-2 py-0.5 rounded-full text-text-primary">
               🏢 Byt
             </div>
           )}
           {institution?.city && (
             <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm rounded-full px-2 py-0.5">
-              <span className="text-[10px] font-bold text-[#1A0F0A]">{institution.city}</span>
+              <span className="text-[10px] font-bold text-text-primary">{institution.city}</span>
             </div>
           )}
         </div>
         <div className="p-3 flex flex-col flex-1">
-          <div className="font-bold text-[#1A0F0A] text-sm sm:text-base mb-0.5 truncate">{animal.name}</div>
-          <div className="text-xs mb-2 truncate" style={{ color: '#8B6550' }}>
+          <div className="font-bold text-text-primary text-sm sm:text-base mb-0.5 truncate">{animal.name}</div>
+          <div className="text-xs mb-2 truncate text-text-muted">
             {[species?.name_cs, animal.breed, age].filter(Boolean).join(' · ')}
           </div>
           <div className="flex flex-wrap gap-1 mt-auto">
-            {animal.vaccinated     && <Pill label="Očkovaný"   bg="#EAF3DE" color="#3B6D11" />}
-            {animal.neutered       && <Pill label="Kastrovaný" bg="#EAF3DE" color="#3B6D11" />}
-            {animal.good_with_kids && <Pill label="S dětmi"    bg="#FAEEDA" color="#854F0B" />}
+            {animal.vaccinated     && <Pill label="Očkovaný"   bg="var(--success-tag-bg)" color="var(--success-tag-text)" />}
+            {animal.neutered       && <Pill label="Kastrovaný" bg="var(--success-tag-bg)" color="var(--success-tag-text)" />}
+            {animal.good_with_kids && <Pill label="S dětmi"    bg="var(--warning-tag-bg)" color="var(--warning-tag-text)" />}
             {activity              && <Pill label={activity.label} bg={activity.bg} color={activity.color} />}
           </div>
         </div>
@@ -231,15 +269,14 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
   return (
     <div className="text-center py-20">
       <div className="text-6xl mb-5">🔍</div>
-      <h3 className="font-bold text-xl text-[#1A0F0A] mb-2">
+      <h3 className="font-bold text-xl text-text-primary mb-2">
         {hasFilters ? 'Žádná zvířata nenalezena' : 'Zatím žádná zvířata'}
       </h3>
-      <p className="text-sm mb-6" style={{ color: '#8B6550' }}>
+      <p className="text-sm mb-6 text-text-muted">
         {hasFilters ? 'Zkus upravit nebo zrušit filtry.' : 'Brzy tu budou zvířata hledající domov.'}
       </p>
       {hasFilters && (
-        <Link href="/adopt" className="inline-flex px-5 py-2.5 rounded-xl font-bold text-sm text-white no-underline"
-          style={{ background: '#E8634A' }}>
+        <Link href="/adopt" className="inline-flex px-5 py-2.5 rounded-xl font-bold text-sm text-white no-underline bg-coral">
           Zrušit všechny filtry
         </Link>
       )}
@@ -248,31 +285,31 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
 }
 
 /* ── Stránkování ── */
-function Pagination({ current, total, params }: { current: number; total: number; params: any }) {
+function Pagination({ current, total, params }: { current: number; total: number; params: FilterParams }) {
   const pages = getPaginationRange(current, total)
   return (
     <div className="flex items-center justify-center gap-1.5 mt-10 flex-wrap">
       {current > 1 && (
         <Link href={buildFilterUrl(params, { page: String(current - 1) })}
           className="w-9 h-9 rounded-lg flex items-center justify-center text-sm border no-underline transition-all hover:opacity-80"
-          style={{ borderColor: '#E0DDD8', color: '#6B4030', background: 'white' }}>←</Link>
+          style={{ borderColor: '#E0DDD8', color: 'var(--text-body)', background: 'white' }}>←</Link>
       )}
       {pages.map((p, i) =>
         p === '...' ? (
-          <span key={`d${i}`} className="w-9 h-9 flex items-center justify-center text-sm" style={{ color: '#8B6550' }}>…</span>
+          <span key={`d${i}`} className="w-9 h-9 flex items-center justify-center text-sm text-text-muted">…</span>
         ) : (
           <Link key={p} href={buildFilterUrl(params, { page: String(p) })}
             className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-medium border no-underline transition-all"
             style={p === current
-              ? { background: '#E8634A', color: 'white', borderColor: '#E8634A' }
-              : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }
+              ? { background: 'var(--coral)', color: 'white', borderColor: 'var(--coral)' }
+              : { background: 'white', color: 'var(--text-body)', borderColor: '#E0DDD8' }
             }>{p}</Link>
         )
       )}
       {current < total && (
         <Link href={buildFilterUrl(params, { page: String(current + 1) })}
           className="w-9 h-9 rounded-lg flex items-center justify-center text-sm border no-underline transition-all hover:opacity-80"
-          style={{ borderColor: '#E0DDD8', color: '#6B4030', background: 'white' }}>→</Link>
+          style={{ borderColor: '#E0DDD8', color: 'var(--text-body)', background: 'white' }}>→</Link>
       )}
     </div>
   )
@@ -287,7 +324,7 @@ function getPaginationRange(current: number, total: number): (number | '...')[] 
 
 /* ── Data ── */
 
-async function getAnimals(params: any, page: number) {
+async function getAnimals(params: FilterParams, page: number) {
   const supabase = await createClient()
   const offset   = (page - 1) * PAGE_SIZE
 
@@ -320,15 +357,15 @@ async function getAnimals(params: any, page: number) {
   query = query.range(offset, offset + PAGE_SIZE - 1)
 
   const { data } = await query
-  let animals = (data ?? []) as any[]
+  let animals = (data ?? []) as unknown as AdoptAnimal[]
 
   // City — post-process
-  if (params.city) animals = animals.filter(a => (a.institution as any)?.city === params.city)
+  if (params.city) animals = animals.filter(a => a.institution?.city === params.city)
 
   return animals
 }
 
-async function getTotal(params: any) {
+async function getTotal(params: FilterParams) {
   const supabase = await createClient()
   let query = supabase
     .from('animals')
@@ -363,5 +400,5 @@ async function getCities() {
   const supabase = await createClient()
   const { data } = await supabase
     .from('institutions').select('city').eq('type', 'shelter').eq('approval_status', 'approved')
-  return [...new Set((data ?? []).map((d: any) => d.city).filter(Boolean))].sort() as string[]
+  return [...new Set((data ?? []).map((d: { city: string }) => d.city).filter(Boolean))].sort() as string[]
 }

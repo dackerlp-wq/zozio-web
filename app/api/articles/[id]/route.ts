@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-async function checkAccess(userId: string, articleId: string, service: any) {
+async function checkAccess(userId: string, articleId: string, service: SupabaseClient) {
   const { data: a } = await service.from('articles').select('institution_id').eq('id', articleId).single()
   if (!a) return false
   const { data: m } = await service.from('institution_members').select('role').eq('user_id', userId).eq('institution_id', a.institution_id).single()
@@ -33,7 +34,7 @@ export async function PUT(
     if (error) throw error
     return NextResponse.json({ success: true })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('PUT /api/articles/[id] error:', error)
     return NextResponse.json({ error: 'Interní chyba' }, { status: 500 })
   }
@@ -58,7 +59,7 @@ export async function DELETE(
     if (error) throw error
     return NextResponse.json({ success: true })
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('DELETE /api/articles/[id] error:', error)
     return NextResponse.json({ error: 'Interní chyba' }, { status: 500 })
   }

@@ -89,73 +89,64 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
     <div>
       {/* ── Geolokace banner ── */}
       {status === 'idle' && withGeo > 0 && (
-        <div className="mb-6 p-4 rounded-2xl flex items-center gap-4 border"
-          style={{ background: '#FEFCF8', borderColor: '#F0DDD6' }}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-            style={{ background: '#FAECE7' }}>
+        <div className="mb-6 p-4 rounded-2xl flex items-center gap-4 border border-[#F0DDD6] bg-warm">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 bg-coral-tag-bg">
             📍
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-bold text-sm text-[#1A0F0A]">Najít nejbližší útulek</div>
-            <div className="text-xs mt-0.5" style={{ color: '#8B6550' }}>
+            <div className="font-bold text-sm text-text-primary">Najít nejbližší útulek</div>
+            <div className="text-xs mt-0.5 text-text-muted">
               Zobrazíme útulky seřazené podle vzdálenosti od tebe.
             </div>
           </div>
           <button
             onClick={requestLocation}
-            className="px-4 py-2 rounded-xl font-bold text-sm text-white border-none cursor-pointer hover:opacity-90 transition-all flex-shrink-0"
-            style={{ background: '#E8634A' }}>
+            className="px-4 py-2 rounded-xl font-bold text-sm text-white border-none cursor-pointer hover:opacity-90 transition-all flex-shrink-0 bg-coral">
             Zjistit polohu
           </button>
         </div>
       )}
 
       {status === 'loading' && (
-        <div className="mb-6 p-4 rounded-2xl flex items-center gap-3 border"
-          style={{ background: '#FEFCF8', borderColor: '#F0DDD6' }}>
-          <div className="w-5 h-5 border-2 rounded-full animate-spin flex-shrink-0"
-            style={{ borderColor: '#E8634A', borderTopColor: 'transparent' }} />
-          <span className="text-sm font-medium" style={{ color: '#8B6550' }}>
+        <div className="mb-6 p-4 rounded-2xl flex items-center gap-3 border border-[#F0DDD6] bg-warm">
+          <div className="w-5 h-5 border-2 rounded-full animate-spin flex-shrink-0 border-coral border-t-transparent" />
+          <span className="text-sm font-medium text-text-muted">
             Zjišťuji tvoji polohu...
           </span>
         </div>
       )}
 
       {status === 'ok' && (
-        <div className="mb-6 p-3 rounded-xl flex items-center gap-3"
-          style={{ background: '#EAF3DE', border: '1px solid #BDE8D0' }}>
+        <div className="mb-6 p-3 rounded-xl flex items-center gap-3 bg-success-tag-bg border border-[#BDE8D0]">
           <span>✓</span>
-          <span className="text-sm font-semibold" style={{ color: '#1D6A42' }}>
+          <span className="text-sm font-semibold text-success-tag-text">
             Útulky seřazeny podle vzdálenosti od tebe
           </span>
           <button
             onClick={() => { setUserPos(null); setStatus('idle') }}
-            className="ml-auto text-xs cursor-pointer bg-transparent border-none font-bold"
-            style={{ color: '#3B6D11' }}>
+            className="ml-auto text-xs cursor-pointer bg-transparent border-none font-bold text-success-tag-text">
             Zrušit
           </button>
         </div>
       )}
 
       {status === 'denied' && (
-        <div className="mb-6 p-3 rounded-xl flex items-center gap-3"
-          style={{ background: '#FAECE7', border: '1px solid #F0DDD6' }}>
+        <div className="mb-6 p-3 rounded-xl flex items-center gap-3 bg-coral-tag-bg border border-[#F0DDD6]">
           <span>⚠️</span>
-          <span className="text-sm font-medium" style={{ color: '#993C1D' }}>
+          <span className="text-sm font-medium text-coral-tag-text">
             Přístup k poloze byl zamítnut. Povol ho v nastavení prohlížeče.
           </span>
           <button
             onClick={() => setStatus('idle')}
-            className="ml-auto text-xs cursor-pointer bg-transparent border-none"
-            style={{ color: '#993C1D' }}>
+            className="ml-auto text-xs cursor-pointer bg-transparent border-none text-coral-tag-text">
             ✕
           </button>
         </div>
       )}
 
       {status === 'unavailable' && (
-        <div className="mb-6 p-3 rounded-xl" style={{ background: '#F0EDE8' }}>
-          <span className="text-sm" style={{ color: '#6B4030' }}>
+        <div className="mb-6 p-3 rounded-xl bg-border">
+          <span className="text-sm text-text-body">
             Geolokace není v tomto prohlížeči dostupná.
           </span>
         </div>
@@ -165,8 +156,8 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
       {sorted.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-5xl mb-4">🏠</div>
-          <p className="font-bold text-xl text-[#1A0F0A] mb-2">Žádné instituce nenalezeny</p>
-          <p className="text-sm" style={{ color: '#8B6550' }}>Zkus jiné hledání nebo filtr.</p>
+          <p className="font-bold text-xl text-text-primary mb-2">Žádné instituce nenalezeny</p>
+          <p className="text-sm text-text-muted">Zkus jiné hledání nebo filtr.</p>
         </div>
       ) : (
         <>
@@ -180,8 +171,7 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
             <div className="text-center mt-6">
               <button
                 onClick={() => setShowAll(!showAll)}
-                className="px-6 py-2.5 rounded-xl font-bold text-sm border cursor-pointer hover:opacity-80 transition-all"
-                style={{ borderColor: '#E0DDD8', color: '#6B4030', background: 'white' }}>
+                className="px-6 py-2.5 rounded-xl font-bold text-sm border cursor-pointer hover:opacity-80 transition-all border-[#E0DDD8] text-text-body bg-white">
                 {showAll ? 'Zobrazit méně ↑' : `Zobrazit všech ${sorted.length} institucí ↓`}
               </button>
             </div>
@@ -190,22 +180,19 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
       )}
 
       {/* CTA pro registraci */}
-      <div className="mt-14 p-6 rounded-2xl text-center border border-dashed border-[#E0DDD8]"
-        style={{ background: '#FAFAF8' }}>
-        <p className="font-bold text-[#1A0F0A] mb-1">Chybí zde vaše instituce?</p>
-        <p className="text-sm mb-4" style={{ color: '#8B6550' }}>
+      <div className="mt-14 p-6 rounded-2xl text-center border border-dashed border-[#E0DDD8] bg-warm-hover">
+        <p className="font-bold text-text-primary mb-1">Chybí zde vaše instituce?</p>
+        <p className="text-sm mb-4 text-text-muted">
           Registrace je zdarma a trvá 5 minut.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/auth/register?type=shelter">
-            <button className="px-5 py-2.5 rounded-xl font-bold text-sm text-white border-none cursor-pointer hover:opacity-90 transition-all"
-              style={{ background: '#E8634A' }}>
+            <button className="px-5 py-2.5 rounded-xl font-bold text-sm text-white border-none cursor-pointer hover:opacity-90 transition-all bg-coral">
               Registrovat útulek →
             </button>
           </Link>
           <Link href="/auth/register?type=rescue_station">
-            <button className="px-5 py-2.5 rounded-xl font-bold text-sm cursor-pointer border hover:opacity-80 transition-all"
-              style={{ background: 'white', color: '#1A0F0A', borderColor: '#E0DDD8' }}>
+            <button className="px-5 py-2.5 rounded-xl font-bold text-sm cursor-pointer border hover:opacity-80 transition-all bg-white text-text-primary border-[#E0DDD8]">
               Záchrannou stanici →
             </button>
           </Link>
@@ -218,14 +205,14 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
 /* ── Karta instituce ── */
 function InstitutionCard({ inst }: { inst: Institution & { distKm: number | null } }) {
   const isShelter  = inst.type === 'shelter'
-  const accent     = isShelter ? '#E8634A' : '#2E9E8F'
-  const accentBg   = isShelter ? '#FAECE7' : '#E1F5EE'
-  const accentText = isShelter ? '#993C1D' : '#0F6E56'
+  const accent     = isShelter ? 'var(--coral)' : 'var(--rescue)'
+  const accentBg   = isShelter ? 'var(--coral-tag-bg)' : 'var(--rescue-tag-bg)'
+  const accentText = isShelter ? 'var(--coral-tag-text)' : 'var(--rescue-tag-text)'
 
   return (
     <div className="relative group">
       <Link href={`/institutions/${inst.slug}`} className="no-underline">
-        <div className="bg-white rounded-2xl overflow-hidden border border-[#F0EDE8] hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
+        <div className="bg-white rounded-2xl overflow-hidden border border-border hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
           style={{ borderTop: `3px solid ${accent}` }}>
 
           {/* Cover oblast */}
@@ -242,8 +229,7 @@ function InstitutionCard({ inst }: { inst: Institution & { distKm: number | null
 
             {/* Vzdálenost badge */}
             {inst.distKm !== null && (
-              <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1"
-                style={{ background: '#1A0F0A', color: 'white' }}>
+              <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 bg-text-primary text-white">
                 📍 {formatKm(inst.distKm)}
               </div>
             )}
@@ -262,14 +248,14 @@ function InstitutionCard({ inst }: { inst: Institution & { distKm: number | null
                 {isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
               </span>
               {inst.approval_status === 'approved' && (
-                <span className="text-[10px] font-bold" style={{ color: '#3B6D11' }}>✓ Ověřeno</span>
+                <span className="text-[10px] font-bold text-success-tag-text">✓ Ověřeno</span>
               )}
             </div>
 
-            <div className="font-bold text-[#1A0F0A] leading-tight mb-1 group-hover:opacity-80 transition-opacity">
+            <div className="font-bold text-text-primary leading-tight mb-1 group-hover:opacity-80 transition-opacity">
               {inst.name}
             </div>
-            <div className="text-xs" style={{ color: '#8B6550' }}>
+            <div className="text-xs text-text-muted">
               📍 {inst.city}
               {inst.distKm !== null && (
                 <span className="ml-2 font-semibold" style={{ color: accent }}>

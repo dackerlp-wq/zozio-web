@@ -2,7 +2,51 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import sanitizeHtml from 'sanitize-html'
 import { createClient } from '@/lib/supabase/server'
+import type { Article, Institution, InstitutionType, ShelterAnimalStatus } from '@/types/database'
+
+/* ── Query-specific types ── */
+interface ArticleDetail extends Article {
+  institution: (Pick<Institution, 'id' | 'name' | 'slug' | 'type' | 'city' | 'logo_url' | 'short_description' | 'approval_status'> & {
+    otherArticles?: OtherArticleItem[]
+  }) | null
+  animal: {
+    id: string
+    name: string
+    breed: string | null
+    primary_photo: string | null
+    adoption_status: ShelterAnimalStatus
+    species: { name_cs: string; icon: string | null } | null
+  } | null
+}
+
+interface OtherArticleItem {
+  id: string
+  title: string
+  slug: string
+  cover_url: string | null
+}
+
+interface AnimalPanelData {
+  id: string
+  name: string
+  breed: string | null
+  primary_photo: string | null
+  adoption_status: ShelterAnimalStatus
+  species: { name_cs: string; icon: string | null } | null
+}
+
+interface InstitutionPanelData {
+  id: string
+  name: string
+  slug: string
+  type: InstitutionType
+  city: string
+  logo_url: string | null
+  short_description: string | null
+  otherArticles?: OtherArticleItem[]
+}
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -16,11 +60,11 @@ const categoryLabel: Record<string, string> = {
 }
 
 const adoptionStatusConfig: Record<string, { label: string; bg: string; color: string }> = {
-  available:        { label: 'K adopci',      bg: '#EAF3DE', color: '#3B6D11' },
-  reserved:         { label: 'Rezervováno',   bg: '#FAEEDA', color: '#854F0B' },
-  adopted:          { label: 'Adoptováno 🎉', bg: '#F0EDE8', color: '#5F5E5A' },
-  foster:           { label: 'Ve foster',     bg: '#E1F5EE', color: '#0F6E56' },
-  not_for_adoption: { label: 'Není k adopci', bg: '#F0EDE8', color: '#5F5E5A' },
+  available:        { label: 'K adopci',      bg: 'var(--success-tag-bg)', color: 'var(--success-tag-text)' },
+  reserved:         { label: 'Rezervováno',   bg: 'var(--warning-tag-bg)', color: 'var(--warning-tag-text)' },
+  adopted:          { label: 'Adoptováno 🎉', bg: 'var(--border)', color: 'var(--text-neutral)' },
+  foster:           { label: 'Ve foster',     bg: 'var(--rescue-tag-bg)', color: 'var(--rescue-tag-text)' },
+  not_for_adoption: { label: 'Není k adopci', bg: 'var(--border)', color: 'var(--text-neutral)' },
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -43,8 +87,8 @@ export default async function ArticleDetailPage({ params }: PageProps) {
   const article  = await getArticle(slug)
   if (!article) notFound()
 
-  const inst      = article.institution as any
-  const animal    = (article as any).animal as any
+  const inst      = (article as ArticleDetail).institution as InstitutionPanelData | null
+  const animal    = (article as ArticleDetail).animal as AnimalPanelData | null
   const isShelter = inst?.type === 'shelter'
   const hasPanel  = !!(inst || animal)
   const animalStatus = animal
@@ -61,23 +105,23 @@ export default async function ArticleDetailPage({ params }: PageProps) {
     <div className="space-y-4">
       {animal && <AnimalPanel animal={animal} status={animalStatus} />}
       {inst && <InstitutionPanel inst={inst} isShelter={isShelter} />}
-      {inst?.otherArticles?.length > 0 && (
+      {inst && inst.otherArticles && inst.otherArticles.length > 0 && (
         <OtherArticles articles={inst.otherArticles} institutionName={inst.name} />
       )}
     </div>
   )
 
   return (
-    <main className="min-h-screen pt-20 md:pt-24 pb-16" style={{ background: '#FFFCF8' }}>
+    <main className="min-h-screen pt-20 md:pt-24 pb-16 bg-warm">
       <div className="max-w-[1100px] mx-auto px-5 md:px-10">
 
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm py-5" style={{ color: '#8B6550' }}>
-          <Link href="/" className="no-underline hover:opacity-70" style={{ color: '#8B6550' }}>Domů</Link>
+        <nav className="flex items-center gap-2 text-sm py-5 text-text-muted">
+          <Link href="/" className="no-underline hover:opacity-70 text-text-muted">Domů</Link>
           <span>·</span>
-          <Link href="/articles" className="no-underline hover:opacity-70" style={{ color: '#8B6550' }}>Příběhy</Link>
+          <Link href="/articles" className="no-underline hover:opacity-70 text-text-muted">Příběhy</Link>
           <span>·</span>
-          <span className="font-semibold truncate max-w-[240px]" style={{ color: '#1A0F0A' }}>{article.title}</span>
+          <span className="font-semibold truncate max-w-[240px] text-text-primary">{article.title}</span>
         </nav>
 
         {/* Grid — text + sticky panel */}
@@ -87,27 +131,26 @@ export default async function ArticleDetailPage({ params }: PageProps) {
           <article>
             {/* Meta */}
             <div className="flex flex-wrap items-center gap-2.5 mb-4">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold"
-                style={{ background: '#FAECE7', color: '#993C1D' }}>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-coral-tag-bg text-coral-tag-text">
                 {categoryLabel[article.category ?? 'story'] ?? '📖 Příběh'}
               </span>
               {publishedDate && (
-                <span className="text-xs" style={{ color: '#8B6550' }}>{publishedDate}</span>
+                <span className="text-xs text-text-muted">{publishedDate}</span>
               )}
               {article.author_name && (
-                <span className="text-xs" style={{ color: '#8B6550' }}>· {article.author_name}</span>
+                <span className="text-xs text-text-muted">· {article.author_name}</span>
               )}
             </div>
 
             {/* Název */}
-            <h1 className="font-display font-extrabold text-[#1A0F0A] leading-tight mb-4"
+            <h1 className="font-display font-extrabold text-text-primary leading-tight mb-4"
               style={{ fontSize: 'clamp(24px, 4vw, 40px)' }}>
               {article.title}
             </h1>
 
             {/* Perex */}
             {article.perex && (
-              <p className="text-lg leading-relaxed mb-7" style={{ color: '#6B4030', lineHeight: 1.7 }}>
+              <p className="text-lg leading-relaxed mb-7 text-text-body" style={{ lineHeight: 1.7 }}>
                 {article.perex}
               </p>
             )}
@@ -128,16 +171,24 @@ export default async function ArticleDetailPage({ params }: PageProps) {
             {/* Obsah */}
             {article.content && (
               <>
-                <div className="article-content" dangerouslySetInnerHTML={{ __html: article.content }} />
+                <div className="article-content" dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.content, {
+                  allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2', 'h3']),
+                  allowedAttributes: {
+                    ...sanitizeHtml.defaults.allowedAttributes,
+                    img: ['src', 'alt', 'width', 'height', 'class'],
+                    a: ['href', 'target', 'rel'],
+                  },
+                  allowedSchemes: ['https', 'http'],
+                }) }} />
                 <style>{`
-                  .article-content { font-size: 1.05rem; line-height: 1.85; color: #2C1810; }
-                  .article-content h2 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; color: #1A0F0A; margin: 2.5rem 0 0.75rem; }
-                  .article-content h3 { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: #1A0F0A; margin: 2rem 0 0.5rem; }
+                  .article-content { font-size: 1.05rem; line-height: 1.85; color: var(--espresso); }
+                  .article-content h2 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 2.5rem 0 0.75rem; }
+                  .article-content h3 { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 2rem 0 0.5rem; }
                   .article-content p { margin: 1rem 0; }
                   .article-content ul, .article-content ol { margin: 1rem 0; padding-left: 1.75rem; }
                   .article-content li { margin: 0.4rem 0; }
-                  .article-content blockquote { border-left: 4px solid #E8634A; padding: .75rem 1.25rem; margin: 1.5rem 0; background: #FAECE7; border-radius: 0 12px 12px 0; font-style: italic; color: #6B3F1F; }
-                  .article-content a { color: #E8634A; text-decoration: underline; }
+                  .article-content blockquote { border-left: 4px solid var(--coral); padding: .75rem 1.25rem; margin: 1.5rem 0; background: var(--coral-tag-bg); border-radius: 0 12px 12px 0; font-style: italic; color: var(--brown); }
+                  .article-content a { color: var(--coral); text-decoration: underline; }
                   .article-content img { max-width: 100%; border-radius: 12px; margin: 1.5rem 0; }
                   .article-content strong { font-weight: 700; }
                 `}</style>
@@ -146,15 +197,14 @@ export default async function ArticleDetailPage({ params }: PageProps) {
 
             {/* Mobil — panel pod textem */}
             {hasPanel && (
-              <div className="lg:hidden mt-10 pt-8 border-t border-[#F0EDE8]">
+              <div className="lg:hidden mt-10 pt-8 border-t border-border">
                 {rightPanel}
               </div>
             )}
 
             {/* Zpět */}
-            <div className="mt-10 pt-6 border-t border-[#F0EDE8]">
-              <Link href="/articles" className="font-bold no-underline hover:opacity-70 transition-opacity"
-                style={{ color: '#E8634A' }}>
+            <div className="mt-10 pt-6 border-t border-border">
+              <Link href="/articles" className="font-bold no-underline hover:opacity-70 transition-opacity text-coral">
                 ← Zpět na příběhy
               </Link>
             </div>
@@ -175,17 +225,17 @@ export default async function ArticleDetailPage({ params }: PageProps) {
 }
 
 /* ── Panel zvíře ── */
-function AnimalPanel({ animal: a, status }: { animal: any; status: any }) {
+function AnimalPanel({ animal: a, status }: { animal: AnimalPanelData; status: { label: string; bg: string; color: string } | null }) {
   const species = a.species
   return (
-    <div className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden">
+    <div className="bg-white rounded-2xl border border-border overflow-hidden">
       <div className="px-4 pt-4 pb-2">
-        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#8B6550' }}>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
           Zvíře z příběhu
         </p>
       </div>
       <Link href={`/animals/${a.id}`} className="no-underline group block">
-        <div className="relative h-44 overflow-hidden" style={{ background: '#FAECE7' }}>
+        <div className="relative h-44 overflow-hidden bg-coral-tag-bg">
           {a.primary_photo
             ? <Image src={a.primary_photo} alt={a.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
             : <div className="w-full h-full flex items-center justify-center text-5xl">{species?.icon ?? '🐾'}</div>
@@ -198,14 +248,13 @@ function AnimalPanel({ animal: a, status }: { animal: any; status: any }) {
           )}
         </div>
         <div className="p-4">
-          <div className="font-bold text-[#1A0F0A] text-base mb-0.5 group-hover:opacity-80 transition-opacity">
+          <div className="font-bold text-text-primary text-base mb-0.5 group-hover:opacity-80 transition-opacity">
             {a.name}
           </div>
-          <div className="text-xs mb-3" style={{ color: '#8B6550' }}>
+          <div className="text-xs mb-3 text-text-muted">
             {[species?.name_cs, a.breed].filter(Boolean).join(' · ')}
           </div>
-          <div className="py-2 rounded-xl text-center text-xs font-bold text-white"
-            style={{ background: '#E8634A' }}>
+          <div className="py-2 rounded-xl text-center text-xs font-bold text-white bg-coral">
             {a.adoption_status === 'available' ? 'Adoptovat →' : 'Zobrazit profil →'}
           </div>
         </div>
@@ -215,14 +264,14 @@ function AnimalPanel({ animal: a, status }: { animal: any; status: any }) {
 }
 
 /* ── Panel instituce ── */
-function InstitutionPanel({ inst, isShelter }: { inst: any; isShelter: boolean }) {
-  const accentBg   = isShelter ? '#FAECE7' : '#E1F5EE'
-  const accentText = isShelter ? '#993C1D' : '#0F6E56'
-  const accent     = isShelter ? '#E8634A' : '#2E9E8F'
+function InstitutionPanel({ inst, isShelter }: { inst: InstitutionPanelData; isShelter: boolean }) {
+  const accentBg   = isShelter ? 'var(--coral-tag-bg)' : 'var(--rescue-tag-bg)'
+  const accentText = isShelter ? 'var(--coral-tag-text)' : 'var(--rescue-tag-text)'
+  const accent     = isShelter ? 'var(--coral)' : 'var(--rescue)'
   return (
-    <div className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden">
+    <div className="bg-white rounded-2xl border border-border overflow-hidden">
       <div className="px-4 pt-4 pb-0">
-        <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: '#8B6550' }}>
+        <p className="text-[10px] font-bold uppercase tracking-widest mb-3 text-text-muted">
           Autor příběhu
         </p>
       </div>
@@ -240,12 +289,12 @@ function InstitutionPanel({ inst, isShelter }: { inst: any; isShelter: boolean }
               style={{ background: accentBg, color: accentText }}>
               {isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
             </span>
-            <div className="font-bold text-sm text-[#1A0F0A] truncate">{inst.name}</div>
-            {inst.city && <div className="text-xs mt-0.5" style={{ color: '#8B6550' }}>📍 {inst.city}</div>}
+            <div className="font-bold text-sm text-text-primary truncate">{inst.name}</div>
+            {inst.city && <div className="text-xs mt-0.5 text-text-muted">📍 {inst.city}</div>}
           </div>
         </div>
         {inst.short_description && (
-          <p className="text-xs leading-relaxed line-clamp-3 mb-3" style={{ color: '#8B6550' }}>
+          <p className="text-xs leading-relaxed line-clamp-3 mb-3 text-text-muted">
             {inst.short_description}
           </p>
         )}
@@ -259,24 +308,23 @@ function InstitutionPanel({ inst, isShelter }: { inst: any; isShelter: boolean }
 }
 
 /* ── Další příběhy ── */
-function OtherArticles({ articles, institutionName }: { articles: any[]; institutionName: string }) {
+function OtherArticles({ articles, institutionName }: { articles: OtherArticleItem[]; institutionName: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#F0EDE8] p-4">
-      <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: '#8B6550' }}>
+    <div className="bg-white rounded-2xl border border-border p-4">
+      <p className="text-[10px] font-bold uppercase tracking-widest mb-3 text-text-muted">
         Další od {institutionName}
       </p>
       <div className="space-y-2">
-        {articles.map((a: any) => (
+        {articles.map((a: OtherArticleItem) => (
           <Link key={a.id} href={`/articles/${a.slug}`} className="no-underline group">
-            <div className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#FAFAF8] transition-all">
-              <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 relative flex items-center justify-center"
-                style={{ background: '#FAECE7' }}>
+            <div className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-warm-hover transition-all">
+              <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 relative flex items-center justify-center bg-coral-tag-bg">
                 {a.cover_url
                   ? <Image src={a.cover_url} alt={a.title} fill className="object-cover" />
                   : <span style={{ fontSize: 16 }}>📖</span>
                 }
               </div>
-              <div className="text-xs font-semibold text-[#1A0F0A] line-clamp-2 group-hover:opacity-70 transition-opacity flex-1 min-w-0">
+              <div className="text-xs font-semibold text-text-primary line-clamp-2 group-hover:opacity-70 transition-opacity flex-1 min-w-0">
                 {a.title}
               </div>
             </div>
@@ -288,7 +336,7 @@ function OtherArticles({ articles, institutionName }: { articles: any[]; institu
 }
 
 /* ── Data ── */
-async function getArticle(slug: string) {
+async function getArticle(slug: string): Promise<ArticleDetail | null> {
   const supabase = await createClient()
   const { data: article } = await supabase
     .from('articles')
@@ -303,7 +351,8 @@ async function getArticle(slug: string) {
 
   if (!article) return null
 
-  const inst = article.institution as any
+  const result = article as unknown as ArticleDetail
+  const inst = result.institution
   if (inst?.id) {
     const { data: others } = await supabase
       .from('articles')
@@ -313,8 +362,8 @@ async function getArticle(slug: string) {
       .neq('slug', slug)
       .order('published_at', { ascending: false })
       .limit(3)
-    if (others?.length) inst.otherArticles = others
+    if (others?.length) inst.otherArticles = others as OtherArticleItem[]
   }
 
-  return article
+  return result
 }

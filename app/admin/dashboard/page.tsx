@@ -3,6 +3,17 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
+import type { Animal, RescueCase, AdoptionApplication, Fundraiser, Volunteer } from '@/types/database'
+
+type AnimalRow = Pick<Animal, 'adoption_status' | 'intake_date' | 'created_at'>
+type RescueCaseRow = Pick<RescueCase, 'status' | 'intake_date' | 'created_at'>
+type AnimalOrRescueRow = AnimalRow | RescueCaseRow
+type ApplicationRow = Pick<AdoptionApplication, 'status' | 'created_at'>
+type FundraiserRow = Pick<Fundraiser, 'title' | 'goal_amount' | 'current_amount' | 'active'>
+type VolunteerRow = Pick<Volunteer, 'status'>
+type LongStayAnimalRow = Pick<Animal, 'id' | 'name' | 'intake_date'>
+type LongStayRescueRow = Pick<RescueCase, 'id' | 'name' | 'case_number' | 'intake_date'>
+type LongStayRow = LongStayAnimalRow | LongStayRescueRow
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -51,32 +62,32 @@ export default async function DashboardPage() {
         : service.from('rescue_cases').select('id, name, case_number, intake_date').eq('institution_id', institution.id).in('status', ['intake', 'treatment', 'rehabilitation']).lt('intake_date', longStayDate).order('intake_date', { ascending: true }).limit(5),
     ])
 
-  const animals      = (animalsData.data    ?? []) as any[]
-  const applications = ((applicationsData as any).data ?? []) as any[]
-  const fundraisers  = (fundraisersData.data ?? []) as any[]
-  const volunteers   = (volunteersData.data  ?? []) as any[]
-  const longStay     = (longStayData.data    ?? []) as any[]
+  const animals      = (animalsData.data    ?? []) as AnimalOrRescueRow[]
+  const applications = ((applicationsData as { data: ApplicationRow[] | null }).data ?? []) as ApplicationRow[]
+  const fundraisers  = (fundraisersData.data ?? []) as FundraiserRow[]
+  const volunteers   = (volunteersData.data  ?? []) as VolunteerRow[]
+  const longStay     = (longStayData.data    ?? []) as LongStayRow[]
 
   // Aktuální statistiky
   const availableAnimals = isShelter
-    ? animals.filter((a: any) => a.adoption_status === 'available').length
-    : animals.filter((a: any) => ['intake', 'treatment', 'rehabilitation'].includes(a.status)).length
+    ? animals.filter((a) => 'adoption_status' in a && a.adoption_status === 'available').length
+    : animals.filter((a) => 'status' in a && ['intake', 'treatment', 'rehabilitation'].includes(a.status)).length
 
   const adoptedTotal = isShelter
-    ? animals.filter((a: any) => a.adoption_status === 'adopted').length
-    : animals.filter((a: any) => a.status === 'released').length
+    ? animals.filter((a) => 'adoption_status' in a && a.adoption_status === 'adopted').length
+    : animals.filter((a) => 'status' in a && a.status === 'released').length
 
   // Tento měsíc
-  const newThisMonth = animals.filter((a: any) =>
+  const newThisMonth = animals.filter((a) =>
     new Date(a.intake_date ?? a.created_at) >= new Date(thisMonthStart)
   ).length
 
   const adoptedThisMonth = isShelter
-    ? applications.filter((a: any) => a.status === 'adopted' && new Date(a.created_at) >= new Date(thisMonthStart)).length
-    : animals.filter((a: any) => a.status === 'released' && new Date(a.created_at) >= new Date(thisMonthStart)).length
+    ? applications.filter((a) => a.status === 'adopted' && new Date(a.created_at) >= new Date(thisMonthStart)).length
+    : animals.filter((a) => 'status' in a && a.status === 'released' && new Date(a.created_at) >= new Date(thisMonthStart)).length
 
   // Minulý měsíc (pro trend)
-  const newLastMonth = animals.filter((a: any) => {
+  const newLastMonth = animals.filter((a) => {
     const d = new Date(a.intake_date ?? a.created_at)
     return d >= new Date(lastMonthStart) && d < new Date(thisMonthStart)
   }).length
@@ -87,18 +98,18 @@ export default async function DashboardPage() {
 
   // Průměrná délka pobytu (adoptovaná zvířata)
   const avgStayDays = (() => {
-    const withIntake = animals.filter((a: any) => a.intake_date)
+    const withIntake = animals.filter((a): a is AnimalOrRescueRow & { intake_date: string } => a.intake_date !== null)
     if (!withIntake.length) return null
-    const totalDays = withIntake.reduce((sum: number, a: any) => {
+    const totalDays = withIntake.reduce((sum: number, a) => {
       const days = Math.floor((now.getTime() - new Date(a.intake_date).getTime()) / (1000 * 60 * 60 * 24))
       return sum + days
     }, 0)
     return Math.round(totalDays / withIntake.length)
   })()
 
-  const pendingApplications = applications.filter((a: any) => a.status === 'pending').length
-  const activeVolunteers    = volunteers.filter((v: any) => v.status === 'active').length
-  const pendingVolunteers   = volunteers.filter((v: any) => v.status === 'pending').length
+  const pendingApplications = applications.filter((a) => a.status === 'pending').length
+  const activeVolunteers    = volunteers.filter((v) => v.status === 'active').length
+  const pendingVolunteers   = volunteers.filter((v) => v.status === 'pending').length
 
   return (
     <div>
@@ -216,17 +227,17 @@ export default async function DashboardPage() {
             </Link>
           </div>
           <div className="space-y-2">
-            {longStay.map((a: any) => {
-              const days = Math.floor((now.getTime() - new Date(a.intake_date).getTime()) / (1000 * 60 * 60 * 24))
+            {longStay.map((a) => {
+              const days = Math.floor((now.getTime() - new Date(a.intake_date!).getTime()) / (1000 * 60 * 60 * 24))
               return (
                 <Link key={a.id} href={`/admin/animals/${a.id}`} className="no-underline">
                   <div className="flex items-center justify-between bg-white rounded-md px-4 py-2.5 hover:shadow-sm transition-all">
                     <span className="font-display font-bold text-sm text-espresso">
-                      {a.name ?? a.case_number}
+                      {a.name ?? ('case_number' in a ? a.case_number : null)}
                     </span>
                     <div className="flex items-center gap-3">
                       <span className="text-xs text-gray">
-                        od {new Date(a.intake_date).toLocaleDateString('cs-CZ')}
+                        od {new Date(a.intake_date!).toLocaleDateString('cs-CZ')}
                       </span>
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-pill text-xs font-bold
                         ${days > 180 ? 'bg-coral text-white' : 'bg-amber text-espresso'}`}>
@@ -251,7 +262,7 @@ export default async function DashboardPage() {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {fundraisers.map((f: any) => {
+            {fundraisers.map((f) => {
               const percent   = Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100)
               const barColor  = isShelter ? 'bg-coral' : 'bg-rescue'
               return (

@@ -4,9 +4,10 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from '@/components/ui/Button'
 import { createClient } from '@/lib/supabase/client'
+import type { Institution } from '@/types/database'
 
 interface SettingsFormProps {
-  institution: any
+  institution: Institution
   userRole: string
 }
 
@@ -259,7 +260,7 @@ export function SettingsForm({ institution, userRole }: SettingsFormProps) {
                   <input
                     type="number"
                     step="0.000001"
-                    value={(form as any).lat ?? ''}
+                    value={form.lat ?? ''}
                     onChange={e => update('lat', e.target.value)}
                     placeholder="50.075538"
                     className={inputCls}
@@ -269,16 +270,16 @@ export function SettingsForm({ institution, userRole }: SettingsFormProps) {
                   <input
                     type="number"
                     step="0.000001"
-                    value={(form as any).lng ?? ''}
+                    value={form.lng ?? ''}
                     onChange={e => update('lng', e.target.value)}
                     placeholder="14.437801"
                     className={inputCls}
                   />
                 </Field>
               </div>
-              {(form as any).lat && (form as any).lng && (
+              {form.lat && form.lng && (
                 <a
-                  href={`https://www.google.com/maps?q=${(form as any).lat},${(form as any).lng}`}
+                  href={`https://www.google.com/maps?q=${form.lat},${form.lng}`}
                   target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-xs font-semibold text-coral mt-2 hover:opacity-70 transition-opacity"
                 >
@@ -302,8 +303,8 @@ export function SettingsForm({ institution, userRole }: SettingsFormProps) {
           </p>
 
           {/* Preview */}
-          <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-gray-pale mb-3 flex items-center justify-center text-3xl"
-            style={{ background: isShelter ? '#FAECE7' : '#E1F5EE' }}>
+          <div className={`relative w-24 h-24 rounded-xl overflow-hidden border-2 border-gray-pale mb-3 flex items-center justify-center text-3xl
+            ${isShelter ? 'bg-coral-tag-bg' : 'bg-rescue-tag-bg'}`}>
             {logoUrl
               ? <Image src={logoUrl} alt="Logo" fill className="object-cover" />
               : <span>{isShelter ? '🏠' : '🚑'}</span>
@@ -346,8 +347,8 @@ export function SettingsForm({ institution, userRole }: SettingsFormProps) {
           {/* Preview */}
           <div className="relative w-full h-20 rounded-xl overflow-hidden border-2 border-gray-pale mb-3 flex items-center justify-center"
             style={{ background: isShelter
-              ? 'linear-gradient(135deg, #2C1810, #E8634A)'
-              : 'linear-gradient(135deg, #1C2E28, #2E9E8F)' }}>
+              ? 'linear-gradient(135deg, var(--espresso), var(--coral))'
+              : 'linear-gradient(135deg, #1C2E28, var(--rescue))' }}>
             {coverUrl
               ? <Image src={coverUrl} alt="Cover" fill className="object-cover opacity-80" />
               : <span className="text-xs text-white/60 font-medium">Žádné cover foto</span>

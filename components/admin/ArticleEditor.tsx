@@ -3,12 +3,13 @@ import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { createClient } from '@/lib/supabase/client'
+import type { Article } from '@/types/database'
 
 interface ArticleEditorProps {
   institutionId: string
   institutionType: string
   mode: 'create' | 'edit'
-  article?: any
+  article?: Partial<Article> & { animal_id?: string; rescue_case_id?: string }
   animals?: { id: string; name: string }[]
   rescueCases?: { id: string; name: string | null; case_number: string | null }[]
 }
@@ -45,7 +46,7 @@ export function ArticleEditor({ institutionId, institutionType, mode, article, a
   const [error, setError]                   = useState<string | null>(null)
   const [saved, setSaved]                   = useState(false)
 
-  const update = (key: string, value: any) =>
+  const update = (key: string, value: string | boolean) =>
     setForm(prev => ({ ...prev, [key]: value }))
 
   const exec = (cmd: string, value?: string) => {
@@ -118,7 +119,7 @@ export function ArticleEditor({ institutionId, institutionType, mode, article, a
                          : article?.published_at ?? null,
     }
 
-    const url    = mode === 'create' ? '/api/articles' : `/api/articles/${article.id}`
+    const url    = mode === 'create' ? '/api/articles' : `/api/articles/${article!.id}`
     const method = mode === 'create' ? 'POST' : 'PUT'
 
     const res  = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -218,13 +219,13 @@ export function ArticleEditor({ institutionId, institutionType, mode, article, a
             data-placeholder="Začni psát svůj příběh..."
           />
           <style>{`
-            [contenteditable]:empty:before { content: attr(data-placeholder); color: #8B7355; pointer-events: none; }
-            [contenteditable] h2 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; color: #2C1810; margin: 1.5rem 0 0.5rem; }
-            [contenteditable] h3 { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; color: #2C1810; margin: 1.25rem 0 0.5rem; }
+            [contenteditable]:empty:before { content: attr(data-placeholder); color: var(--text-muted); pointer-events: none; }
+            [contenteditable] h2 { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; color: var(--espresso); margin: 1.5rem 0 0.5rem; }
+            [contenteditable] h3 { font-family: var(--font-display); font-size: 1.2rem; font-weight: 700; color: var(--espresso); margin: 1.25rem 0 0.5rem; }
             [contenteditable] p { margin: 0.75rem 0; }
             [contenteditable] ul, [contenteditable] ol { margin: 0.75rem 0; padding-left: 1.5rem; }
-            [contenteditable] blockquote { border-left: 4px solid #E8634A; padding: 0.5rem 1rem; margin: 1rem 0; background: #FDEAE6; border-radius: 0 8px 8px 0; font-style: italic; color: #6B3F1F; }
-            [contenteditable] a { color: #E8634A; text-decoration: underline; }
+            [contenteditable] blockquote { border-left: 4px solid var(--coral); padding: 0.5rem 1rem; margin: 1rem 0; background: var(--coral-light); border-radius: 0 8px 8px 0; font-style: italic; color: var(--brown); }
+            [contenteditable] a { color: var(--coral); text-decoration: underline; }
             [contenteditable] img { max-width: 100%; border-radius: 10px; }
           `}</style>
         </div>
@@ -334,7 +335,7 @@ export function ArticleEditor({ institutionId, institutionType, mode, article, a
           <button
             onClick={async () => {
               if (!confirm('Opravdu smazat článek?')) return
-              await fetch(`/api/articles/${article.id}`, { method: 'DELETE' })
+              await fetch(`/api/articles/${article!.id}`, { method: 'DELETE' })
               router.push('/admin/articles')
             }}
             className="w-full py-2.5 text-sm text-gray hover:text-coral transition-colors font-semibold cursor-pointer bg-transparent border-none"

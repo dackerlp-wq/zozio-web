@@ -47,28 +47,28 @@ export function AnimalFilter({ species, cities, params, total }: AnimalFilterPro
   const chip = (active: boolean) =>
     `inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-all
     ${active
-      ? 'border-[#E8634A] text-[#993C1D] bg-[#FAECE7]'
-      : 'border-[#F0EDE8] text-[#6B4030] bg-white hover:border-[#E8634A]/40'}`
+      ? 'border-coral text-coral-tag-text bg-coral-tag-bg'
+      : 'border-border text-text-body bg-white hover:border-coral/40'}`
 
-  const yesNoChip = (key: string, value: string, label: string, activeStyle?: React.CSSProperties) => {
+  const yesNoChip = (key: string, value: string, label: string, activeClassName?: string) => {
     const isActive = params[key] === value
     return (
       <button onClick={() => toggleFilter(key, value)}
-        className={`flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center`}
-        style={isActive
-          ? (activeStyle ?? { background: '#FAECE7', borderColor: '#E8634A', color: '#993C1D' })
-          : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
-        }>
+        className={`flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center ${
+          isActive
+            ? (activeClassName ?? 'bg-coral-tag-bg border-coral text-coral-tag-text')
+            : 'bg-white border-border text-text-body'
+        }`}>
         {label}
       </button>
     )
   }
 
-  const divider = <div className="h-px bg-[#F0EDE8] my-4" />
+  const divider = <div className="h-px bg-border my-4" />
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="mb-4">
-      <span className="text-[10px] font-bold uppercase tracking-widest mb-2 block" style={{ color: '#8B6550' }}>
+      <span className="text-[10px] font-bold uppercase tracking-widest mb-2 block text-text-muted">
         {title}
       </span>
       {children}
@@ -76,21 +76,19 @@ export function AnimalFilter({ species, cities, params, total }: AnimalFilterPro
   )
 
   const filterPanel = (
-    <div className="bg-white rounded-2xl border border-[#F0EDE8] p-4">
+    <div className="bg-white rounded-2xl border border-border p-4">
 
       {/* Search */}
       <form onSubmit={handleSearch} className="mb-4">
-        <div className="flex items-center gap-0 border rounded-lg overflow-hidden"
-          style={{ borderColor: '#E0DDD8', background: '#FAFAF8' }}>
+        <div className="flex items-center gap-0 border rounded-lg overflow-hidden border-border bg-warm-hover">
           <input
             type="search" value={q} onChange={e => setQ(e.target.value)}
             placeholder="Jméno, plemeno..."
-            className="flex-1 px-3 py-2 text-sm outline-none bg-transparent"
-            style={{ color: '#1A0F0A', minWidth: 0 }}
+            className="flex-1 px-3 py-2 text-sm outline-none bg-transparent text-text-primary"
+            style={{ minWidth: 0 }}
           />
           <button type="submit"
-            className="px-3 py-2 text-white text-sm border-none cursor-pointer hover:opacity-90 flex-shrink-0"
-            style={{ background: '#E8634A' }}>
+            className="px-3 py-2 text-white text-sm border-none cursor-pointer hover:opacity-90 flex-shrink-0 bg-coral">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M10 10l2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -104,11 +102,11 @@ export function AnimalFilter({ species, cities, params, total }: AnimalFilterPro
       {/* Urgentní */}
       <button
         onClick={() => toggleFilter('urgent', 'true')}
-        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm font-semibold cursor-pointer transition-all mb-4"
-        style={params.urgent === 'true'
-          ? { background: '#FAECE7', borderColor: '#E8634A', color: '#993C1D' }
-          : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
-        }>
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm font-semibold cursor-pointer transition-all mb-4 ${
+          params.urgent === 'true'
+            ? 'bg-coral-tag-bg border-coral text-coral-tag-text'
+            : 'bg-white border-border text-text-body'
+        }`}>
         <span>🆘</span>
         Urgentní adopce
         {params.urgent === 'true' && <span className="ml-auto text-[10px]">✓</span>}
@@ -136,19 +134,19 @@ export function AnimalFilter({ species, cities, params, total }: AnimalFilterPro
       <Section title="Vhodný pro">
         <div className="flex gap-2">
           <button onClick={() => toggleFilter('housing', 'flat')}
-            className="flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center"
-            style={params.housing === 'flat'
-              ? { background: '#FAECE7', borderColor: '#E8634A', color: '#993C1D' }
-              : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
-            }>
+            className={`flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center ${
+              params.housing === 'flat'
+                ? 'bg-coral-tag-bg border-coral text-coral-tag-text'
+                : 'bg-white border-border text-text-body'
+            }`}>
             🏢 Byt
           </button>
           <button onClick={() => toggleFilter('housing', 'house')}
-            className="flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center"
-            style={params.housing === 'house'
-              ? { background: '#FAECE7', borderColor: '#E8634A', color: '#993C1D' }
-              : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
-            }>
+            className={`flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center ${
+              params.housing === 'house'
+                ? 'bg-coral-tag-bg border-coral text-coral-tag-text'
+                : 'bg-white border-border text-text-body'
+            }`}>
             🏡 Dům/zahrada
           </button>
         </div>
@@ -161,20 +159,20 @@ export function AnimalFilter({ species, cities, params, total }: AnimalFilterPro
         <div className="space-y-2">
           {/* Děti */}
           <div>
-            <div className="text-[10px] font-medium mb-1.5" style={{ color: '#8B6550' }}>S dětmi</div>
+            <div className="text-[10px] font-medium mb-1.5 text-text-muted">S dětmi</div>
             <div className="flex gap-2">
-              {yesNoChip('kids', 'yes', '✓ Ano', { background: '#EAF3DE', borderColor: '#BDE8D0', color: '#1D6A42' })}
-              {yesNoChip('kids', 'no',  '✗ Ne',  { background: '#FAECE7', borderColor: '#F5C4B3', color: '#993C1D' })}
+              {yesNoChip('kids', 'yes', '✓ Ano', 'bg-success-tag-bg border-[#BDE8D0] text-[#1D6A42]')}
+              {yesNoChip('kids', 'no',  '✗ Ne',  'bg-coral-tag-bg border-[#F5C4B3] text-coral-tag-text')}
               {yesNoChip('kids', 'any', 'Nezáleží')}
             </div>
           </div>
 
           {/* Jiná zvířata */}
           <div>
-            <div className="text-[10px] font-medium mb-1.5" style={{ color: '#8B6550' }}>S jinými zvířaty</div>
+            <div className="text-[10px] font-medium mb-1.5 text-text-muted">S jinými zvířaty</div>
             <div className="flex gap-2">
-              {yesNoChip('other_animals', 'yes', '✓ Ano', { background: '#EAF3DE', borderColor: '#BDE8D0', color: '#1D6A42' })}
-              {yesNoChip('other_animals', 'no',  '✗ Ne',  { background: '#FAECE7', borderColor: '#F5C4B3', color: '#993C1D' })}
+              {yesNoChip('other_animals', 'yes', '✓ Ano', 'bg-success-tag-bg border-[#BDE8D0] text-[#1D6A42]')}
+              {yesNoChip('other_animals', 'no',  '✗ Ne',  'bg-coral-tag-bg border-[#F5C4B3] text-coral-tag-text')}
               {yesNoChip('other_animals', 'any', 'Nezáleží')}
             </div>
           </div>
@@ -193,15 +191,15 @@ export function AnimalFilter({ species, cities, params, total }: AnimalFilterPro
             { value: 'very_high', label: '⚡ Velmi vysoká',  sub: 'Intenzivní sport' },
           ].map(({ value, label, sub }) => (
             <button key={value} onClick={() => toggleFilter('activity', value)}
-              className="text-left p-2.5 rounded-xl border cursor-pointer transition-all"
-              style={params.activity === value
-                ? { background: '#FAECE7', borderColor: '#E8634A' }
-                : { background: 'white', borderColor: '#F0EDE8' }
-              }>
-              <div className="text-xs font-bold" style={{ color: params.activity === value ? '#993C1D' : '#1A0F0A' }}>
+              className={`text-left p-2.5 rounded-xl border cursor-pointer transition-all ${
+                params.activity === value
+                  ? 'bg-coral-tag-bg border-coral'
+                  : 'bg-white border-border'
+              }`}>
+              <div className={`text-xs font-bold ${params.activity === value ? 'text-coral-tag-text' : 'text-text-primary'}`}>
                 {label}
               </div>
-              <div className="text-[10px] mt-0.5" style={{ color: '#8B6550' }}>{sub}</div>
+              <div className="text-[10px] mt-0.5 text-text-muted">{sub}</div>
             </button>
           ))}
         </div>
@@ -219,15 +217,15 @@ export function AnimalFilter({ species, cities, params, total }: AnimalFilterPro
             { value: 'expert',    label: '⭐⭐⭐⭐ Expert',  sub: 'Odborná péče' },
           ].map(({ value, label, sub }) => (
             <button key={value} onClick={() => toggleFilter('difficulty', value)}
-              className="text-left p-2.5 rounded-xl border cursor-pointer transition-all"
-              style={params.difficulty === value
-                ? { background: '#FAECE7', borderColor: '#E8634A' }
-                : { background: 'white', borderColor: '#F0EDE8' }
-              }>
-              <div className="text-xs font-bold" style={{ color: params.difficulty === value ? '#993C1D' : '#1A0F0A' }}>
+              className={`text-left p-2.5 rounded-xl border cursor-pointer transition-all ${
+                params.difficulty === value
+                  ? 'bg-coral-tag-bg border-coral'
+                  : 'bg-white border-border'
+              }`}>
+              <div className={`text-xs font-bold ${params.difficulty === value ? 'text-coral-tag-text' : 'text-text-primary'}`}>
                 {label}
               </div>
-              <div className="text-[10px] mt-0.5" style={{ color: '#8B6550' }}>{sub}</div>
+              <div className="text-[10px] mt-0.5 text-text-muted">{sub}</div>
             </button>
           ))}
         </div>
@@ -262,13 +260,13 @@ export function AnimalFilter({ species, cities, params, total }: AnimalFilterPro
           <div className="flex flex-col gap-0.5">
             <button onClick={() => setFilter('city', undefined)}
               className={`text-left px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all
-                ${!params.city ? 'text-[#993C1D] bg-[#FAECE7]' : 'text-[#6B4030] hover:bg-[#FAFAF8]'}`}>
+                ${!params.city ? 'text-coral-tag-text bg-coral-tag-bg' : 'text-text-body hover:bg-warm-hover'}`}>
               Celá ČR a SR
             </button>
             {cities.map(city => (
               <button key={city} onClick={() => setFilter('city', params.city === city ? undefined : city)}
                 className={`text-left px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all
-                  ${params.city === city ? 'text-[#993C1D] bg-[#FAECE7]' : 'text-[#6B4030] hover:bg-[#FAFAF8]'}`}>
+                  ${params.city === city ? 'text-coral-tag-text bg-coral-tag-bg' : 'text-text-body hover:bg-warm-hover'}`}>
                 {city}
               </button>
             ))}
@@ -281,8 +279,7 @@ export function AnimalFilter({ species, cities, params, total }: AnimalFilterPro
         <>
           {divider}
           <button onClick={clearAll}
-            className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all hover:opacity-80"
-            style={{ background: '#F0EDE8', color: '#6B4030' }}>
+            className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all hover:opacity-80 bg-border text-text-body">
             Zrušit všechny filtry ({activeCount})
           </button>
         </>
@@ -301,8 +298,7 @@ export function AnimalFilter({ species, cities, params, total }: AnimalFilterPro
       <div className="lg:hidden">
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border font-semibold text-sm cursor-pointer transition-all"
-          style={{ background: 'white', borderColor: '#E0DDD8', color: '#1A0F0A' }}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border font-semibold text-sm cursor-pointer transition-all bg-white border-[#E0DDD8] text-text-primary"
         >
           <span className="flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -310,13 +306,12 @@ export function AnimalFilter({ species, cities, params, total }: AnimalFilterPro
             </svg>
             Filtry
             {activeCount > 0 && (
-              <span className="w-5 h-5 rounded-full text-[10px] font-bold text-white flex items-center justify-center"
-                style={{ background: '#E8634A' }}>
+              <span className="w-5 h-5 rounded-full text-[10px] font-bold text-white flex items-center justify-center bg-coral">
                 {activeCount}
               </span>
             )}
           </span>
-          <span style={{ color: '#8B6550' }}>{mobileOpen ? '↑' : '↓'}</span>
+          <span className="text-text-muted">{mobileOpen ? '↑' : '↓'}</span>
         </button>
         {mobileOpen && <div className="mt-2">{filterPanel}</div>}
       </div>

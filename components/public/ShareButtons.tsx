@@ -32,7 +32,7 @@ export function ShareButtons({ url, title, text }: ShareButtonsProps) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#8B6550' }}>Sdílet:</span>
+      <span className="text-xs font-bold uppercase tracking-wider text-text-muted">Sdílet:</span>
 
       {/* Facebook */}
       <a
@@ -59,8 +59,7 @@ export function ShareButtons({ url, title, text }: ShareButtonsProps) {
       {/* Kopírovat odkaz */}
       <button
         onClick={handleCopy}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border-none hover:opacity-80 transition-opacity"
-        style={{ background: '#F0EDE8', color: '#6B4030' }}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border-none hover:opacity-80 transition-opacity bg-border text-text-body"
       >
         🔗 Kopírovat odkaz
       </button>
@@ -69,8 +68,7 @@ export function ShareButtons({ url, title, text }: ShareButtonsProps) {
       {canShare && (
         <button
           onClick={handleShare}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white cursor-pointer border-none hover:opacity-90 transition-opacity"
-          style={{ background: '#1A0F0A' }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white cursor-pointer border-none hover:opacity-90 transition-opacity bg-text-primary"
         >
           ↗ Sdílet
         </button>
