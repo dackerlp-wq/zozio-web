@@ -1,7 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
+import { createClient } from '@/lib/supabase/client'
 import type { Fundraiser } from '@/types/database'
 
 interface FundraiserFormProps {
@@ -30,11 +32,30 @@ export function FundraiserForm({
     rescue_case_id: fundraiser?.rescue_case_id ?? '',
   })
 
-  const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState<string | null>(null)
+  const [imageUrl, setImageUrl]         = useState<string>(fundraiser?.image_url ?? '')
+  const [imageUploading, setImageUploading] = useState(false)
+  const [loading, setLoading]           = useState(false)
+  const [error, setError]               = useState<string | null>(null)
+
+  const coverRef = useRef<HTMLInputElement>(null)
 
   const update = (key: string, value: string | boolean) =>
     setForm(prev => ({ ...prev, [key]: value }))
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageUploading(true)
+    const supabase = createClient()
+    const ext  = file.name.split('.').pop()
+    const path = `fundraisers/${institutionId}/${Date.now()}.${ext}`
+    const { error: uploadError } = await supabase.storage.from('animal-photos').upload(path, file, { upsert: true })
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage.from('animal-photos').getPublicUrl(path)
+      setImageUrl(publicUrl)
+    }
+    setImageUploading(false)
+  }
 
   const handleSubmit = async () => {
     if (!form.title || !form.goal_amount) {
@@ -54,6 +75,7 @@ export function FundraiserForm({
       active:          form.active,
       animal_id:       form.animal_id      || null,
       rescue_case_id:  form.rescue_case_id || null,
+      image_url:       imageUrl || null,
     }
 
     const url  = mode === 'create' ? '/api/fundraisers' : `/api/fundraisers/${fundraiser!.id}`
@@ -205,6 +227,31 @@ export function FundraiserForm({
           <p className="text-xs text-gray mt-2">
             Neaktivní sbírky se nezobrazují na veřejném webu.
           </p>
+        </div>
+
+        {/* Obrázek sbírky */}
+        <div className="bg-white rounded-lg p-5 border border-gray-pale shadow-sm">
+          <h3 className="font-display font-extrabold text-lg text-espresso mb-3">Obrázek sbírky</h3>
+          {imageUrl ? (
+            <div className="relative mb-3">
+              <div className="relative w-full h-40 rounded-md overflow-hidden">
+                <Image src={imageUrl} alt="Náhled sbírky" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 33vw" />
+              </div>
+              <button onClick={() => setImageUrl('')}
+                className="absolute top-2 right-2 w-7 h-7 bg-coral text-white rounded-full text-sm font-bold flex items-center justify-center cursor-pointer border-none">
+                ×
+              </button>
+            </div>
+          ) : (
+            <div className="w-full h-32 bg-sand rounded-md flex items-center justify-center text-gray text-sm mb-3">
+              Žádný obrázek
+            </div>
+          )}
+          <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+          <Button variant="sand" size="sm" className="w-full justify-center" loading={imageUploading}
+            onClick={() => coverRef.current?.click()}>
+            {imageUploading ? 'Nahrávám...' : '📷 Nahrát obrázek'}
+          </Button>
         </div>
 
         {/* Progress náhled */}

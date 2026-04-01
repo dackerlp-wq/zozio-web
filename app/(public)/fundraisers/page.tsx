@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { InstitutionType } from '@/types/database'
@@ -11,6 +12,7 @@ interface FundraiserListItem {
   goal_amount: number
   current_amount: number
   active: boolean
+  image_url: string | null
   institution: { name: string; slug: string; type: InstitutionType } | null
 }
 
@@ -86,20 +88,37 @@ function FundraiserCard({ f, finished = false }: { f: FundraiserListItem; finish
     <div className={`bg-white rounded-2xl border overflow-hidden ${finished ? 'opacity-70' : 'hover:-translate-y-1 transition-all'}`}
       style={{ borderColor: finished ? 'var(--border)' : 'rgba(232,99,74,0.15)' }}>
 
+      {/* Cover image */}
+      <div className="relative h-[180px] w-full">
+        {f.image_url ? (
+          <Image
+            src={f.image_url}
+            alt={f.title}
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          />
+        ) : (
+          <div
+            className="absolute inset-0 flex items-center justify-center text-5xl"
+            style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${accent} 15%, var(--warm)), color-mix(in srgb, ${accent} 30%, var(--warm)))` }}
+          >
+            {isShelter ? '🐾' : '💰'}
+          </div>
+        )}
+      </div>
+
       <div className="p-5">
         {/* Hlavička */}
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="flex-1 min-w-0">
-            <div className="font-bold text-text-primary leading-tight mb-1">{f.title}</div>
-            {institution && (
-              <Link href={`/institutions/${institution.slug}`}
-                className="text-xs no-underline hover:opacity-70 font-medium"
-                style={{ color: accent }}>
-                {institution.name}
-              </Link>
-            )}
-          </div>
-          <span className="text-2xl flex-shrink-0">{isShelter ? '🐾' : '🦉'}</span>
+        <div className="mb-4">
+          <div className="font-bold text-text-primary leading-tight mb-1">{f.title}</div>
+          {institution && (
+            <Link href={`/institutions/${institution.slug}`}
+              className="text-xs no-underline hover:opacity-70 font-medium"
+              style={{ color: accent }}>
+              {institution.name}
+            </Link>
+          )}
         </div>
 
         {/* Popis */}
@@ -138,7 +157,7 @@ async function getFundraisers() {
   const supabase = await createClient()
   const { data } = await supabase
     .from('fundraisers')
-    .select('id, title, description, goal_amount, current_amount, active, institution:institutions(name, slug, type)')
+    .select('id, title, description, goal_amount, current_amount, active, image_url, institution:institutions(name, slug, type)')
     .order('active', { ascending: false })
     .order('created_at', { ascending: false })
   return (data ?? []) as unknown as FundraiserListItem[]

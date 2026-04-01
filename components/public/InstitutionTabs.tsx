@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import type { Institution, Animal, AnimalSpecies, RescueCase, Fundraiser, Article } from '@/types/database'
+import { InstitutionMap } from '@/components/public/InstitutionMap'
 
 interface Tab { id: string; label: string; count: number | null }
 
@@ -243,39 +244,21 @@ export function InstitutionTabs({
                 </div>
               </div>
             ))}
-
-            {/* Google Maps odkaz */}
-            {i.lat && i.lng && (
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${i.lat},${i.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm text-white no-underline hover:opacity-90 transition-all"
-                style={{ background: isShelter ? 'var(--coral)' : 'var(--rescue)' }}
-              >
-                🗺️ Navigovat v Google Maps
-              </a>
-            )}
           </div>
 
           {/* Mapa */}
           {i.lat && i.lng ? (
             <div>
-              <h2 className="font-bold text-xl text-text-primary mb-5">Kde nás najdete</h2>
-              <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
-                <iframe
-                  src={`https://frame.mapy.cz/zakladni?x=${i.lng}&y=${i.lat}&z=15&source=coor&id=${i.lng}%2C${i.lat}`}
-                  width="100%"
-                  height="320"
-                  style={{ border: 'none', display: 'block' }}
-                  title={`Mapa — ${i.name}`}
-                  loading="lazy"
-                  allowFullScreen
-                />
-              </div>
+              <h2 className="font-bold text-xl text-text-primary mb-5">📍 Kde nás najdete</h2>
+              <InstitutionMap
+                lat={i.lat}
+                lng={i.lng}
+                name={i.name}
+                city={i.city}
+              />
             </div>
           ) : (
-            <div className="flex items-center justify-center h-48 rounded-2xl border border-dashed border-[#E0DDD8]">
+            <div className="flex items-center justify-center h-48 rounded-2xl border border-dashed border-border">
               <p className="text-sm text-center text-text-muted">
                 Mapa není k dispozici.<br />
                 <span className="text-xs">Správce musí doplnit souřadnice.</span>

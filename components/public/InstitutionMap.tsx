@@ -1,13 +1,14 @@
 'use client'
 
 interface InstitutionMapProps {
-  lat:  number
-  lng:  number
-  name: string
-  city: string
+  lat:       number
+  lng:       number
+  name:      string
+  city:      string
+  className?: string
 }
 
-export function InstitutionMap({ lat, lng, name, city }: InstitutionMapProps) {
+export function InstitutionMap({ lat, lng, name, city, className = '' }: InstitutionMapProps) {
   // Mapy.cz embed — funguje v ČR bez API klíče
   const mapyCzUrl = `https://frame.mapy.cz/zakladni?x=${lng}&y=${lat}&z=15&source=coor&id=${lng}%2C${lat}`
 
@@ -15,12 +16,12 @@ export function InstitutionMap({ lat, lng, name, city }: InstitutionMapProps) {
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
 
   return (
-    <div className="mt-4">
-      <div className="rounded-lg overflow-hidden border border-gray-pale shadow-sm">
+    <div className={className}>
+      <div className="rounded-2xl overflow-hidden border border-border shadow-sm h-[180px] md:h-[240px]">
         <iframe
           src={mapyCzUrl}
           width="100%"
-          height="220"
+          height="100%"
           style={{ border: 'none', display: 'block' }}
           title={`Mapa — ${name}`}
           loading="lazy"
