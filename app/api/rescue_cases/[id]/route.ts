@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
+const ALLOWED_COLUMNS = new Set([
+  'name', 'species_id', 'case_number', 'sex', 'estimated_age', 'status',
+  'health_status', 'intake_date', 'release_date', 'found_location', 'found_date',
+  'found_by', 'cause_of_injury', 'diagnosis', 'treatment_notes', 'vet_name',
+  'public_description', 'photos', 'primary_photo', 'published', 'institution_id',
+])
+
+function sanitizePayload(body: Record<string, unknown>): Record<string, unknown> {
+  const payload: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(body)) {
+    if (!ALLOWED_COLUMNS.has(key)) continue
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) continue
+    payload[key] = value
+  }
+  return payload
+}
+
 async function checkAccess(userId: string, caseId: string, service: ReturnType<typeof createServiceClient>) {
   const { data: rc } = await service
     .from('rescue_cases')
@@ -35,7 +52,8 @@ export async function PUT(
     const rc = await checkAccess(user.id, id, service)
     if (!rc) return NextResponse.json({ error: 'Nemáš přístup' }, { status: 403 })
 
-    const body = await request.json()
+    const raw = await request.json()
+    const body = sanitizePayload(raw)
     const { error } = await service
       .from('rescue_cases')
       .update({ ...body, updated_at: new Date().toISOString() })
