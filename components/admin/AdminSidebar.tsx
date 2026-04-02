@@ -28,7 +28,8 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
     ...(isShelter ? [{ href: '/admin/applications', icon: '📋', label: 'Žádosti o adopci' }] : []),
     { href: '/admin/fundraisers',  icon: '💛', label: 'Sbírky' },
     { href: '/admin/volunteers',   icon: '🙋', label: 'Dobrovolníci' },
-    { href: '/admin/articles', icon: '📝', label: 'Články' },
+    { href: '/admin/articles',    icon: '📝', label: 'Články' },
+    { href: '/admin/newsletter',  icon: '📬', label: 'Newsletter' },
     { href: '/admin/settings',     icon: '⚙️', label: 'Nastavení' },
   ]
 
@@ -36,6 +37,7 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
     { href: '/superadmin',              icon: '🔐', label: 'Superadmin' },
     { href: '/superadmin/institutions', icon: '🏢', label: 'Instituce' },
     { href: '/superadmin/users',        icon: '👥', label: 'Uživatelé' },
+    { href: '/superadmin/newsletter',   icon: '📬', label: 'Newsletter' },
   ]
 
   const SidebarContent = () => (

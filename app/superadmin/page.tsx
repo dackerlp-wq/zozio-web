@@ -69,7 +69,7 @@ export default async function SuperadminPage() {
         </div>
 
         {/* Rychlé akce */}
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-4 gap-5">
           <SuperAction
             href="/superadmin/institutions?filter=pending"
             icon="🔍"
@@ -88,6 +88,12 @@ export default async function SuperadminPage() {
             icon="👥"
             title="Uživatelé"
             desc={`${totalUsers} registrovaných uživatelů`}
+          />
+          <SuperAction
+            href="/superadmin/newsletter"
+            icon="📬"
+            title="Newsletter"
+            desc="Globální odběratelé a odesílání"
           />
         </div>
       </div>
