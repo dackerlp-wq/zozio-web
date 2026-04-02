@@ -36,11 +36,29 @@ export async function POST(request: NextRequest) {
 
     const { data: institution } = await service
       .from('institutions')
-      .select('name, type, slug')
+      .select('name, type, slug, newsletter_week_sent_at, newsletter_month_sent_at')
       .eq('id', institution_id)
       .single()
 
     if (!institution) return NextResponse.json({ error: 'Instituce nenalezena' }, { status: 404 })
+
+    // Kontrola cooldownu
+    const cooldownDays = period === 'week' ? 7 : 30
+    const lastSentAt = period === 'week'
+      ? (institution as any).newsletter_week_sent_at
+      : (institution as any).newsletter_month_sent_at
+
+    if (lastSentAt) {
+      const daysSince = (Date.now() - new Date(lastSentAt).getTime()) / (1000 * 60 * 60 * 24)
+      if (daysSince < cooldownDays) {
+        const nextAvailable = new Date(lastSentAt)
+        nextAvailable.setDate(nextAvailable.getDate() + cooldownDays)
+        return NextResponse.json(
+          { error: 'Příliš brzy', nextAvailableAt: nextAvailable.toISOString() },
+          { status: 429 }
+        )
+      }
+    }
 
     const isShelter = institution.type === 'shelter'
     const periodLabel = period === 'week' ? 'tento týden' : 'tento měsíc'
@@ -160,6 +178,13 @@ export async function POST(request: NextRequest) {
       await resend.batch.send(emails.slice(i, i + BATCH))
       sent += Math.min(BATCH, emails.length - i)
     }
+
+    // Ulož čas posledního odeslání
+    const col = period === 'week' ? 'newsletter_week_sent_at' : 'newsletter_month_sent_at'
+    await service
+      .from('institutions')
+      .update({ [col]: new Date().toISOString() })
+      .eq('id', institution_id)
 
     return NextResponse.json({ success: true, sent })
   } catch (error) {

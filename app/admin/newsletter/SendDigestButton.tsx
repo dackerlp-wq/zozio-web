@@ -6,9 +6,16 @@ interface Props {
   period: 'week' | 'month'
   subscriberCount: number
   label: string
+  lastSentAt: string | null
 }
 
-export function SendDigestButton({ institutionId, period, subscriberCount, label }: Props) {
+function getNextAvailable(lastSentAt: string, cooldownDays: number): Date {
+  const d = new Date(lastSentAt)
+  d.setDate(d.getDate() + cooldownDays)
+  return d
+}
+
+export function SendDigestButton({ institutionId, period, subscriberCount, label, lastSentAt }: Props) {
   const [state,   setState]   = useState<'idle' | 'confirm' | 'loading' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
 
@@ -16,6 +23,25 @@ export function SendDigestButton({ institutionId, period, subscriberCount, label
     return (
       <span className="text-xs text-gray font-semibold">Žádní odběratelé</span>
     )
+  }
+
+  // Zkontroluj cooldown
+  const cooldownDays = period === 'week' ? 7 : 30
+  if (lastSentAt) {
+    const daysSince = (Date.now() - new Date(lastSentAt).getTime()) / (1000 * 60 * 60 * 24)
+    if (daysSince < cooldownDays) {
+      const nextAvailable = getNextAvailable(lastSentAt, cooldownDays)
+      return (
+        <div className="space-y-1">
+          <div className="text-xs text-gray font-semibold">
+            ✅ Odesláno {new Date(lastSentAt).toLocaleDateString('cs-CZ')}
+          </div>
+          <div className="text-xs font-semibold" style={{ color: '#F0A500' }}>
+            ⏳ Příští odeslání od {nextAvailable.toLocaleDateString('cs-CZ')}
+          </div>
+        </div>
+      )
+    }
   }
 
   const handleClick = async () => {

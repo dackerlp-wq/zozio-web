@@ -20,7 +20,7 @@ export default async function AdminNewsletterPage() {
 
   const { data: institution } = await service
     .from('institutions')
-    .select('id, name, type')
+    .select('id, name, type, newsletter_week_sent_at, newsletter_month_sent_at')
     .eq('id', membership.institution_id)
     .single()
 
@@ -77,6 +77,7 @@ export default async function AdminNewsletterPage() {
             period="week"
             subscriberCount={list.length}
             label="Odeslat za poslední týden"
+            lastSentAt={(institution as any).newsletter_week_sent_at ?? null}
           />
         </div>
 
@@ -91,6 +92,7 @@ export default async function AdminNewsletterPage() {
             period="month"
             subscriberCount={list.length}
             label="Odeslat za poslední měsíc"
+            lastSentAt={(institution as any).newsletter_month_sent_at ?? null}
           />
         </div>
       </div>
