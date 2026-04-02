@@ -9,6 +9,69 @@ import {
   HEALTH_STATUS_LABEL, INTAKE_REASON_LABEL, SIZE_LABEL,
 } from '@/lib/animal-labels'
 
+// ── Diff helpers ─────────────────────────────────────────────────────────────
+const SHELTER_LABELS: Record<string, string> = {
+  name: 'Jméno', sex: 'Pohlaví', birth_year: 'Rok narození',
+  size: 'Velikost', breed: 'Plemeno', color: 'Barva', weight_kg: 'Váha (kg)',
+  adoption_status: 'Stav adopce', urgent: 'Urgentní', adoption_fee: 'Poplatek (Kč)',
+  vaccinated: 'Očkováno', neutered: 'Kastrováno', microchipped: 'Čipováno',
+  chip_number: 'Číslo čipu', chip_date: 'Datum čipování', passport_number: 'Číslo pasu',
+  in_quarantine: 'Karanténa', quarantine_until: 'Karanténa do', quarantine_reason: 'Důvod karantény',
+  in_foster: 'Foster péče', foster_name: 'Foster osoba', foster_phone: 'Foster tel.',
+  foster_since: 'Foster od', vet_name: 'Veterinář', vet_phone: 'Vet. tel.',
+  last_vet_visit: 'Poslední návštěva', medications: 'Léky', medical_notes: 'Zdrav. poznámky',
+  good_with_kids: 'Vychází s dětmi', good_with_dogs: 'Vychází se psy',
+  good_with_cats: 'Vychází s kočkami', good_with_other_animals: 'Vychází se zvířaty',
+  special_needs: 'Speciální potřeby', activity_level: 'Aktivita', care_difficulty: 'Náročnost péče',
+  suitable_for_flat: 'Vhodný do bytu', suitable_for_house: 'Vhodný do domu',
+  found_location: 'Místo nálezu', found_date: 'Datum nálezu', finder_name: 'Nálezce',
+  finder_phone: 'Nálezce tel.', previous_owner: 'Předchozí majitel',
+  previous_owner_phone: 'Předchozí maj. tel.', published: 'Zveřejněno',
+  description: 'Popis', internal_notes: 'Interní poznámky', staff_assigned: 'Zodpovědný',
+}
+
+const RESCUE_LABELS: Record<string, string> = {
+  name: 'Jméno', case_number: 'Číslo případu', sex: 'Pohlaví',
+  estimated_age: 'Odhadovaný věk', status: 'Stav léčby', health_status: 'Zdravotní stav',
+  cause_of_injury: 'Příčina zranění', diagnosis: 'Diagnóza', treatment_notes: 'Léčba',
+  medical_notes: 'Zdrav. poznámky', public_description: 'Veřejný popis',
+  found_location: 'Místo nálezu', found_date: 'Datum nálezu', found_by: 'Nálezce',
+  vet_name: 'Veterinář', intake_date: 'Datum příjmu', published: 'Zveřejněno',
+}
+
+type DiffEntry = { f: string; l: string; o: string; n: string }
+
+function fmtDiffVal(v: unknown, field: string): string {
+  if (v === null || v === undefined || v === '') return '—'
+  if (typeof v === 'boolean') return v ? 'Ano' : 'Ne'
+  const s = String(v)
+  if (field === 'adoption_status') return ADOPTION_STATUS_LABEL[s] ?? s
+  if (field === 'status') return RESCUE_STATUS_LABEL[s] ?? s
+  if (field === 'health_status') return HEALTH_STATUS_LABEL[s] ?? s
+  if (s.length > 60) return s.slice(0, 60) + '…'
+  return s
+}
+
+function computeDiff(
+  original: Record<string, unknown> | undefined | null,
+  payload: Record<string, unknown>,
+  labels: Record<string, string>
+): DiffEntry[] {
+  if (!original) return []
+  const SKIP = new Set(['institution_id', 'photos', 'primary_photo', 'species_id'])
+  const result: DiffEntry[] = []
+  for (const [key, newVal] of Object.entries(payload)) {
+    if (SKIP.has(key) || !(key in labels)) continue
+    const oldVal = original[key] ?? null
+    const isEmpty = (v: unknown) => v === null || v === undefined || v === ''
+    if (isEmpty(oldVal) && isEmpty(newVal)) continue
+    if (isEmpty(oldVal) && newVal === false) continue
+    if (String(oldVal ?? '') === String(newVal ?? '')) continue
+    result.push({ f: key, l: labels[key], o: fmtDiffVal(oldVal, key), n: fmtDiffVal(newVal, key) })
+  }
+  return result
+}
+
 interface AnimalFormProps {
   institutionId: string
   institutionType: string
@@ -238,6 +301,14 @@ export function AnimalForm({
     // Zaznamenej do historie — VŽDY při uložení (ne jen při změně stavu)
     const animalId = mode === 'create' ? data.id : animal.id
 
+    // Compute diff between original and saved payload
+    const diffEntries = mode === 'edit'
+      ? computeDiff(animal as Record<string, unknown>, payload as Record<string, unknown>, isShelter ? SHELTER_LABELS : RESCUE_LABELS)
+      : []
+    const structuredNote = (diffEntries.length > 0 || changeNote)
+      ? JSON.stringify({ v: 1, diff: diffEntries, note: changeNote || null })
+      : null
+
     await fetch('/api/animal-status-history', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -246,8 +317,7 @@ export function AnimalForm({
         rescue_case_id: !isShelter ? animalId : null,
         old_status:     statusChanged ? oldStatus : null,
         new_status:     newStatus,
-        status_changed: statusChanged,
-        note:           changeNote || null,
+        note:           structuredNote,
         action:         mode === 'create' ? 'create' : statusChanged ? 'status_change' : 'update',
       }),
     })
@@ -257,7 +327,7 @@ export function AnimalForm({
       id:          Date.now().toString(),
       old_status:  statusChanged ? oldStatus : null,
       new_status:  newStatus,
-      note:        changeNote || null,
+      note:        structuredNote,
       action:      mode === 'create' ? 'create' : statusChanged ? 'status_change' : 'update',
       changed_at:  new Date().toISOString(),
     }
@@ -742,6 +812,15 @@ export function AnimalForm({
                   const labelMap = isShelter ? ADOPTION_STATUS_LABEL : RESCUE_STATUS_LABEL
                   const isStatusChange = h.action === 'status_change' || (h.old_status && h.old_status !== h.new_status)
                   const isCreate = h.action === 'create'
+
+                  // Parse structured note (v:1)
+                  let parsedNote: { v: number; diff: DiffEntry[]; note: string | null } | null = null
+                  if (h.note && typeof h.note === 'string' && h.note.startsWith('{')) {
+                    try { const p = JSON.parse(h.note); if (p?.v === 1) parsedNote = p } catch {}
+                  }
+                  const userNote = parsedNote ? parsedNote.note : h.note
+                  const diffItems: DiffEntry[] = parsedNote?.diff ?? []
+
                   return (
                     <div key={h.id ?? i} className={`flex items-start gap-3 p-3 rounded-md border
                       ${isCreate ? 'bg-success-bg border-success/20' : isStatusChange ? 'bg-coral-light border-coral/20' : 'bg-sand border-gray-pale'}`}>
@@ -760,9 +839,21 @@ export function AnimalForm({
                             </span>
                           )}
                         </div>
-                        {h.note && (
+                        {diffItems.length > 0 && (
+                          <div className="mt-1.5 space-y-0.5">
+                            {diffItems.map(d => (
+                              <div key={d.f} className="flex items-baseline gap-1 text-[11px] leading-tight">
+                                <span className="font-bold text-gray shrink-0">{d.l}:</span>
+                                <span className="text-gray line-through">{d.o}</span>
+                                <span className="text-gray">→</span>
+                                <span className="font-bold text-espresso">{d.n}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {userNote && (
                           <p className="text-xs text-brown-mid bg-white/70 rounded px-2 py-1 mt-1">
-                            💬 {h.note}
+                            💬 {userNote}
                           </p>
                         )}
                         <p className="text-[11px] text-gray mt-1">

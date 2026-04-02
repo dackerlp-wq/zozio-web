@@ -336,11 +336,6 @@ export async function GET(
             <div class="info-label">Příjem</div>
             <div class="info-value">${intake}</div>
           </div>
-          ${a.staff_assigned ? `
-          <div class="info-item">
-            <div class="info-label">Zodpovědný</div>
-            <div class="info-value">${a.staff_assigned}</div>
-          </div>` : ''}
         </div>
       </div>
 

@@ -146,11 +146,6 @@ ${section('Původ a příjem', `
   ${row('Poznámky k příjmu', a.intake_notes)}
 `)}
 
-${section('Interní záznamy', `
-  ${row('Zodpovědný pracovník', a.staff_assigned)}
-  ${row('Interní poznámky', a.internal_notes)}
-`)}
-
 ${section('Instituce', `
   ${row('Název', institution.name)}
   ${row('Město', institution.city)}
