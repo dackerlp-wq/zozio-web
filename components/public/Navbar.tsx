@@ -35,11 +35,7 @@ export function Navbar({ user }: NavbarProps) {
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
 
-  // Skrýt na admin routách
-  const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/superadmin')
-  if (isAdminRoute) return null
-
-  // Zavři dropdown při kliknutí mimo
+  // Zavři dropdown při kliknutí mimo — musí být před early return (rules of hooks)
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
@@ -49,6 +45,10 @@ export function Navbar({ user }: NavbarProps) {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  // Skrýt na admin routách
+  const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/superadmin')
+  if (isAdminRoute) return null
 
   const handleLogout = async () => {
     await fetch('/auth/logout', { method: 'POST' })
@@ -126,7 +126,7 @@ export function Navbar({ user }: NavbarProps) {
                         <span>👤</span> Můj profil
                       </Link>
 
-                      {user.role === 'institution_admin' && user.institutionSlug && (
+                      {(user.role === 'admin' || user.role === 'institution_admin') && (
                         <Link href={`/admin/dashboard`} onClick={() => setDropdown(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-espresso no-underline hover:bg-sand transition-colors">
                           <span>🏠</span> Administrace instituce
