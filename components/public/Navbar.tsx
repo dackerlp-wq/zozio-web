@@ -244,7 +244,7 @@ export function Navbar({ user }: NavbarProps) {
                   <span>👤</span>
                   <span className="font-bold text-espresso">Můj profil</span>
                 </Link>
-                {(user.role === 'institution_admin' || user.role === 'staff') && (
+                {(user.role === 'admin' || user.role === 'institution_admin' || user.role === 'staff') && (
                   <Link href="/admin/dashboard" onClick={() => setOpen(false)}
                     className="flex items-center gap-3 px-3 py-3 rounded-md no-underline hover:bg-sand transition-colors">
                     <span>🏠</span>

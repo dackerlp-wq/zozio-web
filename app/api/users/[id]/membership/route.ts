@@ -48,17 +48,30 @@ export async function PATCH(
     return NextResponse.json({ error: 'Neplatné parametry' }, { status: 400 })
   }
 
-  // Upsert — změní instituci i roli najednou
-  const { error } = await service
+  // Zkus update existujícího záznamu
+  const { data: existing } = await service
     .from('institution_members')
-    .upsert(
-      { user_id: targetUserId, institution_id: institutionId, role },
-      { onConflict: 'user_id' }
-    )
+    .select('id')
+    .eq('user_id', targetUserId)
+    .maybeSingle()
 
-  if (error) {
-    console.error('Membership upsert error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (existing) {
+    const { error } = await service
+      .from('institution_members')
+      .update({ institution_id: institutionId, role })
+      .eq('user_id', targetUserId)
+    if (error) {
+      console.error('Membership update error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+  } else {
+    const { error } = await service
+      .from('institution_members')
+      .insert({ user_id: targetUserId, institution_id: institutionId, role })
+    if (error) {
+      console.error('Membership insert error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
   }
 
   return NextResponse.json({ success: true })
