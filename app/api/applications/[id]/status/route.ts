@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { sendApplicationStatusEmail } from '@/lib/email'
+import {
+  sendApplicationStatusEmail,
+  sendAnimalAdoptedEmail,
+} from '@/lib/email'
 
 export async function PUT(
   request: NextRequest,
@@ -40,6 +43,17 @@ export async function PUT(
       .single()
 
     if (!membership) return NextResponse.json({ error: 'Nemáš přístup' }, { status: 403 })
+
+    // Načti data instituce a zvířete pro emaily
+    const [{ data: institution }, { data: animalData }] = await Promise.all([
+      service.from('institutions').select('name, email, phone').eq('id', app.institution_id).single(),
+      app.animal_id
+        ? service.from('animals').select('name, adoption_fee, species:animal_species(name_cs, icon)').eq('id', app.animal_id).single()
+        : Promise.resolve({ data: null }),
+    ])
+    const animalEmoji = (animalData as any)?.species?.icon ?? '🐾'
+    const animalName  = (animalData as any)?.name ?? 'zvíře'
+    const animalFee   = (animalData as any)?.adoption_fee ? `${(animalData as any).adoption_fee} Kč` : 'neuvedeno'
 
     // Aktualizuj žádost
     const { error } = await service
@@ -83,24 +97,34 @@ export async function PUT(
         .neq('id', id)
     }
 
-    // ── FIX 2: E-mail i při stavu 'adopted' ──────────────────────────────
+    // Emaily dle stavu
     if (['approved', 'rejected', 'meeting_scheduled', 'adopted'].includes(status)) {
       try {
-        // Načti jméno zvířete
-        const { data: appFull } = await service
-          .from('adoption_applications')
-          .select('animal:animals(name)')
-          .eq('id', id)
-          .single()
-
-        const animalName = (appFull?.animal as any)?.name ?? 'zvíře'
-
         await sendApplicationStatusEmail({
-          applicantEmail: app.applicant_email,
-          applicantName:  app.applicant_name,
+          applicantEmail:        app.applicant_email,
+          applicantName:         app.applicant_name,
           animalName,
+          animalEmoji,
           status,
+          institutionName:        institution?.name ?? '',
+          institutionPhone:       institution?.phone ?? '',
+          institutionEmail:       institution?.email ?? '',
+          adoptionFee:            animalFee,
+          applicationId:          id,
+          detailUrl:              `https://zozio.cz/admin/applications/${id}`,
         })
+
+        // Při adopci — pošli adoptorovi gratulační email
+        if (status === 'adopted') {
+          await sendAnimalAdoptedEmail({
+            to:              app.applicant_email,
+            adoptorName:     app.applicant_name,
+            animalName,
+            animalEmoji,
+            institutionName: institution?.name ?? '',
+            shareUrl:        `https://zozio.cz/articles`,
+          })
+        }
       } catch (emailError) {
         console.error('Email send error:', emailError)
       }

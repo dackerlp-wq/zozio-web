@@ -20,6 +20,7 @@ export {
   sendSubscriptionExpiringEmail,
   sendOnboardingTipsEmail,
   sendNewsletterEmail,
+  sendNewsletterSubscribeConfirmEmail,
 } from './send'
 
 // Aliasy pro zpětnou kompatibilitu

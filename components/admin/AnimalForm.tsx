@@ -166,6 +166,8 @@ export function AnimalForm({
   const [success, setSuccess]           = useState(false)
   const [changeNote, setChangeNote]     = useState('')  // poznámka ke každé změně
   const [localHistory, setLocalHistory] = useState<any[]>(statusHistory)
+  const [historyPage, setHistoryPage]   = useState(0)
+  const HISTORY_PAGE_SIZE = 10
 
   const update = (key: string, value: any) =>
     setForm(prev => ({ ...prev, [key]: value }))
@@ -808,7 +810,7 @@ export function AnimalForm({
               </div>
             ) : (
               <div className="space-y-3">
-                {localHistory.map((h: any, i: number) => {
+                {localHistory.slice(historyPage * HISTORY_PAGE_SIZE, (historyPage + 1) * HISTORY_PAGE_SIZE).map((h: any, i: number) => {
                   const labelMap = isShelter ? ADOPTION_STATUS_LABEL : RESCUE_STATUS_LABEL
                   const isStatusChange = h.action === 'status_change' || (h.old_status && h.old_status !== h.new_status)
                   const isCreate = h.action === 'create'
@@ -866,6 +868,29 @@ export function AnimalForm({
                     </div>
                   )
                 })}
+              </div>
+            )}
+            {localHistory.length > HISTORY_PAGE_SIZE && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-pale">
+                <span className="text-xs text-gray">
+                  {historyPage * HISTORY_PAGE_SIZE + 1}–{Math.min((historyPage + 1) * HISTORY_PAGE_SIZE, localHistory.length)} z {localHistory.length}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setHistoryPage(p => p - 1)}
+                    disabled={historyPage === 0}
+                    className="px-3 py-1.5 text-xs font-bold rounded-md border border-gray-pale text-gray hover:bg-sand disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                  >
+                    ← Starší
+                  </button>
+                  <button
+                    onClick={() => setHistoryPage(p => p + 1)}
+                    disabled={(historyPage + 1) * HISTORY_PAGE_SIZE >= localHistory.length}
+                    className="px-3 py-1.5 text-xs font-bold rounded-md border border-gray-pale text-gray hover:bg-sand disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                  >
+                    Novější →
+                  </button>
+                </div>
               </div>
             )}
           </div>

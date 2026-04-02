@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { NewsletterSubscribe } from './NewsletterSubscribe'
 
 interface Tab { id: string; label: string; count: number | null }
 
@@ -250,6 +251,15 @@ export function InstitutionTabs({
                 🗺️ Navigovat v Google Maps
               </a>
             )}
+
+            {/* Newsletter odběr */}
+            <div className="pt-2">
+              <NewsletterSubscribe
+                institutionId={i.id}
+                institutionName={i.name}
+                isShelter={isShelter}
+              />
+            </div>
           </div>
 
           {/* Mapa */}

@@ -795,6 +795,60 @@ export function OnboardingTipsEmail({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 15. POTVRZENÍ ODBĚRU NEWSLETTERU
+// ─────────────────────────────────────────────────────────────────────────────
+interface NewsletterSubscribeConfirmEmailProps {
+  name?: string
+  institutionName?: string // null = Zozio global newsletter
+  unsubscribeUrl: string
+}
+
+export function NewsletterSubscribeConfirmEmail({
+  name,
+  institutionName,
+  unsubscribeUrl,
+}: NewsletterSubscribeConfirmEmailProps) {
+  const isGlobal = !institutionName
+  const greeting = name ? `Ahoj, ${name}!` : 'Ahoj!'
+  const title = isGlobal ? 'Odběr Zozio\nnovinkami potvrzen' : `Odběr novinek\nod ${institutionName}`
+  const subtitle = isGlobal
+    ? 'Budeme tě informovat o adopcích, záchranách a dění na Zozio'
+    : `Teď tě budeme informovat o novinkách z ${institutionName}`
+
+  return (
+    <BaseLayout previewText={isGlobal ? `Jsi přihlášen/a k odběru novinek Zozio.cz` : `Jsi přihlášen/a k novinkám od ${institutionName}`}>
+      <EmailShell>
+        <EmailHeader
+          color={isGlobal ? 'coral' : 'rescue'}
+          emoji="📬"
+          title={title}
+          subtitle={subtitle}
+        />
+        <EmailBody>
+          <Greeting>{greeting}</Greeting>
+          <BodyText>
+            {isGlobal
+              ? 'Úspěšně jsi se přihlásil/a k odběru Zozio novinek. Budeme tě jednou měsíčně informovat o adopcích, záchranách a zvířatech, která hledají nový domov.'
+              : `Úspěšně jsi se přihlásil/a k odběru novinek od ${institutionName}. Budeme tě informovat o nových zvířatech, akcích a příbězích z tohoto útulku.`
+            }
+          </BodyText>
+          <HighlightBox color={isGlobal ? 'coral' : 'rescue'}>
+            🐾 <strong>Věděl/a jsi?</strong> Na Zozio.cz právě hledají domov stovky zvířat. Každé sdílení může zachránit život.
+          </HighlightBox>
+          <CtaButton href="https://zozio.cz/adopt" color={isGlobal ? 'coral' : 'rescue'}>
+            Prozkoumat zvířata k adopci
+          </CtaButton>
+        </EmailBody>
+        <EmailFooter
+          note="Nechceš dostávat tyto e-maily? Klikni na odhlásit odběr níže."
+          unsubscribeUrl={unsubscribeUrl}
+        />
+      </EmailShell>
+    </BaseLayout>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 14. NEWSLETTER
 // ─────────────────────────────────────────────────────────────────────────────
 interface NewsletterEmailProps {

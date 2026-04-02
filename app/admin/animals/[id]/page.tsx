@@ -53,10 +53,14 @@ export default async function EditAnimalPage({ params, searchParams }: PageProps
     .eq('category', isShelter ? 'domestic' : 'wild')
     .order('name_cs')
 
+  const threeMonthsAgo = new Date()
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+
   const { data: statusHistory } = await service
     .from('animal_status_history')
     .select('*')
     .eq(isShelter ? 'animal_id' : 'rescue_case_id', id)
+    .gte('changed_at', threeMonthsAgo.toISOString())
     .order('changed_at', { ascending: false })
 
   const a = animal as any

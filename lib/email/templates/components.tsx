@@ -160,9 +160,10 @@ export function EmailBody({ children }: EmailBodyProps) {
 interface EmailFooterProps {
   note?: string
   showUnsubscribe?: boolean
+  unsubscribeUrl?: string
 }
 
-export function EmailFooter({ note, showUnsubscribe = true }: EmailFooterProps) {
+export function EmailFooter({ note, showUnsubscribe = true, unsubscribeUrl }: EmailFooterProps) {
   return (
     <table
       width="100%"
@@ -215,7 +216,7 @@ export function EmailFooter({ note, showUnsubscribe = true }: EmailFooterProps) 
               </a>
               {showUnsubscribe && (
                 <a
-                  href="{{unsubscribe_url}}"
+                  href={unsubscribeUrl ?? '{{unsubscribe_url}}'}
                   style={{ fontSize: 12, fontWeight: 700, color: colors.muted, textDecoration: 'none', marginRight: 16 }}
                 >
                   Odhlásit odběr

@@ -28,8 +28,9 @@ function RegisterForm() {
   const [name,     setName]     = useState('')
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
+  const [loading,       setLoading]       = useState(false)
+  const [error,         setError]         = useState<string | null>(null)
+  const [newsletter,    setNewsletter]    = useState(false)
 
   const isInstitution = mode !== 'visitor'
 
@@ -61,6 +62,15 @@ function RegisterForm() {
         : authError.message)
       setLoading(false)
       return
+    }
+
+    // Přihlásit k newsletteru pokud zaškrtl
+    if (newsletter) {
+      fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name }),
+      }).catch(() => {/* fire-and-forget */})
     }
 
     setStep('verify')
@@ -133,6 +143,19 @@ function RegisterForm() {
             onKeyDown={e => e.key === 'Enter' && handleRegister()}
             placeholder="••••••••" className={inputCls} />
         </Field>
+
+        {/* Newsletter opt-in */}
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={newsletter}
+            onChange={e => setNewsletter(e.target.checked)}
+            className="mt-0.5 w-4 h-4 accent-[#E8634A] flex-shrink-0"
+          />
+          <span className="text-xs leading-relaxed" style={{ color: '#6B4030' }}>
+            Chci dostávat novinky Zozio — měsíčně informace o adopcích, záchranách a zvířatech hledajících domov. Odhlásit se lze kdykoli.
+          </span>
+        </label>
 
         {error && (
           <div className="text-sm font-semibold px-4 py-3 rounded-xl"

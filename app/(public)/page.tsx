@@ -13,19 +13,21 @@ export const metadata: Metadata = {
 }
 
 export default async function HomePage() {
-  const [animals, rescueCases, fundraisers] = await Promise.all([
+  const [animals, rescueCases, fundraisers, stats, articles] = await Promise.all([
     getFeaturedAnimals(),
     getFeaturedRescueCases(),
     getActiveFundraisers(),
+    getStats(),
+    getLatestArticles(),
   ])
 
   return (
     <main className="overflow-x-hidden">
       <HeroSection animals={animals} />
-      <StatsStrip />
+      <StatsStrip stats={stats} />
       <AnimalsSection animals={animals} />
       <RescueSection cases={rescueCases} fundraisers={fundraisers} />
-      <StoriesSection />
+      <StoriesSection articles={articles} />
       <InstitutionsCta />
     </main>
   )
@@ -138,16 +140,17 @@ function HeroSection({ animals }: { animals: any[] }) {
 }
 
 /* ── STATS ── */
-function StatsStrip() {
+function StatsStrip({ stats }: { stats: { availableAnimals: number; adoptedTotal: number; institutionCount: number } }) {
+  const items = [
+    { num: stats.institutionCount > 0 ? `${stats.institutionCount}+` : '—', label: 'Útulků a stanic' },
+    { num: stats.availableAnimals > 0 ? stats.availableAnimals.toLocaleString('cs-CZ') : '—', label: 'Zvířat čeká na domov' },
+    { num: stats.adoptedTotal > 0 ? `${stats.adoptedTotal.toLocaleString('cs-CZ')}+` : '—', label: 'Úspěšných adopcí' },
+    { num: 'Zdarma', label: 'Základní plán' },
+  ]
   return (
     <div className="bg-espresso py-8 px-4 md:px-12">
       <div className="max-w-[1100px] mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-0">
-        {[
-          { num: '700+',   label: 'Útulků a stanic' },
-          { num: '12 400', label: 'Zvířat ročně' },
-          { num: '3 200+', label: 'Úspěšných adopcí' },
-          { num: 'Zdarma', label: 'Základní plán' },
-        ].map(({ num, label }, i) => (
+        {items.map(({ num, label }, i) => (
           <div key={label} className={`text-center ${i < 3 ? 'md:border-r border-white/10' : ''}`}>
             <div className="font-display font-extrabold text-2xl md:text-3xl text-coral mb-1">{num}</div>
             <div className="text-xs md:text-sm text-gray-light font-semibold">{label}</div>
@@ -326,13 +329,7 @@ function RescueSection({ cases, fundraisers }: { cases: any[], fundraisers: any[
 }
 
 /* ── PŘÍBĚHY ── */
-function StoriesSection() {
-  const stories = [
-    { emoji: '🐕', name: 'Max', text: 'Po 3 měsících v útulku si Maxe adoptovala rodina z Prahy. Dnes žije na chatě se dvěma dětmi a nikdy nebyl šťastnější.', institution: 'Útulok Praha Chodov', time: 'před 2 týdny' },
-    { emoji: '🦉', name: 'Výr Vocálko', text: 'Přijeli k nám s přebitým křídlem. Po třech měsících rehabilitace se Vocálko vrátil do přírody u Jihlavy.', institution: 'Záchranná stanice Jihlava', time: 'před měsícem' },
-    { emoji: '🐱', name: 'Luna', text: 'Luna přišla do útulku podvyživená a bázlivá. Dnes žije v bytě v Brně a její nová majitelka ji miluje nadměrně.', institution: 'Kočičí azyl Ostrava', time: 'před 3 týdny' },
-  ]
-
+function StoriesSection({ articles }: { articles: any[] }) {
   return (
     <section className="py-14 md:py-20 px-4 md:px-12 bg-warm">
       <div className="max-w-[1200px] mx-auto">
@@ -350,19 +347,37 @@ function StoriesSection() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {stories.map(s => (
-            <div key={s.name} className="bg-white rounded-lg p-5 md:p-6 border border-gray-pale shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-              <div className="text-4xl mb-4">{s.emoji}</div>
-              <h3 className="font-display font-extrabold text-lg text-espresso mb-2">{s.name}</h3>
-              <p className="text-sm text-brown-mid leading-relaxed mb-4">{s.text}</p>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray font-semibold">{s.institution}</span>
-                <span className="text-xs text-gray">{s.time}</span>
-              </div>
-            </div>
-          ))}
-        </div>
+        {articles.length === 0 ? (
+          <div className="text-center py-10 text-gray text-sm">Žádné příběhy zatím nejsou k dispozici.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {articles.map((a: any) => (
+              <Link key={a.id} href={`/articles/${a.slug}`} className="no-underline">
+                <div className="bg-white rounded-lg overflow-hidden border border-gray-pale shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all h-full flex flex-col">
+                  {a.cover_url ? (
+                    <div className="relative h-40">
+                      <Image src={a.cover_url} alt={a.title} fill className="object-cover" />
+                    </div>
+                  ) : (
+                    <div className="h-40 bg-gradient-to-br from-coral-light to-sand flex items-center justify-center text-5xl">
+                      📖
+                    </div>
+                  )}
+                  <div className="p-5 flex flex-col flex-1">
+                    <h3 className="font-display font-extrabold text-base text-espresso mb-2 line-clamp-2">{a.title}</h3>
+                    {a.perex && <p className="text-sm text-brown-mid leading-relaxed mb-3 line-clamp-3 flex-1">{a.perex}</p>}
+                    <div className="flex items-center justify-between mt-auto">
+                      <span className="text-xs text-gray font-semibold">{a.institution?.name ?? 'Zozio'}</span>
+                      <span className="text-xs text-gray">
+                        {a.published_at ? new Date(a.published_at).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' }) : ''}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
 
         <div className="text-center mt-8 md:hidden">
           <Link href="/articles">
@@ -436,6 +451,32 @@ async function getActiveFundraisers() {
     .select('id, title, goal_amount, current_amount, institution:institutions(name,type), animal:animals(species:animal_species(icon)), rescue_case:rescue_cases(species:animal_species(icon))')
     .eq('active', true)
     .order('created_at', { ascending: false })
+    .limit(3)
+  return data ?? []
+}
+
+async function getStats() {
+  const supabase = await createClient()
+  const [animalsRes, adoptedRes, institutionsRes] = await Promise.all([
+    supabase.from('animals').select('id', { count: 'exact', head: true }).eq('published', true).eq('adoption_status', 'available'),
+    supabase.from('adoption_applications').select('id', { count: 'exact', head: true }).eq('status', 'adopted'),
+    supabase.from('institutions').select('id', { count: 'exact', head: true }).eq('approval_status', 'approved'),
+  ])
+  return {
+    availableAnimals: animalsRes.count ?? 0,
+    adoptedTotal:     adoptedRes.count ?? 0,
+    institutionCount: institutionsRes.count ?? 0,
+  }
+}
+
+async function getLatestArticles() {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('articles')
+    .select('id, title, slug, perex, cover_url, published_at, institution:institutions(name)')
+    .eq('published', true)
+    .in('category', ['story', 'rescue'])
+    .order('published_at', { ascending: false })
     .limit(3)
   return data ?? []
 }
