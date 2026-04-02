@@ -9,11 +9,13 @@ interface Animal {
   name: string
   emoji: string
   status: string
+  url?: string
 }
 
 interface Article {
   title: string
   perex?: string
+  url?: string
 }
 
 interface Fundraiser {
@@ -95,13 +97,13 @@ export function InstitutionDigestEmail({
               <BodyText><strong>{isShelter ? '🐾 Nová zvířata k adopci' : '🆕 Nové záchranné případy'}</strong></BodyText>
               <div style={{ backgroundColor: '#fff', border: `1.5px solid ${colors.border}`, borderRadius: 16, padding: '16px 20px', margin: '12px 0' }}>
                 {newAnimals.slice(0, 5).map((a, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: i > 0 ? `1px solid ${colors.border}` : 'none' }}>
+                  <a key={i} href={a.url ?? institutionUrl} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: i > 0 ? `1px solid ${colors.border}` : 'none', textDecoration: 'none' }}>
                     <span style={{ fontSize: 20 }}>{a.emoji}</span>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: colors.dark }}>{a.name}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: color }}>{a.name}</div>
                       <div style={{ fontSize: 12, color: colors.muted }}>{a.status}</div>
                     </div>
-                  </div>
+                  </a>
                 ))}
                 {newAnimals.length > 5 && (
                   <div style={{ fontSize: 12, color: colors.muted, textAlign: 'center', paddingTop: 8 }}>
@@ -118,10 +120,11 @@ export function InstitutionDigestEmail({
               <Divider />
               <BodyText><strong>📖 Nové příběhy</strong></BodyText>
               {newArticles.slice(0, 3).map((article, i) => (
-                <div key={i} style={{ backgroundColor: '#fff', border: `1.5px solid ${colors.border}`, borderRadius: 12, padding: '14px 18px', marginBottom: 10 }}>
-                  <div style={{ fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 14, color: colors.dark }}>{article.title}</div>
+                <a key={i} href={article.url ?? institutionUrl} style={{ display: 'block', backgroundColor: '#fff', border: `1.5px solid ${colors.border}`, borderRadius: 12, padding: '14px 18px', marginBottom: 10, textDecoration: 'none' }}>
+                  <div style={{ fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 14, color: color }}>{article.title}</div>
                   {article.perex && <div style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>{article.perex}</div>}
-                </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: color, marginTop: 6 }}>Číst více →</div>
+                </a>
               ))}
             </>
           )}

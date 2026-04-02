@@ -829,9 +829,40 @@ export function NewsletterSubscribeConfirmEmail({
           <BodyText>
             {isGlobal
               ? 'Úspěšně jsi se přihlásil/a k odběru Zozio novinek. Budeme tě jednou měsíčně informovat o adopcích, záchranách a zvířatech, která hledají nový domov.'
-              : `Úspěšně jsi se přihlásil/a k odběru novinek od ${institutionName}. Budeme tě informovat o nových zvířatech, akcích a příbězích z tohoto útulku.`
+              : `Úspěšně jsi se přihlásil/a k odběru novinek od ${institutionName}. Instituci nyní sleduješ — budou ti chodit přehledy novinek.`
             }
           </BodyText>
+          {!isGlobal && (
+            <div style={{ backgroundColor: '#fff', border: `1.5px solid ${colors.border}`, borderRadius: 16, padding: '18px 22px', margin: '18px 0' }}>
+              <div style={{ fontFamily: "'Baloo 2', sans-serif", fontWeight: 700, fontSize: 13, color: '#9a8070', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14 }}>
+                Co budeš dostávat
+              </div>
+              {[
+                { icon: '📅', title: 'Týdenní přehled', desc: `Nová zvířata, příběhy a sbírky z ${institutionName} za poslední týden` },
+                { icon: '🗓️', title: 'Měsíční přehled', desc: `Kompletní souhrn událostí a statistik z ${institutionName} za měsíc` },
+              ].map((item, i) => (
+                <table key={i} width="100%" cellPadding={0} cellSpacing={0} style={{ borderTop: i > 0 ? `1px solid ${colors.border}` : undefined }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: '10px 0', verticalAlign: 'top' }}>
+                        <table cellPadding={0} cellSpacing={0}>
+                          <tbody>
+                            <tr>
+                              <td style={{ width: 32, fontSize: 20, verticalAlign: 'middle' }}>{item.icon}</td>
+                              <td style={{ paddingLeft: 10 }}>
+                                <div style={{ fontWeight: 700, fontSize: 14, color: colors.dark }}>{item.title}</div>
+                                <div style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{item.desc}</div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              ))}
+            </div>
+          )}
           <HighlightBox color={isGlobal ? 'coral' : 'rescue'}>
             🐾 <strong>Věděl/a jsi?</strong> Na Zozio.cz právě hledají domov stovky zvířat. Každé sdílení může zachránit život.
           </HighlightBox>

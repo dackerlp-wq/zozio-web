@@ -71,13 +71,13 @@ export async function POST(request: NextRequest) {
       // Nová zvířata / případy
       isShelter
         ? service.from('animals')
-            .select('name, adoption_status, species:animal_species(icon)')
+            .select('id, name, adoption_status, species:animal_species(icon)')
             .eq('institution_id', institution_id)
             .gte('created_at', sinceIso)
             .order('created_at', { ascending: false })
             .limit(10)
         : service.from('rescue_cases')
-            .select('name, case_number, status, species:animal_species(icon)')
+            .select('id, name, case_number, status, species:animal_species(icon)')
             .eq('institution_id', institution_id)
             .gte('created_at', sinceIso)
             .order('created_at', { ascending: false })
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 
       // Nové články
       service.from('articles')
-        .select('title, perex')
+        .select('title, perex, slug')
         .eq('institution_id', institution_id)
         .eq('published', true)
         .gte('published_at', sinceIso)
@@ -140,6 +140,7 @@ export async function POST(request: NextRequest) {
       status: isShelter
         ? ({ available: 'K adopci', reserved: 'Rezervováno', adopted: 'Adoptováno', foster: 'Pěstounská péče' } as Record<string, string>)[a.adoption_status] ?? a.adoption_status
         : ({ intake: 'Příjem', treatment: 'Léčba', rehabilitation: 'Rehabilitace', released: 'Propuštěno', deceased: 'Uhynulo' } as Record<string, string>)[a.status] ?? a.status,
+      url: `https://zozio.cz/${isShelter ? 'animals' : 'rescue'}/${a.id}`,
     }))
 
     const institutionUrl = `https://zozio.cz/institutions/${institution.slug}`
@@ -157,7 +158,7 @@ export async function POST(request: NextRequest) {
           statReceived,
           statAdoptedOrReleased,
           statAvailableOrTreatment,
-          newArticles: (articles ?? []).map((a: any) => ({ title: a.title, perex: a.perex })),
+          newArticles: (articles ?? []).map((a: any) => ({ title: a.title, perex: a.perex, url: `https://zozio.cz/articles/${a.slug}` })),
           activeFundraisers: (fundraisers ?? []).map((f: any) => ({ title: f.title, current_amount: f.current_amount ?? 0, goal_amount: f.goal_amount ?? 0 })),
           institutionUrl,
           unsubscribeUrl,
