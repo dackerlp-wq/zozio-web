@@ -20,9 +20,10 @@
 
   if (!slug) return
 
-  // ── Resolve base URL from the script src ─────────────────────────────────
-  var srcUrl  = self.src || 'https://zozio.cz/widget.js'
-  var baseUrl = srcUrl.replace(/\/widget\.js.*$/, '')
+  // ── Resolve base URL ─────────────────────────────────────────────────────
+  // Always use the canonical www domain for API calls to avoid apex→www
+  // 301 redirect which strips CORS headers and breaks cross-origin XHR.
+  var baseUrl = 'https://www.zozio.cz'
 
   // ── i18n strings ──────────────────────────────────────────────────────────
   var i18n = {
@@ -34,7 +35,7 @@
       adopted:        'Adoptován/a',
       adopted_on:     'Adoptován/a',
       found_at:       'Nalezen/a',
-      see_all:        'Zobrazit vše →',
+      see_all:        'Zobrazit na Zozio.cz',
       powered_by:     'Powered by',
       loading:        'Načítám...',
       error:          'Widget nelze načíst.',
@@ -51,7 +52,7 @@
       adopted:        'Adoptovaný/á',
       adopted_on:     'Adoptovaný/á',
       found_at:       'Nájdený/á',
-      see_all:        'Zobraziť všetko →',
+      see_all:        'Zobraziť na Zozio.cz',
       powered_by:     'Powered by',
       loading:        'Načítavam...',
       error:          'Widget sa nedá načítať.',
@@ -111,8 +112,10 @@
     '.zw-wrap{font-family:system-ui,-apple-system,sans-serif;color:#2C1810;line-height:1.4}',
     '.zw-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}',
     '.zw-title{font-size:18px;font-weight:800;color:#2C1810}',
-    '.zw-see-all{font-size:13px;font-weight:700;color:' + c.primary + ';text-decoration:none}',
-    '.zw-see-all:hover{text-decoration:underline}',
+    '.zw-see-all{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:100px;',
+    'background:' + c.primary + ';color:#fff;font-size:12px;font-weight:700;text-decoration:none;',
+    'transition:opacity .15s;white-space:nowrap}',
+    '.zw-see-all:hover{opacity:.85}',
     '.zw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}',
     '@media(max-width:700px){.zw-grid{grid-template-columns:repeat(2,1fr)}}',
     '@media(max-width:440px){.zw-grid{grid-template-columns:1fr}}',
@@ -228,7 +231,7 @@
 
     var html = '<div class="zw-header">'
       + '<span class="zw-title">' + esc(title) + '</span>'
-      + '<a class="zw-see-all" href="' + esc(profileUrl) + '" target="_blank" rel="noopener">' + t.see_all + '</a>'
+      + '<a class="zw-see-all" href="' + esc(profileUrl) + '" target="_blank" rel="noopener">🐾 ' + t.see_all + '</a>'
       + '</div>'
 
     if (!data.animals || data.animals.length === 0) {
