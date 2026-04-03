@@ -67,6 +67,10 @@ export interface Animal {
   photos: string[]
   primary_photo: string | null
   intake_date: string | null
+  // Widget / legal fields
+  found_date: string | null       // Datum nálezu (§ 25 odst. 4 zák. 246/1992)
+  found_location: string | null   // Místo nálezu (zákonná povinnost)
+  adopted_at: string | null       // Datum předání novému chovateli
   published: boolean
   created_at: string
   updated_at: string
