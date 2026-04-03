@@ -7,11 +7,15 @@ import { Badge } from '@/components/ui/Badge'
 import { AdminAnimalSearch } from '@/components/admin/AdminAnimalSearch'
 
 interface PageProps {
-  searchParams: Promise<{ q?: string; status?: string }>
+  searchParams: Promise<{ q?: string; status?: string; page?: string }>
 }
 
+const PAGE_SIZE = 20
+
 export default async function AdminAnimalsPage({ searchParams }: PageProps) {
-  const { q, status: filterStatus } = await searchParams
+  const { q, status: filterStatus, page: pageParam } = await searchParams
+  const page = Number(pageParam ?? 1)
+  const offset = (page - 1) * PAGE_SIZE
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -38,8 +42,8 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
 
   // Načti s filtry
   let animalsQuery = isShelter
-    ? service.from('animals').select('id, name, urgent, adoption_status, health_status, in_quarantine, in_foster, species:animal_species(name_cs,icon), intake_date, created_at').eq('institution_id', institution.id)
-    : service.from('rescue_cases').select('id, name, case_number, status, health_status, species:animal_species(name_cs,icon), intake_date, created_at').eq('institution_id', institution.id)
+    ? service.from('animals').select('id, name, urgent, adoption_status, health_status, in_quarantine, in_foster, species:animal_species(name_cs,icon), intake_date, created_at', { count: 'exact' }).eq('institution_id', institution.id)
+    : service.from('rescue_cases').select('id, name, case_number, status, health_status, species:animal_species(name_cs,icon), intake_date, created_at', { count: 'exact' }).eq('institution_id', institution.id)
 
   // Filtr stavu
   if (filterStatus) {
@@ -55,10 +59,10 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
       : (animalsQuery as any).or(`name.ilike.%${q}%,case_number.ilike.%${q}%`)
   }
 
-  // Řazení
-  const { data: animals } = isShelter
-    ? await (animalsQuery as any).order('urgent', { ascending: false }).order('created_at', { ascending: false })
-    : await (animalsQuery as any).order('created_at', { ascending: false })
+  // Řazení + stránkování
+  const { data: animals, count } = isShelter
+    ? await (animalsQuery as any).order('urgent', { ascending: false }).order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1)
+    : await (animalsQuery as any).order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1)
 
   const items = (animals ?? []) as any[]
 
@@ -89,7 +93,7 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
           <h1 className="font-display font-extrabold text-3xl md:text-4xl text-espresso">
             {isShelter ? '🐾 Zvířata' : '🦉 Pacienti'}
           </h1>
-          <p className="text-gray mt-1 font-semibold text-sm">{items.length} záznamů</p>
+          <p className="text-gray mt-1 font-semibold text-sm">{count ?? items.length} záznamů</p>
         </div>
         <Link href="/admin/animals/new">
           <Button variant={isShelter ? 'primary' : 'rescue'} size="sm">
@@ -148,7 +152,7 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
           </div>
 
           {/* Desktop tabulka */}
-          <div className="hidden md:block bg-white rounded-lg border border-gray-pale overflow-hidden shadow-sm">
+          <div className="hidden md:block bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden shadow-sm">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-pale bg-sand/50">
@@ -204,6 +208,29 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {(count ?? 0) > PAGE_SIZE && (
+            <div className="flex items-center justify-between px-5 py-4 border-t border-[#F0EDE8]">
+              <span className="text-xs font-semibold" style={{ color: '#8B6550' }}>
+                Zobrazeno {offset + 1}–{Math.min(offset + PAGE_SIZE, count ?? 0)} z {count} {isShelter ? 'zvířat' : 'případů'}
+              </span>
+              <div className="flex gap-2">
+                {page > 1 && (
+                  <a href={`?page=${page - 1}${filterStatus ? `&status=${filterStatus}` : ''}${q ? `&q=${q}` : ''}`}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold border border-[#F0EDE8] text-[#1A0F0A] hover:bg-[#F5F0EC] transition-colors no-underline">
+                    ← Předchozí
+                  </a>
+                )}
+                {offset + PAGE_SIZE < (count ?? 0) && (
+                  <a href={`?page=${page + 1}${filterStatus ? `&status=${filterStatus}` : ''}${q ? `&q=${q}` : ''}`}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold border border-[#F0EDE8] text-[#1A0F0A] hover:bg-[#F5F0EC] transition-colors no-underline">
+                    Další →
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
