@@ -2,14 +2,12 @@
   'use strict'
 
   // ── Find own script tag ───────────────────────────────────────────────────
-  var scripts = document.querySelectorAll('script[src]')
-  var self = null
-  for (var i = 0; i < scripts.length; i++) {
-    if (scripts[i].src && scripts[i].src.indexOf('widget.js') !== -1) {
-      self = scripts[i]
-      break
-    }
-  }
+  // document.currentScript is the most reliable method (works in all modern browsers).
+  // Falls back to iterating scripts for environments that null it out (deferred/async).
+  var self = document.currentScript || (function () {
+    var all = document.querySelectorAll('script[src*="widget.js"]')
+    return all.length ? all[all.length - 1] : null
+  })()
   if (!self) return
 
   // ── Read config from data-* attributes ───────────────────────────────────
