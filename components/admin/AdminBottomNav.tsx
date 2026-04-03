@@ -24,7 +24,7 @@ export function AdminBottomNav({ institutionType, isSuperadmin }: AdminBottomNav
   const rescueItems = [
     { href: '/admin/dashboard',  icon: '📊', label: 'Dashboard' },
     { href: '/admin/animals',    icon: '🦉', label: 'Pacienti' },
-    { href: '/admin/fundraisers',icon: '💛', label: 'Sbírky' },
+    { href: '/admin/cases',      icon: '🩺', label: 'Záznamy' },
     { href: '/admin/newsletter', icon: '📬', label: 'Newsletter' },
     { href: '/admin/settings',   icon: '⚙️', label: 'Nastavení' },
   ]

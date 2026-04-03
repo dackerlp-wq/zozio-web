@@ -23,14 +23,18 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
   const [open, setOpen] = useState(false)
 
   const navItems = [
-    { href: '/admin/dashboard',    icon: '📊', label: 'Dashboard' },
-    { href: '/admin/animals',      icon: isShelter ? '🐾' : '🦉', label: isShelter ? 'Zvířata' : 'Pacienti' },
-    ...(isShelter ? [{ href: '/admin/applications', icon: '📋', label: 'Žádosti o adopci' }] : []),
-    { href: '/admin/fundraisers',  icon: '💛', label: 'Sbírky' },
-    { href: '/admin/volunteers',   icon: '🙋', label: 'Dobrovolníci' },
-    { href: '/admin/articles',    icon: '📝', label: 'Články' },
-    { href: '/admin/newsletter',  icon: '📬', label: 'Newsletter' },
-    { href: '/admin/settings',     icon: '⚙️', label: 'Nastavení' },
+    { href: '/admin/dashboard',   icon: '📊', label: 'Dashboard' },
+    { href: '/admin/animals',     icon: isShelter ? '🐾' : '🦉', label: isShelter ? 'Zvířata' : 'Pacienti' },
+    ...(isShelter
+      ? [{ href: '/admin/applications', icon: '📋', label: 'Žádosti o adopci' }]
+      : [{ href: '/admin/cases',        icon: '🩺', label: 'Záznamy léčby' }]
+    ),
+    { href: '/admin/fundraisers', icon: '💛', label: 'Sbírky' },
+    { href: '/admin/volunteers',  icon: '🙋', label: 'Dobrovolníci' },
+    { href: '/admin/articles',   icon: '📝', label: 'Články' },
+    { href: '/admin/newsletter', icon: '📬', label: 'Newsletter' },
+    { href: '/admin/settings',   icon: '⚙️', label: 'Nastavení' },
+    { href: '/admin/billing',    icon: '💳', label: 'Předplatné' },
   ]
 
   const superadminItems = [

@@ -4,6 +4,21 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 
+const statusLabel: Record<string, string> = {
+  available: 'K adopci', reserved: 'Rezervováno', adopted: 'Adoptováno',
+  foster: 'Pěstounská', intake: 'Příjem', treatment: 'Léčba',
+  rehabilitation: 'Rehabilitace', released: 'Propuštěno', deceased: 'Uhynulo',
+}
+
+function relativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 60) return `před ${mins} min`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `před ${hours} h`
+  return `před ${Math.floor(hours / 24)} dny`
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -100,6 +115,22 @@ export default async function DashboardPage() {
   const activeVolunteers    = volunteers.filter((v: any) => v.status === 'active').length
   const pendingVolunteers   = volunteers.filter((v: any) => v.status === 'pending').length
 
+  // Activity feed
+  let activity: any[] = []
+  try {
+    const { data: activityRaw } = await service
+      .from('animal_status_history')
+      .select(`
+        id, changed_at, new_status,
+        animal:animals!animal_status_history_animal_id_fkey(id, name, institution_id)
+      `)
+      .order('changed_at', { ascending: false })
+      .limit(20)
+    activity = (activityRaw ?? []).filter((h: any) => h.animal?.institution_id === institution.id).slice(0, 8)
+  } catch {
+    activity = []
+  }
+
   return (
     <div>
       {/* Hlavička */}
@@ -108,7 +139,7 @@ export default async function DashboardPage() {
           <h1 className="font-display font-extrabold text-3xl md:text-4xl text-espresso">Dobrý den 👋</h1>
           <p className="text-gray mt-1 font-semibold text-sm">{institution.name}</p>
         </div>
-        <Link href="/admin/animals/new">
+        <Link href="/admin/animals/new" className="hidden md:block">
           <Button variant={isShelter ? 'primary' : 'rescue'} size="sm">
             + {isShelter ? 'Přidat zvíře' : 'Nový pacient'}
           </Button>
@@ -167,125 +198,154 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* ── Trendy tento měsíc ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm">
-          <div className="text-xs font-bold text-gray uppercase tracking-wider mb-1">Nových {isShelter ? 'příjmů' : 'případů'} tento měsíc</div>
-          <div className="flex items-end gap-2">
-            <span className="font-display font-extrabold text-3xl text-espresso">{newThisMonth}</span>
-            {trend !== 0 && (
-              <span className={`text-sm font-bold mb-0.5 ${trend > 0 ? 'text-coral' : 'text-success'}`}>
-                {trend > 0 ? '↑' : '↓'} {Math.abs(trend)} %
-              </span>
-            )}
-          </div>
-          <div className="text-xs text-gray mt-0.5">vs. {newLastMonth} minulý měsíc</div>
-        </div>
-
-        <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm">
-          <div className="text-xs font-bold text-gray uppercase tracking-wider mb-1">
-            {isShelter ? 'Adopcí' : 'Propuštění'} tento měsíc
-          </div>
-          <div className="font-display font-extrabold text-3xl text-espresso">{adoptedThisMonth}</div>
-          <div className="text-xs text-gray mt-0.5">celkem {adoptedTotal} od začátku</div>
-        </div>
-
-        <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm">
-          <div className="text-xs font-bold text-gray uppercase tracking-wider mb-1">Průměrná délka pobytu</div>
-          <div className="font-display font-extrabold text-3xl text-espresso">
-            {avgStayDays !== null ? `${avgStayDays} dní` : '—'}
-          </div>
-          <div className="text-xs text-gray mt-0.5">u aktuálních zvířat</div>
-        </div>
-      </div>
-
-      {/* ── Dlouhodobě ubytovaná zvířata ── */}
-      {longStay.length > 0 && (
-        <div className="bg-amber-light/60 rounded-lg border border-amber/30 p-4 md:p-5 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="font-display font-extrabold text-lg text-espresso">
-                ⏰ Dlouhodobý pobyt (90+ dní)
-              </h2>
-              <p className="text-xs text-brown-mid mt-0.5">
-                Tato zvířata čekají déle než 3 měsíce — zvažte urgentní adopci nebo mediální pozornost.
-              </p>
+      {/* ── 2-column layout: main content + activity feed ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        {/* Left column */}
+        <div className="min-w-0">
+          {/* ── Trendy tento měsíc ── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm">
+              <div className="text-xs font-bold text-gray uppercase tracking-wider mb-1">Nových {isShelter ? 'příjmů' : 'případů'} tento měsíc</div>
+              <div className="flex items-end gap-2">
+                <span className="font-display font-extrabold text-3xl text-espresso">{newThisMonth}</span>
+                {trend !== 0 && (
+                  <span className={`text-sm font-bold mb-0.5 ${trend > 0 ? 'text-coral' : 'text-success'}`}>
+                    {trend > 0 ? '↑' : '↓'} {Math.abs(trend)} %
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-gray mt-0.5">vs. {newLastMonth} minulý měsíc</div>
             </div>
-            <Link href="/admin/animals?status=available">
-              <Button variant="amber" size="sm">Zobrazit vše</Button>
-            </Link>
+
+            <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm">
+              <div className="text-xs font-bold text-gray uppercase tracking-wider mb-1">
+                {isShelter ? 'Adopcí' : 'Propuštění'} tento měsíc
+              </div>
+              <div className="font-display font-extrabold text-3xl text-espresso">{adoptedThisMonth}</div>
+              <div className="text-xs text-gray mt-0.5">celkem {adoptedTotal} od začátku</div>
+            </div>
+
+            <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm">
+              <div className="text-xs font-bold text-gray uppercase tracking-wider mb-1">Průměrná délka pobytu</div>
+              <div className="font-display font-extrabold text-3xl text-espresso">
+                {avgStayDays !== null ? `${avgStayDays} dní` : '—'}
+              </div>
+              <div className="text-xs text-gray mt-0.5">u aktuálních zvířat</div>
+            </div>
           </div>
-          <div className="space-y-2">
-            {longStay.map((a: any) => {
-              const days = Math.floor((now.getTime() - new Date(a.intake_date).getTime()) / (1000 * 60 * 60 * 24))
-              return (
-                <Link key={a.id} href={`/admin/animals/${a.id}`} className="no-underline">
-                  <div className="flex items-center justify-between bg-white rounded-md px-4 py-2.5 hover:shadow-sm transition-all">
-                    <span className="font-display font-bold text-sm text-espresso">
-                      {a.name ?? a.case_number}
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray">
-                        od {new Date(a.intake_date).toLocaleDateString('cs-CZ')}
-                      </span>
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-pill text-xs font-bold
-                        ${days > 180 ? 'bg-coral text-white' : 'bg-amber text-espresso'}`}>
-                        {days} dní
-                      </span>
+
+          {/* ── Dlouhodobě ubytovaná zvířata ── */}
+          {longStay.length > 0 && (
+            <div className="bg-amber-light/60 rounded-lg border border-amber/30 p-4 md:p-5 mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h2 className="font-display font-extrabold text-lg text-espresso">
+                    ⏰ Dlouhodobý pobyt (90+ dní)
+                  </h2>
+                  <p className="text-xs text-brown-mid mt-0.5">
+                    Tato zvířata čekají déle než 3 měsíce — zvažte urgentní adopci nebo mediální pozornost.
+                  </p>
+                </div>
+                <Link href="/admin/animals?status=available">
+                  <Button variant="amber" size="sm">Zobrazit vše</Button>
+                </Link>
+              </div>
+              <div className="space-y-2">
+                {longStay.map((a: any) => {
+                  const days = Math.floor((now.getTime() - new Date(a.intake_date).getTime()) / (1000 * 60 * 60 * 24))
+                  return (
+                    <Link key={a.id} href={`/admin/animals/${a.id}`} className="no-underline">
+                      <div className="flex items-center justify-between bg-white rounded-md px-4 py-2.5 hover:shadow-sm transition-all">
+                        <span className="font-display font-bold text-sm text-espresso">
+                          {a.name ?? a.case_number}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray">
+                            od {new Date(a.intake_date).toLocaleDateString('cs-CZ')}
+                          </span>
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-pill text-xs font-bold
+                            ${days > 180 ? 'bg-coral text-white' : 'bg-amber text-espresso'}`}>
+                            {days} dní
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Aktivní sbírky ── */}
+          {fundraisers.length > 0 && (
+            <section className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-display font-extrabold text-xl text-espresso">💛 Aktivní sbírky</h2>
+                <Link href="/admin/fundraisers">
+                  <Button variant="sand" size="sm">Spravovat</Button>
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {fundraisers.map((f: any) => {
+                  const percent   = Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100)
+                  const barColor  = isShelter ? 'bg-coral' : 'bg-rescue'
+                  return (
+                    <div key={f.title} className="bg-white rounded-lg p-4 md:p-5 shadow-sm border border-gray-pale">
+                      <div className="font-display font-bold text-sm md:text-base text-espresso mb-3 leading-tight">{f.title}</div>
+                      <div className="flex justify-between text-sm mb-1.5">
+                        <span className="font-bold text-espresso">{f.current_amount.toLocaleString('cs-CZ')} Kč</span>
+                        <span className="text-gray text-xs">z {f.goal_amount.toLocaleString('cs-CZ')} Kč</span>
+                      </div>
+                      <div className="w-full h-2.5 bg-gray-pale rounded-pill overflow-hidden">
+                        <div className={`h-full ${barColor} rounded-pill`} style={{ width: `${percent}%` }} />
+                      </div>
+                      <div className={`text-xs font-bold mt-1 ${isShelter ? 'text-coral' : 'text-rescue'}`}>
+                        {percent}% vybráno
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* ── Rychlé akce ── */}
+          <section>
+            <h2 className="font-display font-extrabold text-xl text-espresso mb-3">Rychlé akce</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <QuickAction href="/admin/animals/new"    icon={isShelter ? '🐾' : '🦉'} label={isShelter ? 'Přidat zvíře' : 'Nový pacient'} color="coral" />
+              {isShelter && <QuickAction href="/admin/applications" icon="📋" label={pendingApplications > 0 ? `Žádosti (${pendingApplications})` : 'Žádosti'} color="amber" />}
+              <QuickAction href="/admin/fundraisers/new" icon="💛" label="Nová sbírka"    color="amber" />
+              <QuickAction href="/admin/volunteers"      icon="🙋" label={pendingVolunteers > 0 ? `Dobrovolníci (${pendingVolunteers})` : 'Dobrovolníci'} color="default" />
+              <QuickAction href="/admin/articles/new"    icon="📝" label="Nový článek"    color="default" />
+              <QuickAction href="/admin/settings"        icon="⚙️" label="Nastavení"      color="default" />
+            </div>
+          </section>
+        </div>
+
+        {/* Right column: Activity feed */}
+        <div>
+          <div className="bg-white rounded-2xl border border-[#F0EDE8] p-5">
+            <h2 className="font-display font-extrabold text-base text-espresso mb-1">Poslední aktivita</h2>
+            {activity.length === 0 ? (
+              <p className="text-sm text-[#8B6550] mt-3">Zatím žádná aktivita</p>
+            ) : (
+              <div>
+                {activity.map((h: any) => (
+                  <div key={h.id} className="flex items-start gap-3 py-3 border-b border-[#F0EDE8] last:border-0">
+                    <span className="text-sm mt-0.5">🐾</span>
+                    <div className="min-w-0">
+                      <div className="text-xs text-[#8B6550]">{relativeTime(h.changed_at)}</div>
+                      <div className="text-sm font-bold text-espresso truncate">{h.animal?.name ?? '—'}</div>
+                      <div className="text-sm text-[#8B6550]">→ {statusLabel[h.new_status] ?? h.new_status}</div>
                     </div>
                   </div>
-                </Link>
-              )
-            })}
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      )}
-
-      {/* ── Aktivní sbírky ── */}
-      {fundraisers.length > 0 && (
-        <section className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-display font-extrabold text-xl text-espresso">💛 Aktivní sbírky</h2>
-            <Link href="/admin/fundraisers">
-              <Button variant="sand" size="sm">Spravovat</Button>
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {fundraisers.map((f: any) => {
-              const percent   = Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100)
-              const barColor  = isShelter ? 'bg-coral' : 'bg-rescue'
-              return (
-                <div key={f.title} className="bg-white rounded-lg p-4 md:p-5 shadow-sm border border-gray-pale">
-                  <div className="font-display font-bold text-sm md:text-base text-espresso mb-3 leading-tight">{f.title}</div>
-                  <div className="flex justify-between text-sm mb-1.5">
-                    <span className="font-bold text-espresso">{f.current_amount.toLocaleString('cs-CZ')} Kč</span>
-                    <span className="text-gray text-xs">z {f.goal_amount.toLocaleString('cs-CZ')} Kč</span>
-                  </div>
-                  <div className="w-full h-2.5 bg-gray-pale rounded-pill overflow-hidden">
-                    <div className={`h-full ${barColor} rounded-pill`} style={{ width: `${percent}%` }} />
-                  </div>
-                  <div className={`text-xs font-bold mt-1 ${isShelter ? 'text-coral' : 'text-rescue'}`}>
-                    {percent}% vybráno
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* ── Rychlé akce ── */}
-      <section>
-        <h2 className="font-display font-extrabold text-xl text-espresso mb-3">Rychlé akce</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <QuickAction href="/admin/animals/new"    icon={isShelter ? '🐾' : '🦉'} label={isShelter ? 'Přidat zvíře' : 'Nový pacient'} color="coral" />
-          {isShelter && <QuickAction href="/admin/applications" icon="📋" label={pendingApplications > 0 ? `Žádosti (${pendingApplications})` : 'Žádosti'} color="amber" />}
-          <QuickAction href="/admin/fundraisers/new" icon="💛" label="Nová sbírka"    color="amber" />
-          <QuickAction href="/admin/volunteers"      icon="🙋" label={pendingVolunteers > 0 ? `Dobrovolníci (${pendingVolunteers})` : 'Dobrovolníci'} color="default" />
-          <QuickAction href="/admin/articles/new"    icon="📝" label="Nový článek"    color="default" />
-          <QuickAction href="/admin/settings"        icon="⚙️" label="Nastavení"      color="default" />
-        </div>
-      </section>
+      </div>
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
 import { AdminBottomNav } from '@/components/admin/AdminBottomNav'
+import { AdminTopbar } from '@/components/admin/AdminTopbar'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -44,8 +45,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         userRole={membership?.role ?? 'staff'}
         isSuperadmin={isSuperadmin}
       />
-      {/* Desktop: ml-64, Mobile: pt-14 */}
-      <main className="flex-1 lg:ml-64 min-h-screen pt-14 lg:pt-0">
+      <main className="flex-1 lg:ml-64 min-h-screen">
+        <AdminTopbar
+          institutionName={institution?.name ?? null}
+          isShelter={institution ? institution.type === 'shelter' : null}
+          isSuperadmin={isSuperadmin}
+        />
         <div className="max-w-[1100px] mx-auto px-4 md:px-8 py-6 md:py-8 pb-[76px] lg:pb-8">
           {children}
         </div>
