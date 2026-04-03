@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
+import { StatCard } from '@/components/admin/StatCard'
 
 const statusLabel: Record<string, string> = {
   available: 'K adopci', reserved: 'Rezervováno', adopted: 'Adoptováno',
@@ -153,8 +154,7 @@ export default async function DashboardPage() {
           value={availableAnimals}
           label={isShelter ? 'K adopci' : 'V léčbě'}
           sub={`celkem ${animals.length}`}
-          colorVal={isShelter ? 'text-coral' : 'text-rescue'}
-          colorBg={isShelter ? 'bg-coral-light' : 'bg-rescue-bg'}
+          color={isShelter ? '#E8634A' : '#2E9E8F'}
           href="/admin/animals"
         />
         <StatCard
@@ -162,8 +162,7 @@ export default async function DashboardPage() {
           value={adoptedTotal}
           label={isShelter ? 'Adoptováno' : 'Propuštěno'}
           sub={adoptedThisMonth > 0 ? `${adoptedThisMonth} tento měsíc` : 'celkem'}
-          colorVal="text-success"
-          colorBg="bg-success-bg"
+          color="#2A7D4F"
           href="/admin/animals"
         />
         {isShelter ? (
@@ -172,8 +171,7 @@ export default async function DashboardPage() {
             value={pendingApplications}
             label="Nové žádosti"
             sub={`celkem ${applications.length}`}
-            colorVal="text-warning"
-            colorBg="bg-amber-light"
+            color="#F0A500"
             href="/admin/applications"
           />
         ) : (
@@ -182,8 +180,7 @@ export default async function DashboardPage() {
             value={fundraisers.length}
             label="Aktivní sbírky"
             sub="právě probíhají"
-            colorVal="text-warning"
-            colorBg="bg-amber-light"
+            color="#F0A500"
             href="/admin/fundraisers"
           />
         )}
@@ -192,8 +189,7 @@ export default async function DashboardPage() {
           value={activeVolunteers}
           label="Dobrovolníci"
           sub={pendingVolunteers > 0 ? `${pendingVolunteers} čeká` : 'aktivní'}
-          colorVal="text-espresso"
-          colorBg="bg-sand"
+          color="#2C1810"
           href="/admin/volunteers"
         />
       </div>
@@ -347,22 +343,6 @@ export default async function DashboardPage() {
         </div>
       </div>
     </div>
-  )
-}
-
-function StatCard({ icon, value, label, sub, colorVal, colorBg, href }: {
-  icon: string; value: number; label: string; sub: string
-  colorVal: string; colorBg: string; href: string
-}) {
-  return (
-    <Link href={href} className="no-underline">
-      <div className={`${colorBg} rounded-lg p-4 md:p-5 hover:-translate-y-0.5 hover:shadow-md transition-all`}>
-        <div className="text-2xl md:text-3xl mb-2 md:mb-3">{icon}</div>
-        <div className={`font-display font-extrabold text-2xl md:text-3xl mb-0.5 ${colorVal}`}>{value}</div>
-        <div className="font-body font-bold text-xs md:text-sm text-espresso">{label}</div>
-        <div className="font-body text-xs text-gray mt-0.5 hidden md:block">{sub}</div>
-      </div>
-    </Link>
   )
 }
 
