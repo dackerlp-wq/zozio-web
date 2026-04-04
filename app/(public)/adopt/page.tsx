@@ -251,18 +251,22 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
 function Pagination({ current, total, params }: { current: number; total: number; params: any }) {
   const pages = getPaginationRange(current, total)
   return (
-    <div className="flex items-center justify-center gap-1.5 mt-10 flex-wrap">
+    <nav aria-label="Stránkování" className="flex items-center justify-center gap-1.5 mt-10 flex-wrap">
       {current > 1 && (
         <Link href={buildFilterUrl(params, { page: String(current - 1) })}
-          className="w-9 h-9 rounded-lg flex items-center justify-center text-sm border no-underline transition-all hover:opacity-80"
+          aria-label="Předchozí stránka"
+          className="min-w-[44px] h-11 rounded-lg flex items-center justify-center text-sm border no-underline transition-all hover:opacity-80"
           style={{ borderColor: '#E0DDD8', color: '#6B4030', background: 'white' }}>←</Link>
       )}
       {pages.map((p, i) =>
         p === '...' ? (
-          <span key={`d${i}`} className="w-9 h-9 flex items-center justify-center text-sm" style={{ color: '#8B6550' }}>…</span>
+          <span key={`d${i}`} aria-hidden="true"
+            className="min-w-[44px] h-11 flex items-center justify-center text-sm" style={{ color: '#8B6550' }}>…</span>
         ) : (
           <Link key={p} href={buildFilterUrl(params, { page: String(p) })}
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-medium border no-underline transition-all"
+            aria-label={`Stránka ${p}`}
+            aria-current={p === current ? 'page' : undefined}
+            className="min-w-[44px] h-11 rounded-lg flex items-center justify-center text-sm font-medium border no-underline transition-all"
             style={p === current
               ? { background: '#E8634A', color: 'white', borderColor: '#E8634A' }
               : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }
@@ -271,10 +275,11 @@ function Pagination({ current, total, params }: { current: number; total: number
       )}
       {current < total && (
         <Link href={buildFilterUrl(params, { page: String(current + 1) })}
-          className="w-9 h-9 rounded-lg flex items-center justify-center text-sm border no-underline transition-all hover:opacity-80"
+          aria-label="Další stránka"
+          className="min-w-[44px] h-11 rounded-lg flex items-center justify-center text-sm border no-underline transition-all hover:opacity-80"
           style={{ borderColor: '#E0DDD8', color: '#6B4030', background: 'white' }}>→</Link>
       )}
-    </div>
+    </nav>
   )
 }
 

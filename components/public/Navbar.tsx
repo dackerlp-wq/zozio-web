@@ -30,12 +30,13 @@ export function Navbar({ user }: NavbarProps) {
   const router    = useRouter()
   const [open,    setOpen]    = useState(false)
   const [dropdown, setDropdown] = useState(false)
-  const dropRef = useRef<HTMLDivElement>(null)
+  const dropRef   = useRef<HTMLDivElement>(null)
+  const dropBtnRef = useRef<HTMLButtonElement>(null)
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
 
-  // Zavři dropdown při kliknutí mimo — musí být před early return (rules of hooks)
+  // Zavři dropdown při kliknutí mimo
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
@@ -45,6 +46,22 @@ export function Navbar({ user }: NavbarProps) {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  // Escape zavře dropdown nebo mobilní menu
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (dropdown) {
+          setDropdown(false)
+          dropBtnRef.current?.focus()
+        } else if (open) {
+          setOpen(false)
+        }
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [dropdown, open])
 
   // Skrýt na admin routách
   const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/superadmin')
@@ -78,6 +95,7 @@ export function Navbar({ user }: NavbarProps) {
               <li key={href}>
                 <Link
                   href={href}
+                  aria-current={isActive(href) ? 'page' : undefined}
                   className={cn(
                     'inline-flex items-center px-3 py-2 rounded-md font-body text-sm font-bold transition-colors no-underline whitespace-nowrap',
                     isActive(href)
@@ -97,16 +115,20 @@ export function Navbar({ user }: NavbarProps) {
               /* Přihlášený uživatel — avatar dropdown */
               <div className="relative" ref={dropRef}>
                 <button
+                  ref={dropBtnRef}
                   onClick={() => setDropdown(!dropdown)}
+                  aria-expanded={dropdown}
+                  aria-haspopup="true"
+                  aria-label={`Účet: ${user.name}`}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#E0DDD8] bg-white hover:bg-sand transition-all cursor-pointer"
                 >
-                  <div className="w-6 h-6 rounded-full bg-[#E8634A] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                  <div aria-hidden="true" className="w-6 h-6 rounded-full bg-[#E8634A] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
                     {initials}
                   </div>
                   <span className="text-sm font-semibold text-espresso max-w-[100px] truncate">
                     {user.name.split(' ')[0]}
                   </span>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={cn('transition-transform', dropdown && 'rotate-180')}>
+                  <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" className={cn('transition-transform', dropdown && 'rotate-180')}>
                     <path d="M2 4l4 4 4-4" stroke="#8B6550" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </button>
@@ -174,7 +196,9 @@ export function Navbar({ user }: NavbarProps) {
           <button
             onClick={() => setOpen(!open)}
             className="lg:hidden flex flex-col gap-1.5 p-2 cursor-pointer bg-transparent border-none"
-            aria-label="Menu"
+            aria-label={open ? 'Zavřít menu' : 'Otevřít menu'}
+            aria-expanded={open}
+            aria-controls="mobile-nav"
           >
             <span className={cn('w-6 h-0.5 bg-espresso rounded transition-all duration-200', open && 'rotate-45 translate-y-2')} />
             <span className={cn('w-6 h-0.5 bg-espresso rounded transition-all duration-200', open && 'opacity-0')} />
@@ -185,7 +209,8 @@ export function Navbar({ user }: NavbarProps) {
 
       {/* Mobile menu */}
       {open && (
-        <div className="fixed inset-0 z-40 bg-warm flex flex-col pt-16 overflow-y-auto lg:hidden">
+        <div id="mobile-nav" role="navigation" aria-label="Mobilní navigace"
+          className="fixed inset-0 z-40 bg-warm flex flex-col pt-16 overflow-y-auto lg:hidden">
           <div className="px-4 py-4 flex-1">
 
             {/* Přihlášený user info */}
@@ -210,6 +235,7 @@ export function Navbar({ user }: NavbarProps) {
                     <Link
                       href={href}
                       onClick={() => setOpen(false)}
+                      aria-current={isActive(href) ? 'page' : undefined}
                       className={cn(
                         'flex flex-col px-3 py-3 rounded-md no-underline transition-colors',
                         isActive(href) ? 'bg-coral-light' : 'hover:bg-sand'

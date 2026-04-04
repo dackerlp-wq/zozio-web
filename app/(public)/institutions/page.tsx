@@ -45,9 +45,11 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
           </h1>
 
           {/* Search */}
-          <form method="GET" action="/institutions" className="flex gap-2 max-w-[480px]">
+          <form method="GET" action="/institutions" className="flex gap-2 max-w-[480px]" role="search">
             {type !== 'all' && <input type="hidden" name="type" value={type} />}
+            <label htmlFor="institutions-search" className="sr-only">Hledat útulky a záchranné stanice</label>
             <input
+              id="institutions-search"
               type="search" name="q"
               defaultValue={params.q ?? ''}
               placeholder="Hledat název, město..."
@@ -61,6 +63,7 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
             </button>
             {params.q && (
               <Link href={`/institutions${type !== 'all' ? `?type=${type}` : ''}`}
+                aria-label="Zrušit hledání"
                 className="px-3 py-2.5 rounded-xl font-bold text-sm border no-underline hover:opacity-80"
                 style={{ borderColor: '#E0DDD8', color: '#6B4030', background: 'white' }}>
                 ✕
@@ -69,28 +72,31 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
           </form>
         </div>
 
-        {/* Taby */}
-        <div className="flex gap-0 border-b border-[#F0EDE8] mb-6 overflow-x-auto"
+        {/* Filtrovací navigace */}
+        <nav aria-label="Filtr typu instituce"
+          className="flex gap-0 border-b border-[#F0EDE8] mb-6 overflow-x-auto"
           style={{ scrollbarWidth: 'none' } as any}>
           {tabs.map(tab => (
             <Link key={tab.id}
               href={`/institutions?type=${tab.id}${params.q ? `&q=${params.q}` : ''}${params.city ? `&city=${params.city}` : ''}`}
+              aria-current={type === tab.id ? 'page' : undefined}
               className="no-underline flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition-all"
               style={type === tab.id
                 ? { color: '#E8634A', borderBottomColor: '#E8634A' }
-                : { color: '#8B6550', borderBottomColor: 'transparent' }
+                : { color: '#6B4030', borderBottomColor: 'transparent' }
               }>
               {tab.label}
-              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold"
+              <span aria-hidden="true"
+                className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1 rounded-full text-[10px] font-bold"
                 style={type === tab.id
                   ? { background: '#E8634A', color: 'white' }
-                  : { background: '#F0EDE8', color: '#8B6550' }
+                  : { background: '#F0EDE8', color: '#6B4030' }
                 }>
                 {tab.count}
               </span>
             </Link>
           ))}
-        </div>
+        </nav>
 
         {/* Filtry měst */}
         {cities.length > 1 && (

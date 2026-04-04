@@ -74,6 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="cs" className={`${baloo.variable} ${nunito.variable}`}>
       <body className="font-body bg-warm text-espresso antialiased">
+        <a href="#main-content" className="skip-link">Přejít na obsah</a>
         <NavbarWrapper />
         {children}
         <FooterWrapper />
