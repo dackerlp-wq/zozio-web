@@ -73,33 +73,47 @@ export default async function EditAnimalPage({ params, searchParams }: PageProps
       {/* Pokud přišlo přes QR → zobraz flash banner */}
       {scan === '1' && <ScanRedirect animalName={a.name ?? a.case_number} />}
 
-      <div className="flex items-center justify-between mb-6">
+      {/* Top bar — responsive */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
-          <a href="/admin/animals" className="text-sm text-gray hover:text-coral transition-colors font-semibold">
+          <a href="/admin/animals" className="text-sm text-[#8B6550] hover:text-[#E8634A] transition-colors font-semibold">
             ← Zpět
           </a>
-          <span className="text-gray">·</span>
+          <span className="text-[#D5CFC8]">·</span>
           <a
             href={isShelter ? `/animals/${id}` : `/rescue/${id}`}
             target="_blank"
-            className="text-sm text-coral hover:text-coral-dark font-semibold transition-colors"
+            className="text-sm text-[#E8634A] hover:opacity-70 font-semibold transition-opacity"
           >
             Web ↗
           </a>
         </div>
 
-        {/* QR tlačítko */}
-        <a
-          href={`/admin/animals/${id}/qr`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-espresso text-white font-display font-bold text-sm rounded-sm hover:bg-brown transition-colors no-underline"
-        >
-          <span>▣</span> QR karta
-        </a>
+        <div className="flex items-center gap-2">
+          {/* PDF karta */}
+          <a
+            href={`/admin/animals/${id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 border-[#F0EDE8] bg-white text-[#6B4030] font-bold text-sm hover:border-[#E8634A] hover:text-[#E8634A] transition-colors"
+          >
+            <span>📄</span>
+            <span className="hidden sm:inline">PDF karta</span>
+          </a>
+          {/* QR karta */}
+          <a
+            href={`/admin/animals/${id}/qr`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#2C1810] text-white font-bold text-sm hover:bg-[#6B4030] transition-colors"
+          >
+            <span>▣</span>
+            <span className="hidden sm:inline">QR karta</span>
+          </a>
+        </div>
       </div>
 
-      <h1 className="font-display font-extrabold text-3xl md:text-4xl text-espresso mb-8">
+      <h1 className="font-display font-extrabold text-2xl sm:text-3xl md:text-4xl text-[#2C1810] mb-6">
         {a.name ?? a.case_number}
       </h1>
 
