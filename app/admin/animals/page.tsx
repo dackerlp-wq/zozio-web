@@ -7,13 +7,24 @@ import { Badge } from '@/components/ui/Badge'
 import { AdminAnimalSearch } from '@/components/admin/AdminAnimalSearch'
 
 interface PageProps {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>
+  searchParams: Promise<{ q?: string; status?: string; species?: string; page?: string }>
 }
 
 const PAGE_SIZE = 20
 
+function computeAge(birthYear: number | null, birthMonth: number | null): string | null {
+  if (!birthYear) return null
+  const now = new Date()
+  const age = now.getFullYear() - birthYear
+  if (age <= 0) {
+    const months = (now.getFullYear() - birthYear) * 12 + (now.getMonth() - (birthMonth ?? 0))
+    return months <= 1 ? '< 1 m.' : `${months} m.`
+  }
+  return age === 1 ? '1 r.' : `${age} r.`
+}
+
 export default async function AdminAnimalsPage({ searchParams }: PageProps) {
-  const { q, status: filterStatus, page: pageParam } = await searchParams
+  const { q, status: filterStatus, species: filterSpecies, page: pageParam } = await searchParams
   const page = Number(pageParam ?? 1)
   const offset = (page - 1) * PAGE_SIZE
 
@@ -40,61 +51,89 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
 
   const isShelter = institution.type === 'shelter'
 
-  // Načti s filtry
-  let animalsQuery = isShelter
-    ? service.from('animals').select('id, name, urgent, adoption_status, health_status, in_quarantine, in_foster, species:animal_species(name_cs,icon), intake_date, created_at', { count: 'exact' }).eq('institution_id', institution.id)
-    : service.from('rescue_cases').select('id, name, case_number, status, health_status, species:animal_species(name_cs,icon), intake_date, created_at', { count: 'exact' }).eq('institution_id', institution.id)
+  // Species list for filter dropdown
+  const { data: speciesList } = await service
+    .from('animal_species')
+    .select('id, name_cs, icon')
+    .order('name_cs')
 
-  // Filtr stavu
-  if (filterStatus) {
-    animalsQuery = isShelter
-      ? (animalsQuery as any).eq('adoption_status', filterStatus)
-      : (animalsQuery as any).eq('status', filterStatus)
-  }
+  // Status counts for tabs (parallel)
+  const shelterTabStatuses = ['available', 'reserved', 'foster', 'adopted'] as const
+  const rescueTabStatuses  = ['intake', 'treatment', 'rehabilitation', 'released'] as const
+  const tabStatuses = isShelter ? shelterTabStatuses : rescueTabStatuses
 
-  // Vyhledávání
-  if (q) {
-    animalsQuery = isShelter
-      ? (animalsQuery as any).ilike('name', `%${q}%`)
-      : (animalsQuery as any).or(`name.ilike.%${q}%,case_number.ilike.%${q}%`)
-  }
+  const statusField = isShelter ? 'adoption_status' : 'status'
+  const table       = isShelter ? 'animals' : 'rescue_cases'
 
-  // Řazení + stránkování
+  const [totalResult, ...tabCountResults] = await Promise.all([
+    service.from(table).select('id', { count: 'exact', head: true }).eq('institution_id', institution.id),
+    ...tabStatuses.map(s =>
+      service.from(table).select('id', { count: 'exact', head: true })
+        .eq('institution_id', institution.id)
+        .eq(statusField, s)
+    ),
+  ])
+
+  const totalCount = totalResult.count ?? 0
+  const tabCounts  = tabCountResults.map(r => r.count ?? 0)
+
+  // Main query
+  const selectFields = isShelter
+    ? 'id, name, breed, birth_year, birth_month, urgent, adoption_status, health_status, in_quarantine, in_foster, species:animal_species(id, name_cs, icon), intake_date, created_at'
+    : 'id, name, case_number, estimated_age, status, health_status, species:animal_species(id, name_cs, icon), intake_date, created_at'
+
+  let animalsQuery = service
+    .from(table)
+    .select(selectFields, { count: 'exact' })
+    .eq('institution_id', institution.id) as any
+
+  if (filterStatus)  animalsQuery = animalsQuery.eq(statusField, filterStatus)
+  if (filterSpecies) animalsQuery = animalsQuery.eq('species_id', filterSpecies)
+  if (q)             animalsQuery = isShelter
+    ? animalsQuery.ilike('name', `%${q}%`)
+    : animalsQuery.or(`name.ilike.%${q}%,case_number.ilike.%${q}%`)
+
   const { data: animals, count } = isShelter
-    ? await (animalsQuery as any).order('urgent', { ascending: false }).order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1)
-    : await (animalsQuery as any).order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1)
+    ? await animalsQuery.order('urgent', { ascending: false }).order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1)
+    : await animalsQuery.order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1)
 
   const items = (animals ?? []) as any[]
+  const filteredCount = count ?? 0
+  const totalPages = Math.ceil(filteredCount / PAGE_SIZE)
 
-  // Statusy pro filter
-  const shelterStatuses = [
-    { value: '', label: 'Všechny' },
-    { value: 'available',        label: 'K adopci' },
-    { value: 'reserved',         label: 'Rezervováno' },
-    { value: 'foster',           label: 'Ve foster' },
-    { value: 'adopted',          label: 'Adoptováno' },
-    { value: 'not_for_adoption', label: 'Není k adopci' },
+  // Tab definitions
+  const shelterTabs = [
+    { value: '',          label: 'Všechna',    count: totalCount },
+    { value: 'available', label: 'K adopci',   count: tabCounts[0] },
+    { value: 'reserved',  label: 'Rezervovaná',count: tabCounts[1] },
+    { value: 'foster',    label: 'Pěstounská', count: tabCounts[2] },
+    { value: 'adopted',   label: 'Adoptovaná', count: tabCounts[3] },
   ]
-  const rescueStatuses = [
-    { value: '',               label: 'Všechny' },
-    { value: 'intake',         label: 'Příjem' },
-    { value: 'treatment',      label: 'Léčba' },
-    { value: 'rehabilitation', label: 'Rehabilitace' },
-    { value: 'released',       label: 'Propuštěn' },
-    { value: 'transferred',    label: 'Přemístěn' },
-    { value: 'deceased',       label: 'Uhynul' },
+  const rescueTabs = [
+    { value: '',               label: 'Všichni',      count: totalCount },
+    { value: 'intake',         label: 'Příjem',        count: tabCounts[0] },
+    { value: 'treatment',      label: 'Léčba',         count: tabCounts[1] },
+    { value: 'rehabilitation', label: 'Rehabilitace',  count: tabCounts[2] },
+    { value: 'released',       label: 'Propuštěno',    count: tabCounts[3] },
   ]
-  const statuses = isShelter ? shelterStatuses : rescueStatuses
+  const tabs = isShelter ? shelterTabs : rescueTabs
+  const activeColor = isShelter ? '#E8634A' : '#2E9E8F'
+
+  function buildUrl(overrides: Record<string, string | undefined>) {
+    const params = new URLSearchParams()
+    const merged = { status: filterStatus, q, species: filterSpecies, ...overrides }
+    Object.entries(merged).forEach(([k, v]) => { if (v) params.set(k, v) })
+    const qs = params.toString()
+    return `/admin/animals${qs ? `?${qs}` : ''}`
+  }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 md:mb-8">
-        <div>
-          <h1 className="font-display font-extrabold text-3xl md:text-4xl text-espresso">
-            {isShelter ? '🐾 Zvířata' : '🦉 Pacienti'}
-          </h1>
-          <p className="text-gray mt-1 font-semibold text-sm">{count ?? items.length} záznamů</p>
-        </div>
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="font-display font-extrabold text-2xl md:text-3xl text-espresso">
+          {isShelter ? '🐾 Všechna zvířata' : '🦉 Všichni pacienti'}
+        </h1>
         <Link href="/admin/animals/new">
           <Button variant={isShelter ? 'primary' : 'rescue'} size="sm">
             + {isShelter ? 'Přidat' : 'Nový pacient'}
@@ -102,11 +141,46 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
         </Link>
       </div>
 
-      {/* Search + filtry stavu */}
-      <AdminAnimalSearch statuses={statuses} currentStatus={filterStatus ?? ''} currentQ={q ?? ''} />
+      {/* Status tabs */}
+      <div className="flex gap-0 border-b border-[#F0EDE8] mb-5 overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
+        {tabs.map(tab => {
+          const isActive = (filterStatus ?? '') === tab.value
+          return (
+            <Link
+              key={tab.value}
+              href={buildUrl({ status: tab.value || undefined, page: undefined })}
+              className={`flex items-center gap-1.5 px-3 md:px-4 py-2.5 font-bold text-sm whitespace-nowrap border-b-2 transition-colors no-underline shrink-0`}
+              style={{
+                borderColor: isActive ? activeColor : 'transparent',
+                color: isActive ? activeColor : '#8B6550',
+              }}
+            >
+              {tab.label}
+              <span
+                className="inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full text-[10px] font-bold"
+                style={{
+                  backgroundColor: isActive ? activeColor : '#F5E6D3',
+                  color: isActive ? 'white' : '#8B6550',
+                }}
+              >
+                {tab.count}
+              </span>
+            </Link>
+          )
+        })}
+      </div>
+
+      {/* Search + species filter */}
+      <AdminAnimalSearch
+        currentQ={q ?? ''}
+        currentStatus={filterStatus ?? ''}
+        currentSpecies={filterSpecies ?? ''}
+        speciesList={speciesList ?? []}
+        isShelter={isShelter}
+      />
 
       {items.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-lg border border-gray-pale">
+        <div className="text-center py-16 bg-white rounded-2xl border border-[#F0EDE8]">
           <div className="text-5xl mb-4">{isShelter ? '🐾' : '🦉'}</div>
           <h3 className="font-display font-bold text-xl text-espresso mb-2">
             {q || filterStatus ? 'Žádné výsledky' : 'Zatím žádné záznamy'}
@@ -119,114 +193,257 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
         </div>
       ) : (
         <>
-          {/* Mobilní karty */}
+          {/* ── Mobile cards ── */}
           <div className="md:hidden space-y-3">
-            {items.map((item: any) => (
-              <div key={item.id} className="bg-white rounded-lg p-4 border border-gray-pale shadow-sm">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    {isShelter && item.urgent       && <span>🆘</span>}
-                    {item.in_quarantine              && <span title="Karanténa">🚧</span>}
-                    {isShelter && item.in_foster     && <span title="Foster">🏠</span>}
-                    <span className="font-display font-bold text-base text-espresso">
-                      {item.name ?? item.case_number}
-                    </span>
+            {items.map((item: any) => {
+              const statusVal = isShelter ? item.adoption_status : item.status
+              const age = isShelter
+                ? computeAge(item.birth_year, item.birth_month)
+                : item.estimated_age ?? null
+              return (
+                <div key={item.id} className="bg-white rounded-xl border border-[#F0EDE8] shadow-sm overflow-hidden">
+                  <div className="flex items-center gap-3 p-4">
+                    {/* Icon */}
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0"
+                      style={{ backgroundColor: '#F5E6D3' }}
+                    >
+                      {item.species?.icon ?? (isShelter ? '🐾' : '🦉')}
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        {isShelter && item.urgent && <span className="text-xs">🆘</span>}
+                        {item.in_quarantine          && <span className="text-xs" title="Karanténa">🚧</span>}
+                        {isShelter && item.in_foster  && <span className="text-xs" title="Foster">🏠</span>}
+                        <span className="font-display font-bold text-sm text-espresso truncate">
+                          {item.name ?? item.case_number ?? '—'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#8B6550] font-semibold">
+                        {item.species?.name_cs ?? '—'}
+                        {age ? ` · ${age}` : ''}
+                        {isShelter && item.breed ? ` · ${item.breed}` : ''}
+                      </div>
+                    </div>
+                    {/* Status badge */}
+                    <Badge variant={statusVal} size="sm" />
                   </div>
-                  <Badge variant={isShelter ? item.adoption_status : item.status} size="sm" />
+                  {/* Actions bar */}
+                  <div className="flex border-t border-[#F0EDE8]">
+                    <Link
+                      href={`/admin/animals/${item.id}`}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-[#8B6550] hover:text-espresso hover:bg-[#FFFCF8] transition-colors no-underline border-r border-[#F0EDE8]"
+                    >
+                      ✏️ Upravit
+                    </Link>
+                    <a
+                      href={`/admin/animals/${item.id}/qr`}
+                      target="_blank"
+                      className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#8B6550] hover:text-espresso hover:bg-[#FFFCF8] transition-colors no-underline"
+                    >
+                      ▣ QR
+                    </a>
+                  </div>
                 </div>
-                <div className="text-xs text-gray font-semibold mb-3">
-                  {item.species?.icon} {item.species?.name_cs ?? '—'}
-                </div>
-                <div className="flex gap-2">
-                  <Link href={`/admin/animals/${item.id}`} className="flex-1">
-                    <Button variant="sand" size="sm" className="w-full justify-center">Upravit</Button>
-                  </Link>
-                  <a href={`/admin/animals/${item.id}/qr`} target="_blank"
-                    className="inline-flex items-center justify-center px-3 py-1.5 bg-espresso text-white font-bold text-xs rounded-sm hover:bg-brown transition-colors no-underline"
-                    title="QR karta">
-                    ▣
-                  </a>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
-          {/* Desktop tabulka */}
+          {/* ── Desktop table ── */}
           <div className="hidden md:block bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden shadow-sm">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-pale bg-sand/50">
-                  <th className="text-left px-5 py-3 font-body text-xs font-bold text-gray uppercase tracking-wider">{isShelter ? 'Zvíře' : 'Pacient'}</th>
-                  <th className="text-left px-5 py-3 font-body text-xs font-bold text-gray uppercase tracking-wider">Druh</th>
-                  <th className="text-left px-5 py-3 font-body text-xs font-bold text-gray uppercase tracking-wider">Stav</th>
-                  <th className="text-left px-5 py-3 font-body text-xs font-bold text-gray uppercase tracking-wider">Příznaky</th>
-                  <th className="text-left px-5 py-3 font-body text-xs font-bold text-gray uppercase tracking-wider">Přijato</th>
-                  <th className="px-5 py-3 text-right font-body text-xs font-bold text-gray uppercase tracking-wider">Akce</th>
+                <tr className="border-b border-[#F0EDE8] bg-[#FDFAF7]">
+                  <th className="text-left px-5 py-3 font-body text-[11px] font-bold text-[#8B6550] uppercase tracking-wider">
+                    {isShelter ? 'Zvíře' : 'Pacient'}
+                  </th>
+                  <th className="text-left px-5 py-3 font-body text-[11px] font-bold text-[#8B6550] uppercase tracking-wider">
+                    Druh / Věk
+                  </th>
+                  <th className="text-left px-5 py-3 font-body text-[11px] font-bold text-[#8B6550] uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="text-left px-5 py-3 font-body text-[11px] font-bold text-[#8B6550] uppercase tracking-wider">
+                    Přidáno
+                  </th>
+                  <th className="px-5 py-3" />
                 </tr>
               </thead>
               <tbody>
-                {items.map((item: any, i: number) => (
-                  <tr key={item.id} className={`border-b border-gray-pale/50 hover:bg-sand/20 transition-colors ${i % 2 === 0 ? '' : 'bg-gray-pale/10'}`}>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1.5">
-                        {isShelter && item.urgent   && <span title="Urgentní">🆘</span>}
-                        {item.in_quarantine          && <span title="V karanténě">🚧</span>}
-                        {isShelter && item.in_foster && <span title="Ve foster péči">🏠</span>}
-                        <span className="font-display font-bold text-sm text-espresso">
-                          {item.name ?? item.case_number}
+                {items.map((item: any) => {
+                  const statusVal = isShelter ? item.adoption_status : item.status
+                  const age = isShelter
+                    ? computeAge(item.birth_year, item.birth_month)
+                    : item.estimated_age ?? null
+                  return (
+                    <tr
+                      key={item.id}
+                      className="group border-b border-[#F0EDE8] last:border-0 hover:bg-[#FFFCF8] transition-colors"
+                    >
+                      {/* ZVÍŘE */}
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
+                            style={{ backgroundColor: '#F5E6D3' }}
+                          >
+                            {item.species?.icon ?? (isShelter ? '🐾' : '🦉')}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              {isShelter && item.urgent   && <span className="text-xs">🆘</span>}
+                              {item.in_quarantine          && <span className="text-xs" title="Karanténa">🚧</span>}
+                              {isShelter && item.in_foster && <span className="text-xs" title="Foster">🏠</span>}
+                              <span className="font-display font-bold text-sm text-[#2C1810]">
+                                {item.name ?? item.case_number ?? '—'}
+                              </span>
+                            </div>
+                            {isShelter && item.breed && (
+                              <div className="text-xs text-[#8B6550] mt-0.5">{item.breed}</div>
+                            )}
+                            {!isShelter && item.name && item.case_number && (
+                              <div className="text-xs text-[#8B6550] mt-0.5">{item.case_number}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* DRUH / VĚK */}
+                      <td className="px-5 py-3.5">
+                        <span className="text-sm text-[#2C1810] font-semibold">
+                          {item.species?.name_cs ?? '—'}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-sm text-gray font-semibold">
-                      {item.species?.icon} {item.species?.name_cs ?? '—'}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <Badge variant={isShelter ? item.adoption_status : item.status} size="sm" />
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {item.health_status && item.health_status !== 'healthy' && (
-                        <Badge variant={item.health_status} size="sm" />
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-xs text-gray font-semibold">
-                      {new Date(item.intake_date ?? item.created_at).toLocaleDateString('cs-CZ')}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-2">
-                        <a href={`/admin/animals/${item.id}/qr`} target="_blank"
-                          className="inline-flex items-center justify-center w-8 h-8 bg-espresso text-white text-sm rounded-sm hover:bg-brown transition-colors no-underline"
-                          title="QR karta">
-                          ▣
-                        </a>
-                        <Link href={`/admin/animals/${item.id}`}>
-                          <Button variant="sand" size="sm">Upravit</Button>
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        {age && (
+                          <span className="text-sm text-[#8B6550]"> · {age}</span>
+                        )}
+                      </td>
+
+                      {/* STATUS */}
+                      <td className="px-5 py-3.5">
+                        <Badge variant={statusVal} size="sm" />
+                      </td>
+
+                      {/* PŘIDÁNO */}
+                      <td className="px-5 py-3.5 text-sm text-[#8B6550] font-semibold whitespace-nowrap">
+                        {new Date(item.intake_date ?? item.created_at).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric' })}
+                      </td>
+
+                      {/* AKCE — appear on row hover */}
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <a
+                            href={`/admin/animals/${item.id}/qr`}
+                            target="_blank"
+                            className="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-[#8B6550] hover:bg-[#F5E6D3] hover:text-espresso transition-colors no-underline"
+                            title="QR karta"
+                          >
+                            ▣
+                          </a>
+                          <Link
+                            href={`/admin/animals/${item.id}`}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-[#8B6550] hover:bg-[#F5E6D3] hover:text-espresso transition-colors no-underline"
+                            title="Upravit"
+                          >
+                            ✏️
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-5 py-4 border-t border-[#F0EDE8]">
+                <span className="text-xs font-semibold text-[#8B6550]">
+                  Zobrazeno {offset + 1}–{Math.min(offset + PAGE_SIZE, filteredCount)} z {filteredCount} {isShelter ? 'zvířat' : 'případů'}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Link
+                    href={buildUrl({ page: page > 1 ? String(page - 1) : undefined })}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold border border-[#F0EDE8] transition-colors no-underline ${page <= 1 ? 'opacity-30 pointer-events-none' : 'text-[#2C1810] hover:bg-[#F5E6D3]'}`}
+                    aria-disabled={page <= 1}
+                  >
+                    ‹
+                  </Link>
+
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum: number
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (page <= 3) {
+                      pageNum = i + 1
+                    } else if (page >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = page - 2 + i
+                    }
+                    const isCurrentPage = pageNum === page
+                    return (
+                      <Link
+                        key={pageNum}
+                        href={buildUrl({ page: String(pageNum) })}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold no-underline transition-colors"
+                        style={isCurrentPage
+                          ? { backgroundColor: activeColor, color: 'white' }
+                          : { border: '1px solid #F0EDE8', color: '#2C1810' }
+                        }
+                      >
+                        {pageNum}
+                      </Link>
+                    )
+                  })}
+
+                  {totalPages > 5 && page < totalPages - 2 && (
+                    <span className="w-8 h-8 flex items-center justify-center text-xs text-[#8B6550]">…</span>
+                  )}
+
+                  {totalPages > 5 && page < totalPages - 2 && (
+                    <Link
+                      href={buildUrl({ page: String(totalPages) })}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold border border-[#F0EDE8] text-[#2C1810] hover:bg-[#F5E6D3] no-underline transition-colors"
+                    >
+                      {totalPages}
+                    </Link>
+                  )}
+
+                  <Link
+                    href={buildUrl({ page: page < totalPages ? String(page + 1) : undefined })}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold border border-[#F0EDE8] transition-colors no-underline ${page >= totalPages ? 'opacity-30 pointer-events-none' : 'text-[#2C1810] hover:bg-[#F5E6D3]'}`}
+                    aria-disabled={page >= totalPages}
+                  >
+                    ›
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Pagination */}
-          {(count ?? 0) > PAGE_SIZE && (
-            <div className="flex items-center justify-between px-5 py-4 border-t border-[#F0EDE8]">
-              <span className="text-xs font-semibold" style={{ color: '#8B6550' }}>
-                Zobrazeno {offset + 1}–{Math.min(offset + PAGE_SIZE, count ?? 0)} z {count} {isShelter ? 'zvířat' : 'případů'}
+          {/* Mobile pagination */}
+          {totalPages > 1 && (
+            <div className="md:hidden flex items-center justify-between py-4">
+              <span className="text-xs font-semibold text-[#8B6550]">
+                {offset + 1}–{Math.min(offset + PAGE_SIZE, filteredCount)} z {filteredCount}
               </span>
               <div className="flex gap-2">
                 {page > 1 && (
-                  <a href={`?page=${page - 1}${filterStatus ? `&status=${filterStatus}` : ''}${q ? `&q=${q}` : ''}`}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold border border-[#F0EDE8] text-[#1A0F0A] hover:bg-[#F5F0EC] transition-colors no-underline">
+                  <Link
+                    href={buildUrl({ page: String(page - 1) })}
+                    className="px-4 py-2 rounded-xl text-xs font-bold border border-[#F0EDE8] text-[#2C1810] hover:bg-[#F5E6D3] no-underline"
+                  >
                     ← Předchozí
-                  </a>
+                  </Link>
                 )}
-                {offset + PAGE_SIZE < (count ?? 0) && (
-                  <a href={`?page=${page + 1}${filterStatus ? `&status=${filterStatus}` : ''}${q ? `&q=${q}` : ''}`}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold border border-[#F0EDE8] text-[#1A0F0A] hover:bg-[#F5F0EC] transition-colors no-underline">
+                {page < totalPages && (
+                  <Link
+                    href={buildUrl({ page: String(page + 1) })}
+                    className="px-4 py-2 rounded-xl text-xs font-bold border border-[#F0EDE8] text-[#2C1810] hover:bg-[#F5E6D3] no-underline"
+                  >
                     Další →
-                  </a>
+                  </Link>
                 )}
               </div>
             </div>

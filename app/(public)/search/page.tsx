@@ -35,7 +35,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
           </h1>
           <SearchInput initialValue={query} />
           {query.length >= 2 && (
-            <p className="text-sm mt-3" style={{ color: '#8B6550' }}>
+            <p aria-live="polite" aria-atomic="true" className="text-sm mt-3" style={{ color: '#6B4030' }}>
               {totalCount === 0
                 ? 'Žádné výsledky'
                 : `Nalezeno ${totalCount} výsledků`}
@@ -92,7 +92,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
         )}
 
         {results && totalCount > 0 && (
-          <div className="space-y-10">
+          <div aria-live="polite" aria-label="Výsledky hledání" className="space-y-10">
 
             {/* ── Zvířata k adopci ── */}
             {results.animals.length > 0 && (
@@ -136,7 +136,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
                             style={{ background: '#E8634A', color: 'white' }}>Urgentní</span>
                         )}
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: '#C8C5BF', flexShrink: 0 }}>
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: '#C8C5BF', flexShrink: 0 }}>
                           <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       </div>
@@ -236,7 +236,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                             📍 {i.city} · {i.type === 'shelter' ? 'Útulek' : 'Záchranná stanice'}
                           </div>
                         </div>
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: '#C8C5BF', flexShrink: 0 }}>
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: '#C8C5BF', flexShrink: 0 }}>
                           <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       </div>
@@ -279,7 +279,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                             </div>
                           )}
                         </div>
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: '#C8C5BF', flexShrink: 0 }}>
+                        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: '#C8C5BF', flexShrink: 0 }}>
                           <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       </div>

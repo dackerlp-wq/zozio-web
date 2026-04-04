@@ -16,8 +16,10 @@ export function SearchInput({ defaultValue = '' }: { defaultValue?: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form onSubmit={handleSubmit} className="flex gap-2" role="search">
+      <label htmlFor="search-input" className="sr-only">Hledat na Zozio</label>
       <input
+        id="search-input"
         type="search"
         value={value}
         onChange={e => setValue(e.target.value)}
@@ -27,6 +29,7 @@ export function SearchInput({ defaultValue = '' }: { defaultValue?: string }) {
       />
       <button
         type="submit"
+        aria-label="Hledat"
         className="px-6 py-4 bg-coral text-white font-display font-bold rounded-sm hover:bg-coral-dark transition-colors cursor-pointer border-none"
       >
         🔍

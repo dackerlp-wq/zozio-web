@@ -33,6 +33,7 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
     { href: '/admin/volunteers',  icon: '🙋', label: 'Dobrovolníci' },
     { href: '/admin/articles',   icon: '📝', label: 'Články' },
     { href: '/admin/newsletter', icon: '📬', label: 'Newsletter' },
+    { href: '/admin/widget',     icon: '🔗', label: 'Widget' },
     { href: '/admin/settings',   icon: '⚙️', label: 'Nastavení' },
     { href: '/admin/billing',    icon: '💳', label: 'Předplatné' },
   ]
@@ -128,24 +129,33 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
       </aside>
 
       {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-espresso px-4 py-3.5 flex items-center justify-between border-b border-white/10">
-        <Link href="/" className="flex items-center gap-2 no-underline">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-espresso px-4 py-3 flex items-center gap-2 border-b border-white/10">
+        <Link href="/" className="flex items-center gap-2 no-underline shrink-0">
           <ZozLogo size="xs" variant="inverted" />
           <span className="font-body text-xs font-semibold text-gray-light">admin</span>
         </Link>
         {institution && (
-          <span className="font-display font-bold text-xs text-white truncate mx-3 flex-1">
+          <span className="font-display font-bold text-xs text-white truncate flex-1 mx-1">
             {institution.type === 'shelter' ? '🏠' : '🚑'} {institution.name}
           </span>
         )}
-        <button
-          onClick={() => setOpen(!open)}
-          className="flex flex-col gap-1 p-2 cursor-pointer bg-transparent border-none"
-        >
-          <span className={cn('w-5 h-0.5 bg-white rounded transition-all', open && 'rotate-45 translate-y-1.5')} />
-          <span className={cn('w-5 h-0.5 bg-white rounded transition-all', open && 'opacity-0')} />
-          <span className={cn('w-5 h-0.5 bg-white rounded transition-all', open && '-rotate-45 -translate-y-1.5')} />
-        </button>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            className="w-9 h-9 flex items-center justify-center text-base cursor-pointer bg-transparent border-none text-gray-light hover:text-white transition-colors"
+            title="Oznámení"
+          >
+            🔔
+          </button>
+          <button
+            onClick={() => setOpen(!open)}
+            className="flex flex-col gap-1 p-2 cursor-pointer bg-transparent border-none"
+            aria-label="Menu"
+          >
+            <span className={cn('w-5 h-0.5 bg-white rounded transition-all', open && 'rotate-45 translate-y-1.5')} />
+            <span className={cn('w-5 h-0.5 bg-white rounded transition-all', open && 'opacity-0')} />
+            <span className={cn('w-5 h-0.5 bg-white rounded transition-all', open && '-rotate-45 -translate-y-1.5')} />
+          </button>
+        </div>
       </div>
 
       {/* Mobile drawer */}

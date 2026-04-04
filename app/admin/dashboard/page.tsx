@@ -116,6 +116,23 @@ export default async function DashboardPage() {
   const activeVolunteers    = volunteers.filter((v: any) => v.status === 'active').length
   const pendingVolunteers   = volunteers.filter((v: any) => v.status === 'pending').length
 
+  // Recent adoption applications (with animal info)
+  let recentApplications: any[] = []
+  if (isShelter) {
+    try {
+      const { data: recentApps } = await service
+        .from('adoption_applications')
+        .select('id, applicant_name, status, created_at, animal:animals(name, species:animal_species(name_cs))')
+        .eq('institution_id', institution.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(5)
+      recentApplications = recentApps ?? []
+    } catch {
+      recentApplications = []
+    }
+  }
+
   // Activity feed
   let activity: any[] = []
   try {
@@ -198,6 +215,68 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         {/* Left column */}
         <div className="min-w-0">
+
+          {/* ── Nejnovější žádosti o adopci ── */}
+          {isShelter && recentApplications.length > 0 && (
+            <div className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden shadow-sm mb-6">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EDE8]">
+                <h2 className="font-display font-extrabold text-base text-espresso">
+                  Nejnovější žádosti o adopci
+                </h2>
+                <Link href="/admin/applications" className="text-sm font-bold no-underline" style={{ color: '#E8634A' }}>
+                  Vše →
+                </Link>
+              </div>
+              <div>
+                {recentApplications.map((app: any) => {
+                  const initials = (app.applicant_name as string)
+                    .split(' ')
+                    .slice(0, 2)
+                    .map((n: string) => n[0])
+                    .join('')
+                    .toUpperCase()
+                  const timeStr = relativeTime(app.created_at)
+                  return (
+                    <div key={app.id} className="flex items-center gap-3 px-5 py-3.5 border-b border-[#F0EDE8] last:border-0 hover:bg-[#FFFCF8] transition-colors">
+                      {/* Avatar */}
+                      <div className="w-9 h-9 rounded-full bg-[#F5E6D3] flex items-center justify-center text-xs font-bold text-[#8B6550] shrink-0">
+                        {initials}
+                      </div>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-display font-bold text-sm text-espresso">{app.applicant_name}</div>
+                        <div className="text-xs text-[#8B6550]">
+                          Žádá o: <span className="font-semibold">{app.animal?.name ?? '—'}</span>
+                          {app.animal?.species?.name_cs ? ` (${app.animal.species.name_cs})` : ''}
+                        </div>
+                      </div>
+                      {/* Time + actions */}
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <span className="text-[11px] text-[#8B6550]">{timeStr}</span>
+                        <div className="flex gap-1">
+                          <Link
+                            href={`/admin/applications/${app.id}`}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#E6F7ED] text-[#2A7D4F] text-sm hover:bg-[#D0F0DF] transition-colors no-underline"
+                            title="Zobrazit žádost"
+                          >
+                            ✓
+                          </Link>
+                          <Link
+                            href={`/admin/applications/${app.id}`}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#FDEAE6] text-[#993C1D] text-sm hover:bg-[#FACEBC] transition-colors no-underline"
+                            title="Zobrazit žádost"
+                          >
+                            ✕
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ── Trendy tento měsíc ── */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="bg-white rounded-lg p-4 md:p-5 border border-gray-pale shadow-sm">
@@ -321,22 +400,36 @@ export default async function DashboardPage() {
 
         {/* Right column: Activity feed */}
         <div>
-          <div className="bg-white rounded-2xl border border-[#F0EDE8] p-5">
-            <h2 className="font-display font-extrabold text-base text-espresso mb-1">Poslední aktivita</h2>
+          <div className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-4 border-b border-[#F0EDE8]">
+              <span className="text-base">⚡</span>
+              <h2 className="font-display font-extrabold text-base text-espresso">Aktivita</h2>
+            </div>
             {activity.length === 0 ? (
-              <p className="text-sm text-[#8B6550] mt-3">Zatím žádná aktivita</p>
+              <p className="text-sm text-[#8B6550] px-5 py-4">Zatím žádná aktivita</p>
             ) : (
               <div>
-                {activity.map((h: any) => (
-                  <div key={h.id} className="flex items-start gap-3 py-3 border-b border-[#F0EDE8] last:border-0">
-                    <span className="text-sm mt-0.5">🐾</span>
-                    <div className="min-w-0">
-                      <div className="text-xs text-[#8B6550]">{relativeTime(h.changed_at)}</div>
-                      <div className="text-sm font-bold text-espresso truncate">{h.animal?.name ?? '—'}</div>
-                      <div className="text-sm text-[#8B6550]">→ {statusLabel[h.new_status] ?? h.new_status}</div>
+                {activity.map((h: any) => {
+                  const label = statusLabel[h.new_status] ?? h.new_status
+                  const isPositive = ['adopted', 'released', 'available'].includes(h.new_status)
+                  const bgColor = isPositive ? '#E6F7ED' : '#F5E6D3'
+                  const icon = isPositive ? '✓' : '🐾'
+                  return (
+                    <div key={h.id} className="flex items-center gap-3 px-5 py-3 border-b border-[#F0EDE8] last:border-0">
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0"
+                        style={{ backgroundColor: bgColor }}
+                      >
+                        {icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-[#8B6550] leading-none mb-0.5">{relativeTime(h.changed_at)}</div>
+                        <div className="text-sm font-bold text-espresso truncate">{h.animal?.name ?? '—'}</div>
+                        <div className="text-xs text-[#8B6550]">→ {label}</div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

@@ -39,12 +39,13 @@ export function SearchInput({ initialValue = '' }: SearchInputProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="relative">
+    <form onSubmit={handleSubmit} className="relative" role="search">
+      <label htmlFor="main-search" className="sr-only">Hledat na Zozio</label>
       <div className="flex items-center gap-0 rounded-2xl overflow-hidden border-2 transition-all"
         style={{ borderColor: q ? '#E8634A' : '#E0DDD8', background: 'white' }}>
 
         {/* Lupa */}
-        <div className="pl-5 pr-3 flex-shrink-0" style={{ color: q ? '#E8634A' : '#C8C5BF' }}>
+        <div aria-hidden="true" className="pl-5 pr-3 flex-shrink-0" style={{ color: q ? '#E8634A' : '#C8C5BF' }}>
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="2"/>
             <path d="M15 15l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -53,21 +54,21 @@ export function SearchInput({ initialValue = '' }: SearchInputProps) {
 
         {/* Input */}
         <input
+          id="main-search"
           type="search"
           value={q}
           onChange={e => handleChange(e.target.value)}
           placeholder="Hledej zvíře, útulek, město, druh..."
-          autoFocus
           className="flex-1 py-4 text-base outline-none bg-transparent"
           style={{ color: '#1A0F0A', minWidth: 0 }}
         />
 
         {/* Clear */}
         {q && (
-          <button type="button" onClick={clear}
+          <button type="button" onClick={clear} aria-label="Vymazat hledání"
             className="px-3 cursor-pointer bg-transparent border-none flex-shrink-0"
             style={{ color: '#8B6550' }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           </button>
@@ -83,7 +84,7 @@ export function SearchInput({ initialValue = '' }: SearchInputProps) {
 
       {/* Tip */}
       {q.length === 1 && (
-        <p className="text-xs mt-2" style={{ color: '#8B6550' }}>Zadej alespoň 2 znaky...</p>
+        <p className="text-xs mt-2" style={{ color: '#6B4030' }}>Zadej alespoň 2 znaky...</p>
       )}
     </form>
   )
