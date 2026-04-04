@@ -40,6 +40,8 @@ const ALLOWED_COLUMNS = new Set([
   'health_status', 'origin', 'intake_date', 'age_months', 'good_with_adults',
   'rescue_find_type', 'rescue_prognosis', 'rescue_public_description',
   'story', 'adopter_requirements',
+  // Structured fields (JSONB)
+  'vaccination_records', 'medications_data', 'breed_id', 'breed_custom',
 ])
 
 function sanitizePayload(body: Record<string, unknown>): Record<string, unknown> {
