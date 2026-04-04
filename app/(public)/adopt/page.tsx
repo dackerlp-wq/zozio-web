@@ -78,9 +78,10 @@ export default async function AdoptPage({ searchParams }: PageProps) {
 
             {/* Urgentní banner */}
             {hasUrgent && !params.urgent && (
-              <div className="mb-5 p-3 rounded-xl flex items-center gap-3"
+              <div role="status" aria-live="polite"
+                className="mb-5 p-3 rounded-xl flex items-center gap-3"
                 style={{ background: 'rgba(232,99,74,0.07)', border: '1px solid rgba(232,99,74,0.18)' }}>
-                <span className="text-lg">🆘</span>
+                <span aria-hidden="true" className="text-lg">🆘</span>
                 <p className="text-sm font-semibold flex-1" style={{ color: '#993C1D' }}>
                   Některá zvířata potřebují urgentní adopci
                 </p>
@@ -88,7 +89,7 @@ export default async function AdoptPage({ searchParams }: PageProps) {
                   href={buildFilterUrl(params, { urgent: 'true', page: undefined })}
                   className="text-xs font-bold px-3 py-1.5 rounded-lg text-white no-underline"
                   style={{ background: '#E8634A' }}>
-                  Zobrazit
+                  Zobrazit urgentní
                 </Link>
               </div>
             )}
@@ -175,45 +176,50 @@ function AnimalCard({ animal }: { animal: any }) {
   const activity = animal.activity_level ? activityLabel[animal.activity_level] : null
 
   return (
-    <Link href={`/animals/${animal.id}`} className="no-underline group">
-      <div className="bg-white rounded-2xl overflow-hidden border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-1 transition-all duration-200 h-full flex flex-col">
-        <div className="relative h-40 sm:h-44 overflow-hidden flex-shrink-0" style={{ background: '#FAECE7' }}>
-          {animal.primary_photo
-            ? <Image src={animal.primary_photo} alt={animal.name} fill sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,25vw" className="object-cover group-hover:scale-105 transition-transform duration-300" />
-            : <div className="w-full h-full flex items-center justify-center text-5xl">{species?.icon ?? '🐾'}</div>
-          }
-          {animal.urgent && (
-            <div className="absolute top-2.5 left-2.5 bg-[#E8634A] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-              Urgentní
-            </div>
-          )}
-          <FavoriteButtonWrapper type="animal" id={animal.id} size="sm" className="absolute top-2.5 right-2.5" />
-          {/* Housing badge */}
-          {animal.suitable_for_flat && !animal.suitable_for_house && (
-            <div className="absolute top-2.5 right-2.5 bg-white/90 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ color: '#1A0F0A' }}>
-              🏢 Byt
-            </div>
-          )}
-          {institution?.city && (
-            <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm rounded-full px-2 py-0.5">
-              <span className="text-[10px] font-bold text-[#1A0F0A]">{institution.city}</span>
-            </div>
-          )}
-        </div>
-        <div className="p-3 flex flex-col flex-1">
-          <div className="font-bold text-[#1A0F0A] text-sm sm:text-base mb-0.5 truncate">{animal.name}</div>
-          <div className="text-xs mb-2 truncate" style={{ color: '#8B6550' }}>
-            {[species?.name_cs, animal.breed, age].filter(Boolean).join(' · ')}
+    <div className="relative group">
+      <Link href={`/animals/${animal.id}`} className="no-underline block">
+        <div className="bg-white rounded-2xl overflow-hidden border border-[#F0EDE8] group-hover:border-[#E8634A]/40 group-hover:-translate-y-1 transition-all duration-200 h-full flex flex-col">
+          <div className="relative h-40 sm:h-44 overflow-hidden flex-shrink-0" style={{ background: '#FAECE7' }}>
+            {animal.primary_photo
+              ? <Image src={animal.primary_photo} alt={`${animal.name}${species?.name_cs ? `, ${species.name_cs}` : ''}${animal.breed ? `, ${animal.breed}` : ''}`} fill sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,25vw" className="object-cover group-hover:scale-105 transition-transform duration-300" />
+              : <div aria-hidden="true" className="w-full h-full flex items-center justify-center text-5xl">{species?.icon ?? '🐾'}</div>
+            }
+            {animal.urgent && (
+              <div className="absolute top-2.5 left-2.5 bg-[#E8634A] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                Urgentní
+              </div>
+            )}
+            {/* Housing badge */}
+            {animal.suitable_for_flat && !animal.suitable_for_house && (
+              <div className="absolute top-2.5 right-2.5 bg-white/90 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ color: '#1A0F0A' }}>
+                🏢 Byt
+              </div>
+            )}
+            {institution?.city && (
+              <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm rounded-full px-2 py-0.5">
+                <span className="text-[10px] font-bold text-[#1A0F0A]">{institution.city}</span>
+              </div>
+            )}
           </div>
-          <div className="flex flex-wrap gap-1 mt-auto">
-            {animal.vaccinated     && <Pill label="Očkovaný"   bg="#EAF3DE" color="#3B6D11" />}
-            {animal.neutered       && <Pill label="Kastrovaný" bg="#EAF3DE" color="#3B6D11" />}
-            {animal.good_with_kids && <Pill label="S dětmi"    bg="#FAEEDA" color="#854F0B" />}
-            {activity              && <Pill label={activity.label} bg={activity.bg} color={activity.color} />}
+          <div className="p-3 flex flex-col flex-1">
+            <div className="font-bold text-[#1A0F0A] text-sm sm:text-base mb-0.5 truncate">{animal.name}</div>
+            <div className="text-xs mb-2 truncate" style={{ color: '#6B4030' }}>
+              {[species?.name_cs, animal.breed, age].filter(Boolean).join(' · ')}
+            </div>
+            <div className="flex flex-wrap gap-1 mt-auto">
+              {animal.vaccinated     && <Pill label="Očkovaný"   bg="#EAF3DE" color="#3B6D11" />}
+              {animal.neutered       && <Pill label="Kastrovaný" bg="#EAF3DE" color="#3B6D11" />}
+              {animal.good_with_kids && <Pill label="S dětmi"    bg="#FAEEDA" color="#854F0B" />}
+              {activity              && <Pill label={activity.label} bg={activity.bg} color={activity.color} />}
+            </div>
           </div>
         </div>
+      </Link>
+      {/* Favorite button outside the link to avoid nested interactive elements */}
+      <div className="absolute top-2.5 right-2.5 z-10">
+        <FavoriteButtonWrapper type="animal" id={animal.id} size="sm" />
       </div>
-    </Link>
+    </div>
   )
 }
 

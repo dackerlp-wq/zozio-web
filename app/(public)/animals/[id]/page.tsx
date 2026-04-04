@@ -72,12 +72,12 @@ export default async function AnimalDetailPage({ params }: PageProps) {
       <div className="max-w-[1200px] mx-auto px-5 md:px-10 pb-20">
 
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 py-5 text-sm" style={{ color: '#8B6550' }}>
-          <Link href="/" className="no-underline hover:opacity-70 transition-opacity" style={{ color: '#8B6550' }}>Domů</Link>
-          <span>·</span>
-          <Link href="/adopt" className="no-underline hover:opacity-70 transition-opacity" style={{ color: '#8B6550' }}>Adopce</Link>
-          <span>·</span>
-          <span className="font-semibold" style={{ color: '#1A0F0A' }}>{a.name}</span>
+        <nav aria-label="Navigační cesta" className="flex items-center gap-2 py-5 text-sm">
+          <Link href="/" className="no-underline hover:opacity-70 transition-opacity" style={{ color: '#6B4030' }}>Domů</Link>
+          <span aria-hidden="true" style={{ color: '#8B6550' }}>·</span>
+          <Link href="/adopt" className="no-underline hover:opacity-70 transition-opacity" style={{ color: '#6B4030' }}>Adopce</Link>
+          <span aria-hidden="true" style={{ color: '#8B6550' }}>·</span>
+          <span aria-current="page" className="font-semibold" style={{ color: '#1A0F0A' }}>{a.name}</span>
         </nav>
 
         {/* Hlavní grid */}

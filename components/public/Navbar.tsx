@@ -30,8 +30,10 @@ export function Navbar({ user }: NavbarProps) {
   const router    = useRouter()
   const [open,    setOpen]    = useState(false)
   const [dropdown, setDropdown] = useState(false)
-  const dropRef   = useRef<HTMLDivElement>(null)
+  const dropRef    = useRef<HTMLDivElement>(null)
   const dropBtnRef = useRef<HTMLButtonElement>(null)
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
+  const hamburgerRef  = useRef<HTMLButtonElement>(null)
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
@@ -47,7 +49,7 @@ export function Navbar({ user }: NavbarProps) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // Escape zavře dropdown nebo mobilní menu
+  // Escape zavře dropdown nebo mobilní menu + focus trap v mobile menu
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
@@ -56,6 +58,22 @@ export function Navbar({ user }: NavbarProps) {
           dropBtnRef.current?.focus()
         } else if (open) {
           setOpen(false)
+          hamburgerRef.current?.focus()
+        }
+        return
+      }
+
+      // Focus trap: Tab/Shift+Tab uvnitř mobilního menu
+      if (open && e.key === 'Tab' && mobileMenuRef.current) {
+        const focusable = mobileMenuRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+        const first = focusable[0]
+        const last  = focusable[focusable.length - 1]
+        if (e.shiftKey) {
+          if (document.activeElement === first) { e.preventDefault(); last.focus() }
+        } else {
+          if (document.activeElement === last) { e.preventDefault(); first.focus() }
         }
       }
     }
@@ -194,6 +212,7 @@ export function Navbar({ user }: NavbarProps) {
 
           {/* Mobile hamburger */}
           <button
+            ref={hamburgerRef}
             onClick={() => setOpen(!open)}
             className="lg:hidden flex flex-col gap-1.5 p-2 cursor-pointer bg-transparent border-none"
             aria-label={open ? 'Zavřít menu' : 'Otevřít menu'}
@@ -209,7 +228,7 @@ export function Navbar({ user }: NavbarProps) {
 
       {/* Mobile menu */}
       {open && (
-        <div id="mobile-nav" role="navigation" aria-label="Mobilní navigace"
+        <div ref={mobileMenuRef} id="mobile-nav" role="navigation" aria-label="Mobilní navigace"
           className="fixed inset-0 z-40 bg-warm flex flex-col pt-16 overflow-y-auto lg:hidden">
           <div className="px-4 py-4 flex-1">
 

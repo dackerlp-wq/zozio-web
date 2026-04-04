@@ -62,7 +62,7 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
           ? 'linear-gradient(135deg, #2C1810 0%, #E8634A 100%)'
           : 'linear-gradient(135deg, #1C2E28 0%, #2E9E8F 100%)' }}>
         {i.cover_url && (
-          <Image src={i.cover_url} alt={i.name} fill className="object-cover opacity-50" />
+          <Image src={i.cover_url} alt="" role="presentation" fill className="object-cover opacity-50" />
         )}
         {/* Gradient overlay dole */}
         <div className="absolute inset-0"
@@ -105,7 +105,7 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
                 {i.name}
               </h1>
               {i.city && (
-                <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.70)' }}>📍 {i.city}</p>
+                <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.92)' }}>📍 {i.city}</p>
               )}
             </div>
           </div>
@@ -115,7 +115,7 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
       {/* ── Statistiky ── */}
       <div className="border-b border-[#F0EDE8] bg-white">
         <div className="max-w-[1100px] mx-auto px-5 md:px-10">
-          <div className="flex flex-wrap gap-0">
+          <dl className="flex flex-wrap gap-0">
             {[
               {
                 num:   isShelter ? (animals as any[]).length : (rescueCases as any[]).length,
@@ -123,15 +123,15 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
                 color: isShelter ? '#E8634A' : '#2E9E8F',
               },
               { num: (fundraisers as any[]).filter((f: any) => f.active).length, label: 'aktivních sbírek', color: '#F0A500' },
-              { num: volunteers, label: 'dobrovolníků', color: '#8B6550' },
-              { num: (articles as any[]).length, label: 'příběhů', color: '#8B6550' },
+              { num: volunteers, label: 'dobrovolníků', color: '#6B4030' },
+              { num: (articles as any[]).length, label: 'příběhů', color: '#6B4030' },
             ].map(({ num, label, color }) => (
               <div key={label} className="px-6 py-4 border-r border-[#F0EDE8] last:border-r-0 first:pl-0">
-                <div className="font-display font-extrabold text-2xl" style={{ color }}>{num}</div>
-                <div className="text-xs font-medium mt-0.5" style={{ color: '#8B6550' }}>{label}</div>
+                <dd className="font-display font-extrabold text-2xl" style={{ color }}>{num}</dd>
+                <dt className="text-xs font-medium mt-0.5" style={{ color: '#6B4030' }}>{label}</dt>
               </div>
             ))}
-          </div>
+          </dl>
         </div>
       </div>
 

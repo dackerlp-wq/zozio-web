@@ -35,7 +35,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
           </h1>
           <SearchInput initialValue={query} />
           {query.length >= 2 && (
-            <p className="text-sm mt-3" style={{ color: '#8B6550' }}>
+            <p aria-live="polite" aria-atomic="true" className="text-sm mt-3" style={{ color: '#6B4030' }}>
               {totalCount === 0
                 ? 'Žádné výsledky'
                 : `Nalezeno ${totalCount} výsledků`}
@@ -92,7 +92,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
         )}
 
         {results && totalCount > 0 && (
-          <div className="space-y-10">
+          <div aria-live="polite" aria-label="Výsledky hledání" className="space-y-10">
 
             {/* ── Zvířata k adopci ── */}
             {results.animals.length > 0 && (
