@@ -108,8 +108,7 @@ export async function GET(req: NextRequest) {
   // Hlavička pro úřady
   lines.push(row('PŘEHLED EVIDENCE ZVÍŘAT'))
   lines.push(row('Instituce:', institution.name))
-  if (institution.ico) lines.push(row('IČO:', institution.ico))
-  if (institution.address) lines.push(row('Adresa:', institution.address))
+
   lines.push(row('Datum exportu:', exportedAt))
   lines.push(row('Filtr:', filterDesc))
   lines.push(row('Celkový počet záznamů:', items.length))

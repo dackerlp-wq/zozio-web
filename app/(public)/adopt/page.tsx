@@ -76,7 +76,7 @@ export default async function AdoptPage({ searchParams }: PageProps) {
             <AnimalFilter
               species={species}
               breeds={breeds}
-              cityList={Object.entries(CITY_COORDS).map(([name, [lat, lng]]) => ({ name, lat, lng })).sort((a, b) => a.name.localeCompare(b.name, 'cs'))}
+              cityList={[]}
               params={params}
               total={total}
             />
@@ -331,33 +331,6 @@ function getPaginationRange(current: number, total: number): (number | '...')[] 
 
 /* ── Geo helpers ── */
 
-const CITY_COORDS: Record<string, [number, number]> = {
-  'Praha': [50.0755, 14.4378], 'Brno': [49.1951, 16.6068], 'Ostrava': [49.8209, 18.2625],
-  'Plzeň': [49.7471, 13.3776], 'Liberec': [50.7671, 15.0563], 'Olomouc': [49.5938, 17.2509],
-  'České Budějovice': [48.9745, 14.4747], 'Hradec Králové': [50.2092, 15.8328],
-  'Pardubice': [50.0343, 15.7812], 'Ústí nad Labem': [50.6607, 14.0422],
-  'Zlín': [49.2248, 17.6669], 'Havířov': [49.7777, 18.4290], 'Kladno': [50.1475, 14.1053],
-  'Most': [50.5027, 13.6362], 'Opava': [49.9381, 17.9044], 'Frýdek-Místek': [49.6814, 18.3608],
-  'Karviná': [49.8561, 18.5461], 'Jihlava': [49.3961, 15.5907], 'Teplice': [50.6404, 13.8244],
-  'Děčín': [50.7727, 14.2129], 'Chomutov': [50.4604, 13.4166], 'Jablonec nad Nisou': [50.7244, 15.1701],
-  'Mladá Boleslav': [50.4132, 14.9035], 'Prostějov': [49.4736, 17.1105], 'Přerov': [49.4555, 17.4535],
-  'Česká Lípa': [50.6862, 14.5375], 'Třebíč': [49.2161, 15.8797], 'Znojmo': [48.8553, 16.0483],
-  'Kroměříž': [49.2981, 17.3976], 'Vsetín': [49.3387, 17.9962], 'Šumperk': [49.9755, 16.9717],
-  'Uherské Hradiště': [49.0699, 17.4603], 'Strakonice': [49.2608, 13.9027],
-  'Kolín': [50.0257, 15.2000], 'Nový Jičín': [49.5940, 18.0138], 'Cheb': [50.0800, 12.3711],
-  'Sokolov': [50.1793, 12.6356], 'Klatovy': [49.3956, 13.2956], 'Trutnov': [50.5607, 15.9076],
-  'Náchod': [50.4157, 16.1643], 'Písek': [49.3085, 14.1475], 'Tábor': [49.3706, 14.6729],
-  'Příbram': [49.6942, 14.0085], 'Benešov': [49.7819, 14.6879], 'Rakovník': [50.1063, 13.7393],
-  'Litoměřice': [50.5370, 14.1302], 'Louny': [50.3557, 13.7990], 'Chrudim': [49.9483, 15.7953],
-  'Svitavy': [49.7558, 16.4681],
-  // SK
-  'Bratislava': [48.1486, 17.1077], 'Košice': [48.7164, 21.2611], 'Prešov': [49.0021, 21.2391],
-  'Žilina': [49.2231, 18.7410], 'Banská Bystrica': [48.7414, 19.1499], 'Nitra': [48.3069, 18.0869],
-  'Trnava': [48.3775, 17.5878], 'Martin': [49.0644, 18.9277], 'Trenčín': [48.8944, 18.0441],
-  'Poprad': [49.0603, 20.2976], 'Zvolen': [48.5773, 19.1268], 'Michalovce': [48.7543, 21.9185],
-  'Liptovský Mikuláš': [49.0840, 19.6114], 'Spišská Nová Ves': [48.9490, 20.5665],
-}
-
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
   const dLat = (lat2 - lat1) * Math.PI / 180
@@ -376,7 +349,7 @@ async function getAnimals(params: any, page: number) {
 
   let query = supabase
     .from('animals')
-    .select('id, name, breed, birth_year, primary_photo, urgent, adoption_status, vaccinated, neutered, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, suitable_for_flat, suitable_for_house, activity_level, care_difficulty, species:animal_species(name_cs,icon), institution:institutions(name,city,type)')
+    .select('id, name, breed, birth_year, primary_photo, urgent, adoption_status, vaccinated, neutered, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, suitable_for_flat, suitable_for_house, activity_level, care_difficulty, species:animal_species(name_cs,icon), institution:institutions(name,city,type,lat,lng)')
     .eq('published', true)
     .eq('adoption_status', 'available')
     .or('in_quarantine.is.null,in_quarantine.eq.false')
@@ -411,9 +384,10 @@ async function getAnimals(params: any, page: number) {
     const uLng = parseFloat(params.lng)
     animals = animals
       .map(a => {
-        const city   = (a.institution as any)?.city as string | undefined
-        const coords = city ? CITY_COORDS[city] : null
-        const dist   = coords ? Math.round(haversineKm(uLat, uLng, coords[0], coords[1])) : null
+        const inst = a.institution as any
+        const dist = (inst?.lat && inst?.lng)
+          ? Math.round(haversineKm(uLat, uLng, Number(inst.lat), Number(inst.lng)))
+          : null
         return { ...a, _distance: dist }
       })
       .sort((a, b) => {
