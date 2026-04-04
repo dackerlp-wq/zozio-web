@@ -26,30 +26,39 @@ CREATE INDEX IF NOT EXISTS idx_animal_breeds_institution ON animal_breeds (insti
 -- RLS
 ALTER TABLE animal_breeds ENABLE ROW LEVEL SECURITY;
 
--- Čtení: všichni přihlášení (pro formuláře)
-CREATE POLICY IF NOT EXISTS "breeds_select" ON animal_breeds
-  FOR SELECT USING (true);
+-- Policies (bezpečné opakování přes DO $$)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='animal_breeds' AND policyname='breeds_select') THEN
+    CREATE POLICY "breeds_select" ON animal_breeds
+      FOR SELECT USING (true);
+  END IF;
 
--- Vložení: přihlášení uživatelé (přidávají vlastní plemeno k instituci)
-CREATE POLICY IF NOT EXISTS "breeds_insert" ON animal_breeds
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='animal_breeds' AND policyname='breeds_insert') THEN
+    CREATE POLICY "breeds_insert" ON animal_breeds
+      FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  END IF;
 
--- Úprava / mazání: superadmin nebo vlastník instituce
-CREATE POLICY IF NOT EXISTS "breeds_update" ON animal_breeds
-  FOR UPDATE USING (
-    institution_id IS NULL -- superadmin spravuje globální
-    OR institution_id IN (
-      SELECT institution_id FROM institution_members WHERE user_id = auth.uid()
-    )
-  );
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='animal_breeds' AND policyname='breeds_update') THEN
+    CREATE POLICY "breeds_update" ON animal_breeds
+      FOR UPDATE USING (
+        institution_id IS NULL
+        OR institution_id IN (
+          SELECT institution_id FROM institution_members WHERE user_id = auth.uid()
+        )
+      );
+  END IF;
 
-CREATE POLICY IF NOT EXISTS "breeds_delete" ON animal_breeds
-  FOR DELETE USING (
-    institution_id IS NULL
-    OR institution_id IN (
-      SELECT institution_id FROM institution_members WHERE user_id = auth.uid()
-    )
-  );
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='animal_breeds' AND policyname='breeds_delete') THEN
+    CREATE POLICY "breeds_delete" ON animal_breeds
+      FOR DELETE USING (
+        institution_id IS NULL
+        OR institution_id IN (
+          SELECT institution_id FROM institution_members WHERE user_id = auth.uid()
+        )
+      );
+  END IF;
+END $$;
 
 -- ── 2. Strukturovaná data na tabulce animals ──────────────────────────────────
 
