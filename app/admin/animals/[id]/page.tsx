@@ -41,9 +41,12 @@ export default async function EditAnimalPage({ params, searchParams }: PageProps
 
   const isShelter = institution.type === 'shelter'
 
-  const { data: animal } = isShelter
-    ? await service.from('animals').select('*').eq('id', id).eq('institution_id', institution.id).single()
-    : await service.from('rescue_cases').select('*').eq('id', id).eq('institution_id', institution.id).single()
+  const { data: animal } = await service
+    .from('animals')
+    .select('*')
+    .eq('id', id)
+    .eq('institution_id', institution.id)
+    .single()
 
   if (!animal) notFound()
 
@@ -59,7 +62,7 @@ export default async function EditAnimalPage({ params, searchParams }: PageProps
   const { data: statusHistory } = await service
     .from('animal_status_history')
     .select('*')
-    .eq(isShelter ? 'animal_id' : 'rescue_case_id', id)
+    .eq('animal_id', id)
     .gte('changed_at', threeMonthsAgo.toISOString())
     .order('changed_at', { ascending: false })
 
@@ -107,7 +110,7 @@ export default async function EditAnimalPage({ params, searchParams }: PageProps
         mode="edit"
         animal={animal as any}
         statusHistory={statusHistory ?? []}
-        currentUser={{ id: user.id, email: user.email ?? '' }}
+        currentUser={{ id: user.id, name: user.email ?? '' }}
       />
     </div>
   )

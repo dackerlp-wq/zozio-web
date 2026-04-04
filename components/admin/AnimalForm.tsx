@@ -1,993 +1,805 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Button } from '@/components/ui/Button'
 import { createClient } from '@/lib/supabase/client'
-import {
-  ADOPTION_STATUS_LABEL, RESCUE_STATUS_LABEL,
-  HEALTH_STATUS_LABEL, INTAKE_REASON_LABEL, SIZE_LABEL,
-} from '@/lib/animal-labels'
 
-// ── Diff helpers ─────────────────────────────────────────────────────────────
-const SHELTER_LABELS: Record<string, string> = {
-  name: 'Jméno', sex: 'Pohlaví', birth_year: 'Rok narození',
-  size: 'Velikost', breed: 'Plemeno', color: 'Barva', weight_kg: 'Váha (kg)',
-  adoption_status: 'Stav adopce', urgent: 'Urgentní', adoption_fee: 'Poplatek (Kč)',
-  vaccinated: 'Očkováno', neutered: 'Kastrováno', microchipped: 'Čipováno',
-  chip_number: 'Číslo čipu', chip_date: 'Datum čipování', passport_number: 'Číslo pasu',
-  in_quarantine: 'Karanténa', quarantine_until: 'Karanténa do', quarantine_reason: 'Důvod karantény',
-  in_foster: 'Foster péče', foster_name: 'Foster osoba', foster_phone: 'Foster tel.',
-  foster_since: 'Foster od', vet_name: 'Veterinář', vet_phone: 'Vet. tel.',
-  last_vet_visit: 'Poslední návštěva', medications: 'Léky', medical_notes: 'Zdrav. poznámky',
-  good_with_kids: 'Vychází s dětmi', good_with_dogs: 'Vychází se psy',
-  good_with_cats: 'Vychází s kočkami', good_with_other_animals: 'Vychází se zvířaty',
-  special_needs: 'Speciální potřeby', activity_level: 'Aktivita', care_difficulty: 'Náročnost péče',
-  suitable_for_flat: 'Vhodný do bytu', suitable_for_house: 'Vhodný do domu',
-  found_location: 'Místo nálezu', found_date: 'Datum nálezu', finder_name: 'Nálezce',
-  finder_phone: 'Nálezce tel.', previous_owner: 'Předchozí majitel',
-  previous_owner_phone: 'Předchozí maj. tel.', published: 'Zveřejněno',
-  description: 'Popis', internal_notes: 'Interní poznámky', staff_assigned: 'Zodpovědný',
-}
-
-const RESCUE_LABELS: Record<string, string> = {
-  name: 'Jméno', case_number: 'Číslo případu', sex: 'Pohlaví',
-  estimated_age: 'Odhadovaný věk', status: 'Stav léčby', health_status: 'Zdravotní stav',
-  cause_of_injury: 'Příčina zranění', diagnosis: 'Diagnóza', treatment_notes: 'Léčba',
-  medical_notes: 'Zdrav. poznámky', public_description: 'Veřejný popis',
-  found_location: 'Místo nálezu', found_date: 'Datum nálezu', found_by: 'Nálezce',
-  vet_name: 'Veterinář', intake_date: 'Datum příjmu', published: 'Zveřejněno',
-}
-
-type DiffEntry = { f: string; l: string; o: string; n: string }
-
-function fmtDiffVal(v: unknown, field: string): string {
-  if (v === null || v === undefined || v === '') return '—'
-  if (typeof v === 'boolean') return v ? 'Ano' : 'Ne'
-  const s = String(v)
-  if (field === 'adoption_status') return ADOPTION_STATUS_LABEL[s] ?? s
-  if (field === 'status') return RESCUE_STATUS_LABEL[s] ?? s
-  if (field === 'health_status') return HEALTH_STATUS_LABEL[s] ?? s
-  if (s.length > 60) return s.slice(0, 60) + '…'
-  return s
-}
-
-function computeDiff(
-  original: Record<string, unknown> | undefined | null,
-  payload: Record<string, unknown>,
-  labels: Record<string, string>
-): DiffEntry[] {
-  if (!original) return []
-  const SKIP = new Set(['institution_id', 'photos', 'primary_photo', 'species_id'])
-  const result: DiffEntry[] = []
-  for (const [key, newVal] of Object.entries(payload)) {
-    if (SKIP.has(key) || !(key in labels)) continue
-    const oldVal = original[key] ?? null
-    const isEmpty = (v: unknown) => v === null || v === undefined || v === ''
-    if (isEmpty(oldVal) && isEmpty(newVal)) continue
-    if (isEmpty(oldVal) && newVal === false) continue
-    if (String(oldVal ?? '') === String(newVal ?? '')) continue
-    result.push({ f: key, l: labels[key], o: fmtDiffVal(oldVal, key), n: fmtDiffVal(newVal, key) })
-  }
-  return result
-}
+// ── Types ──────────────────────────────────────────────────────────────────────
+interface Species { id: string; name_cs: string }
+interface StatusHistoryEntry { status: string; changed_at: string; note?: string; changed_by?: string }
 
 interface AnimalFormProps {
   institutionId: string
-  institutionType: string
-  species: { id: string; name_cs: string; icon: string | null }[]
+  institutionType: 'shelter' | 'rescue_station'
+  species: Species[]
   mode: 'create' | 'edit'
-  animal?: any
-  statusHistory?: any[]
-  currentUser?: { id: string; email: string }
+  initialData?: Record<string, unknown>
+  animal?: Record<string, unknown>
+  statusHistory?: StatusHistoryEntry[]
+  currentUser?: { id: string; name: string }
 }
 
-type Tab = 'basic' | 'health' | 'origin' | 'internal' | 'history'
+type Tab = 'basic' | 'health' | 'behavior' | 'photos' | 'rescue'
 
-export function AnimalForm({
-  institutionId, institutionType, species, mode, animal, statusHistory = [], currentUser
-}: AnimalFormProps) {
-  const router    = useRouter()
-  const isShelter = institutionType === 'shelter'
-  const fileRef   = useRef<HTMLInputElement>(null)
-  const [tab, setTab] = useState<Tab>('basic')
+interface PendingPhoto { file: File; preview: string }
 
-  const [form, setForm] = useState({
-    name:               animal?.name               ?? '',
-    species_id:         animal?.species_id         ?? '',
-    sex:                animal?.sex                ?? '',
-    birth_year:         animal?.birth_year         ?? '',
-    size:               animal?.size               ?? '',
-    breed:              animal?.breed              ?? '',
-    color:              animal?.color              ?? '',
-    weight_kg:          animal?.weight_kg          ?? '',
-    description:        animal?.description        ?? '',
-    published:          animal?.published          ?? true,
-    adoption_status:    animal?.adoption_status    ?? 'available',
-    urgent:             animal?.urgent             ?? false,
-    adoption_fee:       animal?.adoption_fee       ?? 0,
-    status:             animal?.status             ?? 'intake',
-    health_status:      animal?.health_status      ?? 'healthy',
-    in_quarantine:      animal?.in_quarantine      ?? false,
-    quarantine_until:   animal?.quarantine_until   ?? '',
-    quarantine_reason:  animal?.quarantine_reason  ?? '',
-    in_foster:          animal?.in_foster          ?? false,
-    foster_name:        animal?.foster_name        ?? '',
-    foster_phone:       animal?.foster_phone       ?? '',
-    foster_since:       animal?.foster_since       ?? '',
-    vaccinated:         animal?.vaccinated         ?? false,
-    neutered:           animal?.neutered           ?? false,
-    microchipped:       animal?.microchipped       ?? false,
-    chip_number:        animal?.chip_number        ?? '',
-    chip_date:          animal?.chip_date          ?? '',
-    passport_number:    animal?.passport_number    ?? '',
-    vet_name:           animal?.vet_name           ?? '',
-    vet_phone:          animal?.vet_phone          ?? '',
-    last_vet_visit:     animal?.last_vet_visit     ?? '',
-    medications:        animal?.medications        ?? '',
-    medical_notes:      animal?.medical_notes      ?? '',
-    good_with_kids:     animal?.good_with_kids     ?? false,
-    good_with_dogs:     animal?.good_with_dogs     ?? false,
-    good_with_cats:     animal?.good_with_cats     ?? false,
-    special_needs:      animal?.special_needs      ?? '',
-    case_number:        animal?.case_number        ?? '',
-    estimated_age:      animal?.estimated_age      ?? '',
-    cause_of_injury:    animal?.cause_of_injury    ?? '',
-    diagnosis:          animal?.diagnosis          ?? '',
-    treatment_notes:    animal?.treatment_notes    ?? '',
-    public_description: animal?.public_description ?? '',
-    weight_g:           animal?.weight_g           ?? '',
-    ring_number:        animal?.ring_number        ?? '',
-    release_location:   animal?.release_location   ?? '',
-    intake_reason:      animal?.intake_reason      ?? '',
-    intake_date:        animal?.intake_date        ?? '',
-    intake_notes:       animal?.intake_notes       ?? '',
-    found_location:     animal?.found_location     ?? '',
-    found_date:         animal?.found_date         ?? '',
-    finder_name:        animal?.finder_name        ?? '',
-    finder_phone:       animal?.finder_phone       ?? '',
-    previous_owner:     animal?.previous_owner     ?? '',
-    previous_owner_phone: animal?.previous_owner_phone ?? '',
-    internal_notes:     animal?.internal_notes     ?? '',
-    staff_assigned:     animal?.staff_assigned     ?? '',
-    // Nová pole — aktivita, náročnost, bydlení
-    activity_level:          animal?.activity_level          ?? '',
-    care_difficulty:          animal?.care_difficulty          ?? '',
-    suitable_for_flat:        animal?.suitable_for_flat        ?? null,
-    suitable_for_house:       animal?.suitable_for_house       ?? null,
-    good_with_other_animals:  animal?.good_with_other_animals  ?? null,
-  })
+// ── Constants ──────────────────────────────────────────────────────────────────
+const ADOPTION_STATUS_OPTIONS = [
+  { value: 'available',       label: 'Dostupný k adopci' },
+  { value: 'reserved',        label: 'Rezervován' },
+  { value: 'adopted',         label: 'Adoptován' },
+  { value: 'foster',          label: 'Ve foster péči' },
+  { value: 'intake',          label: 'V příjmu' },
+  { value: 'treatment',       label: 'V léčbě' },
+  { value: 'rehabilitation',  label: 'V rehabilitaci' },
+  { value: 'released',        label: 'Vypuštěn' },
+  { value: 'deceased',        label: 'Uhynul' },
+]
 
-  const [photos, setPhotos]             = useState<string[]>(animal?.photos ?? [])
-  const [primaryPhoto, setPrimaryPhoto] = useState<string>(animal?.primary_photo ?? '')
-  const [uploading, setUploading]       = useState(false)
-  const [loading, setLoading]           = useState(false)
-  const [error, setError]               = useState<string | null>(null)
-  const [success, setSuccess]           = useState(false)
-  const [changeNote, setChangeNote]     = useState('')  // poznámka ke každé změně
-  const [localHistory, setLocalHistory] = useState<any[]>(statusHistory)
-  const [historyPage, setHistoryPage]   = useState(0)
-  const HISTORY_PAGE_SIZE = 10
+const RESCUE_STATUS_OPTIONS = [
+  { value: 'intake',          label: 'V příjmu' },
+  { value: 'treatment',       label: 'V léčbě' },
+  { value: 'rehabilitation',  label: 'V rehabilitaci' },
+  { value: 'released',        label: 'Vypuštěn' },
+  { value: 'available',       label: 'K adopci' },
+  { value: 'deceased',        label: 'Uhynul' },
+]
 
-  const update = (key: string, value: any) =>
-    setForm(prev => ({ ...prev, [key]: value }))
+const HEALTH_STATUS_OPTIONS = [
+  { value: 'healthy',         label: 'Zdravý' },
+  { value: 'in_treatment',    label: 'V léčbě' },
+  { value: 'post_surgery',    label: 'Po operaci' },
+  { value: 'chronic',         label: 'Chronické onemocnění' },
+  { value: 'unknown',         label: 'Neznámý' },
+]
 
-  // Upload fotek
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
-    if (!files.length) return
-    setUploading(true)
-    const supabase = createClient()
-    const newPhotos: string[] = []
-    for (const file of files) {
-      const ext  = file.name.split('.').pop()
-      const path = `animals/${institutionId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { error: uploadError } = await supabase.storage.from('animal-photos').upload(path, file, { upsert: true })
-      if (uploadError) continue
-      const { data: { publicUrl } } = supabase.storage.from('animal-photos').getPublicUrl(path)
-      newPhotos.push(publicUrl)
-    }
-    const updated = [...photos, ...newPhotos]
-    setPhotos(updated)
-    if (!primaryPhoto && updated.length > 0) setPrimaryPhoto(updated[0])
-    setUploading(false)
-  }
+const ORIGIN_OPTIONS = [
+  { value: 'municipal_capture', label: 'Odchyt' },
+  { value: 'seized',            label: 'Odebrání z péče' },
+  { value: 'found',             label: 'Nalezeno' },
+  { value: 'surrendered',       label: 'Odevzdáno majitelem' },
+  { value: 'transferred',       label: 'Převedeno z jiného útulku' },
+  { value: 'other',             label: 'Jiné' },
+]
 
-  const removePhoto = (url: string) => {
-    const updated = photos.filter(p => p !== url)
-    setPhotos(updated)
-    if (primaryPhoto === url) setPrimaryPhoto(updated[0] ?? '')
-  }
+const GOOD_WITH_OPTIONS = [
+  { value: 'yes',   label: 'Ano' },
+  { value: 'no',    label: 'Ne' },
+  { value: 'unknown', label: 'Nevím' },
+]
 
-  const handleSubmit = async () => {
-    if (isShelter && !form.name) { setError('Zadej jméno zvířete'); return }
-    setLoading(true)
-    setError(null)
+const GOOD_WITH_ADULTS_OPTIONS = [
+  { value: 'friendly',    label: 'Přátelský' },
+  { value: 'shy',         label: 'Plaší' },
+  { value: 'fearful',     label: 'Bázlivý' },
+  { value: 'distrustful', label: 'Nedůvěřivý' },
+  { value: 'unknown',     label: 'Nevím' },
+]
 
-    const table  = isShelter ? 'animals' : 'rescue_cases'
-    const url    = mode === 'create' ? `/api/${table}` : `/api/${table}/${animal.id}`
-    const method = mode === 'create' ? 'POST' : 'PUT'
+const RESCUE_PROGNOSIS_OPTIONS = [
+  { value: 'release',            label: 'Vypuštění do přírody' },
+  { value: 'permanent_handicap', label: 'Trvalý handicap' },
+  { value: 'unknown',            label: 'Neznámá' },
+]
 
-    const oldStatus = isShelter ? animal?.adoption_status : animal?.status
-    const newStatus = isShelter ? form.adoption_status    : form.status
-    const statusChanged = mode === 'edit' && oldStatus !== newStatus
+const SIZE_OPTIONS = [
+  { value: 'small',   label: 'Malé (< 10 kg)' },
+  { value: 'medium',  label: 'Střední (10–25 kg)' },
+  { value: 'large',   label: 'Velké (25–45 kg)' },
+  { value: 'xlarge',  label: 'Obří (> 45 kg)' },
+]
 
-    const payload = isShelter ? {
-      institution_id:      institutionId,
-      name:                form.name,
-      species_id:          form.species_id          || null,
-      sex:                 form.sex                 || null,
-      birth_year:          form.birth_year          ? parseInt(form.birth_year)    : null,
-      size:                form.size                || null,
-      breed:               form.breed               || null,
-      color:               form.color               || null,
-      weight_kg:           form.weight_kg           ? parseFloat(form.weight_kg)  : null,
-      description:         form.description         || null,
-      adoption_status:     form.adoption_status,
-      urgent:              form.urgent,
-      adoption_fee:        parseInt(form.adoption_fee) || 0,
-      vaccinated:          form.vaccinated,
-      neutered:            form.neutered,
-      microchipped:        form.microchipped,
-      chip_number:         form.chip_number         || null,
-      chip_date:           form.chip_date           || null,
-      passport_number:     form.passport_number     || null,
-      good_with_kids:      form.good_with_kids,
-      good_with_dogs:      form.good_with_dogs,
-      good_with_cats:      form.good_with_cats,
-      special_needs:       form.special_needs       || null,
-      vet_name:            form.vet_name            || null,
-      vet_phone:           form.vet_phone           || null,
-      last_vet_visit:      form.last_vet_visit      || null,
-      medications:         form.medications         || null,
-      medical_notes:       form.medical_notes       || null,
-      in_quarantine:       form.in_quarantine,
-      quarantine_until:    form.quarantine_until    || null,
-      quarantine_reason:   form.quarantine_reason   || null,
-      in_foster:           form.in_foster,
-      foster_name:         form.foster_name         || null,
-      foster_phone:        form.foster_phone        || null,
-      foster_since:        form.foster_since        || null,
-      found_location:      form.found_location      || null,
-      found_date:          form.found_date          || null,
-      finder_name:         form.finder_name         || null,
-      finder_phone:        form.finder_phone        || null,
-      previous_owner:      form.previous_owner      || null,
-      previous_owner_phone: form.previous_owner_phone || null,
-      internal_notes:      form.internal_notes      || null,
-      staff_assigned:      form.staff_assigned      || null,
-      activity_level:          form.activity_level          || null,
-      care_difficulty:          form.care_difficulty          || null,
-      suitable_for_flat:        form.suitable_for_flat        ?? null,
-      suitable_for_house:       form.suitable_for_house       ?? null,
-      good_with_other_animals:  form.good_with_other_animals  ?? null,
-      photos,
-      primary_photo:       primaryPhoto             || null,
-      published:           form.published,
-    } : {
-      institution_id:      institutionId,
-      name:                form.name                || null,
-      species_id:          form.species_id          || null,
-      sex:                 form.sex                 || null,
-      estimated_age:       form.estimated_age       || null,
-      status:              form.status,
-      health_status:       form.health_status,
-      cause_of_injury:     form.cause_of_injury     || null,
-      diagnosis:           form.diagnosis           || null,
-      treatment_notes:     form.treatment_notes     || null,
-      medical_notes:       form.medical_notes       || null,
-      public_description:  form.public_description  || null,
-      found_location:      form.found_location      || null,
-      found_date:          form.found_date          || null,
-      found_by:            form.finder_name         || null,
-      vet_name:            form.vet_name            || null,
-      intake_date:         form.intake_date         || null,
-      photos,
-      primary_photo:       primaryPhoto             || null,
-      published:           form.published,
-    }
-
-    const res  = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    const data = await res.json()
-
-    if (!res.ok) {
-      setError(data.error ?? 'Interní chyba serveru')
-      setLoading(false)
-      return
-    }
-
-    // Zaznamenej do historie — VŽDY při uložení (ne jen při změně stavu)
-    const animalId = mode === 'create' ? data.id : animal.id
-
-    // Compute diff between original and saved payload
-    const diffEntries = mode === 'edit'
-      ? computeDiff(animal as Record<string, unknown>, payload as Record<string, unknown>, isShelter ? SHELTER_LABELS : RESCUE_LABELS)
-      : []
-    const structuredNote = (diffEntries.length > 0 || changeNote)
-      ? JSON.stringify({ v: 1, diff: diffEntries, note: changeNote || null })
-      : null
-
-    await fetch('/api/animal-status-history', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        animal_id:      isShelter ? animalId : null,
-        rescue_case_id: !isShelter ? animalId : null,
-        old_status:     statusChanged ? oldStatus : null,
-        new_status:     newStatus,
-        note:           structuredNote,
-        action:         mode === 'create' ? 'create' : statusChanged ? 'status_change' : 'update',
-      }),
-    })
-
-    // Aktualizuj lokální historii okamžitě
-    const newEntry = {
-      id:          Date.now().toString(),
-      old_status:  statusChanged ? oldStatus : null,
-      new_status:  newStatus,
-      note:        structuredNote,
-      action:      mode === 'create' ? 'create' : statusChanged ? 'status_change' : 'update',
-      changed_at:  new Date().toISOString(),
-    }
-    setLocalHistory(prev => [newEntry, ...prev])
-    setChangeNote('')
-
-    setSuccess(true)
-    setTimeout(() => setSuccess(false), 3000)
-    setLoading(false)
-
-    if (mode === 'create') {
-      // Po vytvoření přejdi na editaci nového zvířete
-      router.push(`/admin/animals/${animalId}`)
-    } else {
-      // Zůstaň na stránce — jen refresh dat
-      router.refresh()
-    }
-  }
-
-  const inputCls = 'px-4 py-3 border-2 border-gray-pale rounded-sm font-body text-sm text-espresso outline-none focus:border-coral transition-colors w-full bg-white'
-  const checkCls = 'w-4 h-4 accent-coral cursor-pointer flex-shrink-0'
-
-  const tabs: { key: Tab; label: string; icon: string }[] = [
-    { key: 'basic',    label: 'Základní',  icon: '🐾' },
-    { key: 'health',   label: 'Zdraví',    icon: '🩺' },
-    { key: 'origin',   label: 'Původ',     icon: '📍' },
-    { key: 'internal', label: 'Interní',   icon: '🔒' },
-    { key: 'history',  label: `Historie${localHistory.length > 0 ? ` (${localHistory.length})` : ''}`, icon: '📋' },
-  ]
-
-  const actionLabel: Record<string, string> = {
-    create:        '✨ Záznam vytvořen',
-    status_change: '🔄 Změna stavu',
-    update:        '✏️ Aktualizace záznamu',
-  }
-
+// ── Helper components ──────────────────────────────────────────────────────────
+function Field({ label, required, children, hint }: {
+  label: string; required?: boolean; children: React.ReactNode; hint?: string
+}) {
   return (
-    <div className="flex flex-col lg:grid lg:grid-cols-3 gap-5">
-
-      {/* Levý panel */}
-      <div className="lg:col-span-2 space-y-4">
-
-        {/* Tab navigace */}
-        <div className="flex gap-1 bg-white rounded-lg p-1.5 border border-gray-pale shadow-sm flex-wrap">
-          {tabs.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-md font-display font-bold text-sm transition-all cursor-pointer border-none
-                ${tab === t.key ? 'bg-espresso text-white' : 'text-gray hover:bg-sand bg-transparent'}`}>
-              <span>{t.icon}</span>
-              <span className="hidden sm:block">{t.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* ── TAB: Základní ── */}
-        {tab === 'basic' && (
-          <div className="bg-white rounded-lg p-5 md:p-6 border border-gray-pale shadow-sm space-y-4">
-            <h2 className="font-display font-extrabold text-xl text-espresso">Základní informace</h2>
-
-            {isShelter ? (
-              <Field label="Jméno zvířete *">
-                <input value={form.name} onChange={e => update('name', e.target.value)} placeholder="Max" className={inputCls} />
-              </Field>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Jméno (volitelné)">
-                  <input value={form.name} onChange={e => update('name', e.target.value)} placeholder="Vocálko" className={inputCls} />
-                </Field>
-                <Field label="Číslo případu">
-                  <input value={form.case_number} onChange={e => update('case_number', e.target.value)} placeholder="ZS-2026-001" className={inputCls} />
-                </Field>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Druh">
-                <select value={form.species_id} onChange={e => update('species_id', e.target.value)} className={inputCls}>
-                  <option value="">Vybrat druh...</option>
-                  {species.map(s => <option key={s.id} value={s.id}>{s.icon} {s.name_cs}</option>)}
-                </select>
-              </Field>
-              <Field label="Pohlaví">
-                <select value={form.sex} onChange={e => update('sex', e.target.value)} className={inputCls}>
-                  <option value="">Neznámé</option>
-                  <option value="male">♂ Samec</option>
-                  <option value="female">♀ Samice</option>
-                </select>
-              </Field>
-            </div>
-
-            {isShelter ? (
-              <>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <Field label="Rok narození">
-                    <input type="number" value={form.birth_year} onChange={e => update('birth_year', e.target.value)} placeholder="2021" className={inputCls} />
-                  </Field>
-                  <Field label="Velikost">
-                    <select value={form.size} onChange={e => update('size', e.target.value)} className={inputCls}>
-                      <option value="">—</option>
-                      {Object.entries(SIZE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Váha (kg)">
-                    <input type="number" step="0.1" value={form.weight_kg} onChange={e => update('weight_kg', e.target.value)} placeholder="15.5" className={inputCls} />
-                  </Field>
-                  <Field label="Poplatek (Kč)">
-                    <input type="number" value={form.adoption_fee} onChange={e => update('adoption_fee', e.target.value)} className={inputCls} />
-                  </Field>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Plemeno / rasa">
-                    <input value={form.breed} onChange={e => update('breed', e.target.value)} placeholder="Labrador kříženec" className={inputCls} />
-                  </Field>
-                  <Field label="Barva / zbarvení">
-                    <input value={form.color} onChange={e => update('color', e.target.value)} placeholder="Zlatohnědý" className={inputCls} />
-                  </Field>
-                </div>
-                <Field label="Popis pro adoptivní rodiny">
-                  <textarea value={form.description} onChange={e => update('description', e.target.value)} rows={4} placeholder="Popis charakteru, potřeb..." className={`${inputCls} resize-none`} />
-                </Field>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { key: 'good_with_kids', label: '🧒 Vychází s dětmi' },
-                    { key: 'good_with_dogs', label: '🐕 Vychází se psy' },
-                    { key: 'good_with_cats', label: '🐈 Vychází s kočkami' },
-                  ].map(({ key, label }) => (
-                    <label key={key} className="flex items-center gap-2 cursor-pointer bg-sand rounded-md p-3">
-                      <input type="checkbox" checked={(form as any)[key]} onChange={e => update(key, e.target.checked)} className={checkCls} />
-                      <span className="text-sm font-semibold text-espresso">{label}</span>
-                    </label>
-                  ))}
-                </div>
-                <Field label="Speciální potřeby">
-                  <input value={form.special_needs} onChange={e => update('special_needs', e.target.value)} placeholder="Dieta, léky, alergie..." className={inputCls} />
-                </Field>
-
-                {/* ── Nová pole ── */}
-                <div className="pt-4 border-t border-gray-pale">
-                  <h3 className="font-display font-bold text-base text-espresso mb-4">Povaha a potřeby</h3>
-
-                  {/* Bydlení */}
-                  <div className="mb-4">
-                    <label className="text-xs font-bold text-brown uppercase tracking-wider block mb-2">Vhodný pro</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { key: 'suitable_for_flat',  label: '🏢 Byt',          desc: 'Bez zahrady' },
-                        { key: 'suitable_for_house', label: '🏡 Dům / zahrada', desc: 'Se zahradou' },
-                      ].map(({ key, label, desc }) => (
-                        <label key={key} className="flex items-center gap-3 cursor-pointer p-3 rounded-md border-2 transition-all"
-                          style={(form as any)[key] === true
-                            ? { borderColor: '#E8634A', background: '#FAECE7' }
-                            : { borderColor: '#F0EDE8', background: 'white' }
-                          }>
-                          <input type="checkbox"
-                            checked={(form as any)[key] === true}
-                            onChange={e => update(key, e.target.checked ? true : null)}
-                            className={checkCls} />
-                          <div>
-                            <div className="text-sm font-bold text-espresso">{label}</div>
-                            <div className="text-xs text-gray">{desc}</div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* S jinými zvířaty */}
-                  <div className="mb-4">
-                    <label className="text-xs font-bold text-brown uppercase tracking-wider block mb-2">S jinými zvířaty</label>
-                    <div className="flex gap-2">
-                      {[
-                        { value: true,  label: '✓ Ano' },
-                        { value: false, label: '✗ Ne' },
-                        { value: null,  label: '? Neznámo' },
-                      ].map(({ value, label }) => (
-                        <button key={String(value)} type="button"
-                          onClick={() => update('good_with_other_animals', value)}
-                          className="flex-1 py-2 rounded-md border-2 text-xs font-bold cursor-pointer transition-all"
-                          style={form.good_with_other_animals === value
-                            ? { borderColor: '#E8634A', background: '#FAECE7', color: '#993C1D' }
-                            : { borderColor: '#F0EDE8', background: 'white', color: '#6B4030' }
-                          }>
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Aktivita */}
-                  <div className="mb-4">
-                    <Field label="Úroveň aktivity">
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { value: 'low',       label: '😴 Nízká',       desc: 'Klidná povaha' },
-                          { value: 'medium',    label: '🚶 Střední',      desc: 'Denní vycházky' },
-                          { value: 'high',      label: '🏃 Vysoká',       desc: 'Sport a pohyb' },
-                          { value: 'very_high', label: '⚡ Velmi vysoká', desc: 'Intenzivní sport' },
-                        ].map(({ value, label, desc }) => (
-                          <button key={value} type="button"
-                            onClick={() => update('activity_level', form.activity_level === value ? '' : value)}
-                            className="text-left p-2.5 rounded-md border-2 cursor-pointer transition-all"
-                            style={form.activity_level === value
-                              ? { borderColor: '#E8634A', background: '#FAECE7' }
-                              : { borderColor: '#F0EDE8', background: 'white' }
-                            }>
-                            <div className="text-xs font-bold text-espresso">{label}</div>
-                            <div className="text-[10px] text-gray mt-0.5">{desc}</div>
-                          </button>
-                        ))}
-                      </div>
-                    </Field>
-                  </div>
-
-                  {/* Náročnost chovu */}
-                  <div>
-                    <Field label="Náročnost chovu">
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { value: 'easy',      label: '⭐ Nenáročný',   desc: 'Pro začátečníky' },
-                          { value: 'medium',    label: '⭐⭐ Střední',    desc: 'Mírná zkušenost' },
-                          { value: 'demanding', label: '⭐⭐⭐ Náročný',  desc: 'Pro zkušené' },
-                          { value: 'expert',    label: '⭐⭐⭐⭐ Expert', desc: 'Odborná péče' },
-                        ].map(({ value, label, desc }) => (
-                          <button key={value} type="button"
-                            onClick={() => update('care_difficulty', form.care_difficulty === value ? '' : value)}
-                            className="text-left p-2.5 rounded-md border-2 cursor-pointer transition-all"
-                            style={form.care_difficulty === value
-                              ? { borderColor: '#E8634A', background: '#FAECE7' }
-                              : { borderColor: '#F0EDE8', background: 'white' }
-                            }>
-                            <div className="text-xs font-bold text-espresso">{label}</div>
-                            <div className="text-[10px] text-gray mt-0.5">{desc}</div>
-                          </button>
-                        ))}
-                      </div>
-                    </Field>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <Field label="Odhadovaný věk">
-                  <input value={form.estimated_age} onChange={e => update('estimated_age', e.target.value)} placeholder="Dospělý, Mládě, 2 roky..." className={inputCls} />
-                </Field>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Váha (g)">
-                    <input type="number" value={form.weight_g} onChange={e => update('weight_g', e.target.value)} placeholder="320" className={inputCls} />
-                  </Field>
-                  <Field label="Číslo kroužku / značení">
-                    <input value={form.ring_number} onChange={e => update('ring_number', e.target.value)} placeholder="CZ-12345" className={inputCls} />
-                  </Field>
-                </div>
-                <Field label="Příčina zranění / nemoci">
-                  <input value={form.cause_of_injury} onChange={e => update('cause_of_injury', e.target.value)} placeholder="Střet s vozidlem" className={inputCls} />
-                </Field>
-                <Field label="Diagnóza">
-                  <input value={form.diagnosis} onChange={e => update('diagnosis', e.target.value)} placeholder="Zlomené pravé křídlo" className={inputCls} />
-                </Field>
-                <Field label="Průběh léčby">
-                  <textarea value={form.treatment_notes} onChange={e => update('treatment_notes', e.target.value)} rows={3} className={`${inputCls} resize-none`} />
-                </Field>
-                <Field label="Veřejný popis (web / sbírky)">
-                  <textarea value={form.public_description} onChange={e => update('public_description', e.target.value)} rows={3} className={`${inputCls} resize-none`} />
-                </Field>
-                <Field label="Místo propuštění">
-                  <input value={form.release_location} onChange={e => update('release_location', e.target.value)} placeholder="Les u Jihlavy" className={inputCls} />
-                </Field>
-              </>
-            )}
-
-            {/* Fotky */}
-            <div className="pt-4 border-t border-gray-pale">
-              <h3 className="font-display font-bold text-base text-espresso mb-3">Fotografie</h3>
-              {photos.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {photos.map((url, i) => (
-                    <div key={i} className="relative group">
-                      <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-md overflow-hidden border-2 cursor-pointer transition-all"
-                        onClick={() => setPrimaryPhoto(url)}
-                        style={{ borderColor: primaryPhoto === url ? 'var(--coral)' : 'transparent' }}>
-                        <Image src={url} alt="" fill className="object-cover" />
-                        {primaryPhoto === url && (
-                          <div className="absolute inset-0 bg-coral/20 flex items-center justify-center">
-                            <span className="text-white text-[10px] font-bold">Hlavní</span>
-                          </div>
-                        )}
-                      </div>
-                      <button onClick={() => removePhoto(url)}
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-coral text-white rounded-full text-xs font-bold hidden group-hover:flex items-center justify-center cursor-pointer border-none">
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
-              <Button variant="sand" size="sm" loading={uploading} onClick={() => fileRef.current?.click()}>
-                {uploading ? 'Nahrávám...' : '📷 Přidat fotky'}
-              </Button>
-              {photos.length > 0 && <p className="text-xs text-gray mt-2">Klikni na fotku pro nastavení jako hlavní</p>}
-            </div>
-          </div>
-        )}
-
-        {/* ── TAB: Zdraví ── */}
-        {tab === 'health' && (
-          <div className="bg-white rounded-lg p-5 md:p-6 border border-gray-pale shadow-sm space-y-4">
-            <h2 className="font-display font-extrabold text-xl text-espresso">Zdravotní záznamy</h2>
-            <Field label="Zdravotní stav">
-              <select value={form.health_status} onChange={e => update('health_status', e.target.value)} className={inputCls}>
-                {Object.entries(HEALTH_STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </Field>
-            {isShelter && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {[
-                  { key: 'vaccinated',   label: '💉 Očkovaný' },
-                  { key: 'neutered',     label: '✂️ Kastrovaný' },
-                  { key: 'microchipped', label: '📡 Čipovaný' },
-                ].map(({ key, label }) => (
-                  <label key={key} className="flex items-center gap-2 cursor-pointer bg-sand rounded-md p-3">
-                    <input type="checkbox" checked={(form as any)[key]} onChange={e => update(key, e.target.checked)} className={checkCls} />
-                    <span className="text-sm font-semibold text-espresso">{label}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-            {isShelter && form.microchipped && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Číslo čipu">
-                  <input value={form.chip_number} onChange={e => update('chip_number', e.target.value)} placeholder="900182000123456" className={inputCls} />
-                </Field>
-                <Field label="Datum čipování">
-                  <input type="date" value={form.chip_date} onChange={e => update('chip_date', e.target.value)} className={inputCls} />
-                </Field>
-              </div>
-            )}
-            {isShelter && (
-              <Field label="Číslo pasu">
-                <input value={form.passport_number} onChange={e => update('passport_number', e.target.value)} placeholder="CZ123456789" className={inputCls} />
-              </Field>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Ošetřující veterinář">
-                <input value={form.vet_name} onChange={e => update('vet_name', e.target.value)} placeholder="MVDr. Novák" className={inputCls} />
-              </Field>
-              <Field label="Telefon na veterináře">
-                <input value={form.vet_phone} onChange={e => update('vet_phone', e.target.value)} className={inputCls} />
-              </Field>
-            </div>
-            <Field label="Poslední veterinární návštěva">
-              <input type="date" value={form.last_vet_visit} onChange={e => update('last_vet_visit', e.target.value)} className={inputCls} />
-            </Field>
-            <Field label="Aktuální léky">
-              <input value={form.medications} onChange={e => update('medications', e.target.value)} placeholder="Antibiotika 2× denně..." className={inputCls} />
-            </Field>
-            <Field label="Zdravotní poznámky">
-              <textarea value={form.medical_notes} onChange={e => update('medical_notes', e.target.value)} rows={4} className={`${inputCls} resize-none`} />
-            </Field>
-            <div className="pt-3 border-t border-gray-pale">
-              <label className="flex items-center gap-3 cursor-pointer mb-3">
-                <input type="checkbox" checked={form.in_quarantine} onChange={e => update('in_quarantine', e.target.checked)} className={checkCls} />
-                <span className="font-display font-bold text-base text-espresso">🚧 V karanténě / izolaci</span>
-              </label>
-              {form.in_quarantine && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-amber-light/50 rounded-md p-4">
-                  <Field label="Karanténa do">
-                    <input type="date" value={form.quarantine_until} onChange={e => update('quarantine_until', e.target.value)} className={inputCls} />
-                  </Field>
-                  <Field label="Důvod karantény">
-                    <input value={form.quarantine_reason} onChange={e => update('quarantine_reason', e.target.value)} placeholder="Nové zvíře, nemoc..." className={inputCls} />
-                  </Field>
-                </div>
-              )}
-            </div>
-            {isShelter && (
-              <div className="pt-3 border-t border-gray-pale">
-                <label className="flex items-center gap-3 cursor-pointer mb-3">
-                  <input type="checkbox" checked={form.in_foster} onChange={e => update('in_foster', e.target.checked)} className={checkCls} />
-                  <span className="font-display font-bold text-base text-espresso">🏠 Ve foster péči</span>
-                </label>
-                {form.in_foster && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-rescue-bg/50 rounded-md p-4">
-                    <Field label="Jméno foster rodiny">
-                      <input value={form.foster_name} onChange={e => update('foster_name', e.target.value)} className={inputCls} />
-                    </Field>
-                    <Field label="Telefon">
-                      <input value={form.foster_phone} onChange={e => update('foster_phone', e.target.value)} className={inputCls} />
-                    </Field>
-                    <Field label="Foster od">
-                      <input type="date" value={form.foster_since} onChange={e => update('foster_since', e.target.value)} className={inputCls} />
-                    </Field>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── TAB: Původ ── */}
-        {tab === 'origin' && (
-          <div className="bg-white rounded-lg p-5 md:p-6 border border-gray-pale shadow-sm space-y-4">
-            <h2 className="font-display font-extrabold text-xl text-espresso">Původ a příjem</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Datum příjmu">
-                <input type="date" value={form.intake_date} onChange={e => update('intake_date', e.target.value)} className={inputCls} />
-              </Field>
-              <Field label="Důvod příjmu">
-                <select value={form.intake_reason} onChange={e => update('intake_reason', e.target.value)} className={inputCls}>
-                  <option value="">Vybrat...</option>
-                  {Object.entries(INTAKE_REASON_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </Field>
-            </div>
-            <Field label="Poznámky k příjmu">
-              <textarea value={form.intake_notes} onChange={e => update('intake_notes', e.target.value)} rows={3} placeholder="Okolnosti příjmu, stav zvířete..." className={`${inputCls} resize-none`} />
-            </Field>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Místo nálezu">
-                <input value={form.found_location} onChange={e => update('found_location', e.target.value)} placeholder="Ulice, město..." className={inputCls} />
-              </Field>
-              <Field label="Datum nálezu">
-                <input type="date" value={form.found_date} onChange={e => update('found_date', e.target.value)} className={inputCls} />
-              </Field>
-            </div>
-            <div className="pt-3 border-t border-gray-pale">
-              <h3 className="font-display font-bold text-base text-espresso mb-3">Nalézatel / předávající</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Jméno">
-                  <input value={form.finder_name} onChange={e => update('finder_name', e.target.value)} className={inputCls} />
-                </Field>
-                <Field label="Telefon">
-                  <input value={form.finder_phone} onChange={e => update('finder_phone', e.target.value)} className={inputCls} />
-                </Field>
-              </div>
-            </div>
-            {isShelter && (
-              <div className="pt-3 border-t border-gray-pale">
-                <h3 className="font-display font-bold text-base text-espresso mb-3">Předchozí majitel</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Jméno">
-                    <input value={form.previous_owner} onChange={e => update('previous_owner', e.target.value)} className={inputCls} />
-                  </Field>
-                  <Field label="Telefon">
-                    <input value={form.previous_owner_phone} onChange={e => update('previous_owner_phone', e.target.value)} className={inputCls} />
-                  </Field>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── TAB: Interní ── */}
-        {tab === 'internal' && (
-          <div className="bg-white rounded-lg p-5 md:p-6 border border-gray-pale shadow-sm space-y-4">
-            <h2 className="font-display font-extrabold text-xl text-espresso">🔒 Interní záznamy</h2>
-            <p className="text-xs text-gray bg-amber-light rounded-md px-3 py-2">
-              ⚠️ Tyto informace se nezobrazují na veřejném webu ani adoptivním rodinám.
-            </p>
-            <Field label="Interní poznámky">
-              <textarea value={form.internal_notes} onChange={e => update('internal_notes', e.target.value)} rows={6}
-                placeholder="Poznámky pouze pro štáb, behaviorální záznamy, zvláštní požadavky..." className={`${inputCls} resize-none`} />
-            </Field>
-            <Field label="Zodpovědný pracovník">
-              <input value={form.staff_assigned} onChange={e => update('staff_assigned', e.target.value)} placeholder="Jana Nováková" className={inputCls} />
-            </Field>
-          </div>
-        )}
-
-        {/* ── TAB: Historie ── */}
-        {tab === 'history' && (
-          <div className="bg-white rounded-lg p-5 md:p-6 border border-gray-pale shadow-sm">
-            <h2 className="font-display font-extrabold text-xl text-espresso mb-5">📋 Historie změn</h2>
-            {localHistory.length === 0 ? (
-              <div className="text-center py-10">
-                <div className="text-4xl mb-3">📋</div>
-                <p className="text-gray text-sm">Zatím žádné změny — uložení záznamu se zapíše do historie</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {localHistory.slice(historyPage * HISTORY_PAGE_SIZE, (historyPage + 1) * HISTORY_PAGE_SIZE).map((h: any, i: number) => {
-                  const labelMap = isShelter ? ADOPTION_STATUS_LABEL : RESCUE_STATUS_LABEL
-                  const isStatusChange = h.action === 'status_change' || (h.old_status && h.old_status !== h.new_status)
-                  const isCreate = h.action === 'create'
-
-                  // Parse structured note (v:1)
-                  let parsedNote: { v: number; diff: DiffEntry[]; note: string | null } | null = null
-                  if (h.note && typeof h.note === 'string' && h.note.startsWith('{')) {
-                    try { const p = JSON.parse(h.note); if (p?.v === 1) parsedNote = p } catch {}
-                  }
-                  const userNote = parsedNote ? parsedNote.note : h.note
-                  const diffItems: DiffEntry[] = parsedNote?.diff ?? []
-
-                  return (
-                    <div key={h.id ?? i} className={`flex items-start gap-3 p-3 rounded-md border
-                      ${isCreate ? 'bg-success-bg border-success/20' : isStatusChange ? 'bg-coral-light border-coral/20' : 'bg-sand border-gray-pale'}`}>
-                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5
-                        ${isCreate ? 'bg-success' : isStatusChange ? 'bg-coral' : 'bg-gray'}`} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                          <span className="font-body text-xs font-bold text-espresso">
-                            {actionLabel[h.action ?? (isStatusChange ? 'status_change' : 'update')] ?? '✏️ Aktualizace'}
-                          </span>
-                          {isStatusChange && h.old_status && (
-                            <span className="text-xs text-gray">
-                              {labelMap[h.old_status] ?? h.old_status}
-                              {' → '}
-                              <strong className="text-espresso">{labelMap[h.new_status] ?? h.new_status}</strong>
-                            </span>
-                          )}
-                        </div>
-                        {diffItems.length > 0 && (
-                          <div className="mt-1.5 space-y-0.5">
-                            {diffItems.map(d => (
-                              <div key={d.f} className="flex items-baseline gap-1 text-[11px] leading-tight">
-                                <span className="font-bold text-gray shrink-0">{d.l}:</span>
-                                <span className="text-gray line-through">{d.o}</span>
-                                <span className="text-gray">→</span>
-                                <span className="font-bold text-espresso">{d.n}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {userNote && (
-                          <p className="text-xs text-brown-mid bg-white/70 rounded px-2 py-1 mt-1">
-                            💬 {userNote}
-                          </p>
-                        )}
-                        <p className="text-[11px] text-gray mt-1">
-                          {new Date(h.changed_at).toLocaleString('cs-CZ', {
-                            day: 'numeric', month: 'short', year: 'numeric',
-                            hour: '2-digit', minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-            {localHistory.length > HISTORY_PAGE_SIZE && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-pale">
-                <span className="text-xs text-gray">
-                  {historyPage * HISTORY_PAGE_SIZE + 1}–{Math.min((historyPage + 1) * HISTORY_PAGE_SIZE, localHistory.length)} z {localHistory.length}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setHistoryPage(p => p - 1)}
-                    disabled={historyPage === 0}
-                    className="px-3 py-1.5 text-xs font-bold rounded-md border border-gray-pale text-gray hover:bg-sand disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-colors"
-                  >
-                    ← Starší
-                  </button>
-                  <button
-                    onClick={() => setHistoryPage(p => p + 1)}
-                    disabled={(historyPage + 1) * HISTORY_PAGE_SIZE >= localHistory.length}
-                    className="px-3 py-1.5 text-xs font-bold rounded-md border border-gray-pale text-gray hover:bg-sand disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-colors"
-                  >
-                    Novější →
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Pravý panel */}
-      <div className="space-y-5">
-
-        {/* Stav */}
-        <div className="bg-white rounded-lg p-5 border border-gray-pale shadow-sm">
-          <h3 className="font-display font-extrabold text-lg text-espresso mb-4">Stav</h3>
-          {isShelter ? (
-            <div className="space-y-3">
-              <Field label="Stav adopce">
-                <select value={form.adoption_status} onChange={e => update('adoption_status', e.target.value)} className={inputCls}>
-                  {Object.entries(ADOPTION_STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </Field>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" checked={form.urgent} onChange={e => update('urgent', e.target.checked)} className={checkCls} />
-                <span className="text-sm font-bold text-coral">🆘 Urgentní adopce</span>
-              </label>
-            </div>
-          ) : (
-            <Field label="Stav léčby">
-              <select value={form.status} onChange={e => update('status', e.target.value)} className={inputCls}>
-                {Object.entries(RESCUE_STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </Field>
-          )}
-          <label className="flex items-center gap-3 cursor-pointer mt-3">
-            <input type="checkbox" checked={form.published} onChange={e => update('published', e.target.checked)} className={checkCls} />
-            <span className="text-sm font-semibold text-espresso">Zveřejněno na webu</span>
-          </label>
-        </div>
-
-        {/* Poznámka ke změně — vždy viditelná */}
-        <div className="bg-amber-light/60 rounded-lg p-4 border border-amber/20">
-          <h3 className="font-display font-bold text-sm text-espresso mb-2">
-            💬 Poznámka k tomuto uložení
-          </h3>
-          <textarea
-            value={changeNote}
-            onChange={e => setChangeNote(e.target.value)}
-            placeholder="Proč se tato změna provádí? (zapíše se do historie)"
-            rows={3}
-            className={`${inputCls} resize-none text-xs`}
-          />
-        </div>
-
-        {/* PDF karta */}
-        {mode === 'edit' && (
-          <div className="bg-sand rounded-lg p-4">
-            <h3 className="font-display font-bold text-sm text-espresso mb-2 uppercase tracking-wider">Karta zvířete</h3>
-            <a href={`/admin/animals/${animal?.id}/pdf`} target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-2.5 bg-espresso text-white font-display font-bold text-sm rounded-sm hover:bg-brown transition-colors no-underline">
-              📄 Stáhnout PDF kartu
-            </a>
-          </div>
-        )}
-
-        {/* Chyba / úspěch */}
-        {error && (
-          <div className="bg-coral-light text-coral-dark text-sm font-semibold px-4 py-3 rounded-sm">⚠️ {error}</div>
-        )}
-        {success && (
-          <div className="bg-success-bg text-success text-sm font-semibold px-4 py-3 rounded-sm">
-            ✓ Uloženo! Zůstáváte na záznamu.
-          </div>
-        )}
-
-        <Button variant="primary" className="w-full justify-center" loading={loading} onClick={handleSubmit}>
-          {mode === 'create' ? '✓ Vytvořit záznam' : '✓ Uložit změny'}
-        </Button>
-
-        {mode === 'edit' && (
-          <button onClick={async () => {
-            if (!confirm('Opravdu smazat?')) return
-            const table = isShelter ? 'animals' : 'rescue_cases'
-            await fetch(`/api/${table}/${animal.id}`, { method: 'DELETE' })
-            router.push('/admin/animals')
-          }}
-            className="w-full py-2.5 text-sm text-gray hover:text-coral transition-colors font-semibold cursor-pointer bg-transparent border-none">
-            🗑 Smazat záznam
-          </button>
-        )}
-      </div>
+    <div>
+      <label className="block text-sm font-semibold text-[#3D2010] mb-1">
+        {label}{required && <span className="text-[#E8634A] ml-0.5">*</span>}
+      </label>
+      {children}
+      {hint && <p className="text-xs text-[#8B6550] mt-1">{hint}</p>}
     </div>
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-bold text-brown uppercase tracking-wider">{label}</label>
-      {children}
+    <label className="flex items-center gap-3 cursor-pointer select-none">
+      <div
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative w-11 h-6 rounded-full transition-colors ${checked ? 'bg-[#E8634A]' : 'bg-[#D5CFC8]'}`}
+      >
+        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-5' : ''}`} />
+      </div>
+      <span className="text-sm text-[#3D2010]">{label}</span>
+    </label>
+  )
+}
+
+const inputCls = 'w-full px-3 py-2 rounded-lg border border-[#E0DDD8] bg-white text-sm text-[#1A0F0A] focus:outline-none focus:border-[#E8634A] focus:ring-1 focus:ring-[#E8634A]'
+const selectCls = inputCls + ' appearance-none'
+const textareaCls = inputCls + ' resize-y min-h-[80px]'
+
+// ── initFormData ───────────────────────────────────────────────────────────────
+function initFormData(data?: Record<string, unknown>) {
+  const d = data ?? {}
+  return {
+    name:                    String(d.name ?? ''),
+    species_id:              String(d.species_id ?? ''),
+    sex:                     String(d.sex ?? ''),
+    birth_year:              d.birth_year != null ? String(d.birth_year) : '',
+    age_months:              d.age_months != null ? String(d.age_months) : '',
+    breed:                   String(d.breed ?? ''),
+    color:                   String(d.color ?? ''),
+    size:                    String(d.size ?? ''),
+    weight_kg:               d.weight_kg != null ? String(d.weight_kg) : '',
+    intake_date:             String(d.intake_date ?? new Date().toISOString().slice(0, 10)),
+    origin:                  String(d.origin ?? ''),
+    adoption_status:         String(d.adoption_status ?? 'intake'),
+    health_status:           String(d.health_status ?? 'unknown'),
+    vaccinated:              Boolean(d.vaccinated),
+    neutered:                Boolean(d.neutered),
+    microchipped:            Boolean(d.microchipped),
+    chip_number:             String(d.chip_number ?? ''),
+    chip_date:               String(d.chip_date ?? ''),
+    passport_number:         String(d.passport_number ?? ''),
+    in_quarantine:           Boolean(d.in_quarantine),
+    quarantine_until:        String(d.quarantine_until ?? ''),
+    quarantine_reason:       String(d.quarantine_reason ?? ''),
+    medications:             String(d.medications ?? ''),
+    medical_notes:           String(d.medical_notes ?? ''),
+    vet_name:                String(d.vet_name ?? ''),
+    vet_phone:               String(d.vet_phone ?? ''),
+    last_vet_visit:          String(d.last_vet_visit ?? ''),
+    good_with_kids:          String(d.good_with_kids ?? 'unknown'),
+    good_with_dogs:          String(d.good_with_dogs ?? 'unknown'),
+    good_with_cats:          String(d.good_with_cats ?? 'unknown'),
+    good_with_other_animals: String(d.good_with_other_animals ?? 'unknown'),
+    good_with_adults:        String(d.good_with_adults ?? 'unknown'),
+    activity_level:          String(d.activity_level ?? ''),
+    care_difficulty:         String(d.care_difficulty ?? ''),
+    special_needs:           Boolean(d.special_needs),
+    suitable_for_flat:       d.suitable_for_flat !== undefined ? Boolean(d.suitable_for_flat) : true,
+    suitable_for_house:      d.suitable_for_house !== undefined ? Boolean(d.suitable_for_house) : true,
+    urgent:                  Boolean(d.urgent),
+    adoption_fee:            d.adoption_fee != null ? String(d.adoption_fee) : '',
+    story:                   String(d.story ?? ''),
+    adopter_requirements:    String(d.adopter_requirements ?? ''),
+    description:             String(d.description ?? ''),
+    internal_notes:          String(d.internal_notes ?? ''),
+    found_location:          String(d.found_location ?? ''),
+    found_date:              String(d.found_date ?? ''),
+    rescue_find_type:        String(d.rescue_find_type ?? ''),
+    rescue_prognosis:        String(d.rescue_prognosis ?? 'unknown'),
+    rescue_public_description: String(d.rescue_public_description ?? ''),
+    published:               Boolean(d.published),
+  }
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+export function AnimalForm({
+  institutionId,
+  institutionType,
+  species,
+  mode,
+  initialData,
+  animal,
+}: AnimalFormProps) {
+  const router   = useRouter()
+  const isShelter = institutionType === 'shelter'
+  const sourceData = initialData ?? animal
+
+  const [form, setForm] = useState(() => initFormData(sourceData))
+  const [activeTab, setActiveTab]     = useState<Tab>('basic')
+  const [saving, setSaving]           = useState(false)
+  const [toast, setToast]             = useState<{ msg: string; ok: boolean } | null>(null)
+  const [errors, setErrors]           = useState<Record<string, string>>({})
+
+  // Photos
+  const [pendingPhotos, setPendingPhotos]   = useState<PendingPhoto[]>([])
+  const [existingPhotos, setExistingPhotos] = useState<string[]>(
+    Array.isArray(sourceData?.photos) ? (sourceData.photos as string[]) : []
+  )
+  const [removedPhotos, setRemovedPhotos]   = useState<string[]>([])
+  const [primaryIdx, setPrimaryIdx]         = useState(0)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const animalId = sourceData?.id as string | undefined
+
+  const set = useCallback((field: string, value: unknown) => {
+    setForm(prev => ({ ...prev, [field]: value }))
+    setErrors(prev => { const next = { ...prev }; delete next[field]; return next })
+  }, [])
+
+  function showToast(msg: string, ok = true) {
+    setToast({ msg, ok })
+    setTimeout(() => setToast(null), 3500)
+  }
+
+  // ── Photo handlers ─────────────────────────────────────────────────────────
+  function handleFileDrop(files: FileList | null) {
+    if (!files) return
+    const newPhotos: PendingPhoto[] = []
+    for (const f of Array.from(files)) {
+      if (!f.type.startsWith('image/')) continue
+      if (f.size > 8 * 1024 * 1024) { showToast(`Soubor ${f.name} je příliš velký (max 8 MB)`, false); continue }
+      newPhotos.push({ file: f, preview: URL.createObjectURL(f) })
+    }
+    setPendingPhotos(prev => [...prev, ...newPhotos])
+  }
+
+  function removeExisting(url: string) {
+    setExistingPhotos(prev => prev.filter(u => u !== url))
+    setRemovedPhotos(prev => [...prev, url])
+    if (primaryIdx >= existingPhotos.length - 1) setPrimaryIdx(0)
+  }
+
+  function removePending(idx: number) {
+    setPendingPhotos(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  async function uploadPendingPhotos(aid: string): Promise<string[]> {
+    const supabase = createClient()
+    const urls: string[] = []
+    for (const p of pendingPhotos) {
+      const ext  = p.file.name.split('.').pop() ?? 'jpg'
+      const path = `${institutionId}/${aid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error } = await supabase.storage.from('animal-photos').upload(path, p.file, { upsert: false })
+      if (error) { showToast(`Chyba uploadu: ${p.file.name}`, false); continue }
+      const { data } = supabase.storage.from('animal-photos').getPublicUrl(path)
+      urls.push(data.publicUrl)
+    }
+    return urls
+  }
+
+  // ── Validation ─────────────────────────────────────────────────────────────
+  function validate(publish: boolean) {
+    const errs: Record<string, string> = {}
+    if (!form.name.trim())       errs.name        = 'Jméno je povinné'
+    if (!form.species_id)        errs.species_id  = 'Druh je povinný'
+    if (!form.sex)               errs.sex         = 'Pohlaví je povinné'
+    if (!form.adoption_status)   errs.adoption_status = 'Stav je povinný'
+    if (!form.intake_date)       errs.intake_date = 'Datum příjmu je povinné'
+    if (publish && existingPhotos.length === 0 && pendingPhotos.length === 0) {
+      errs.photos = 'Pro zveřejnění je potřeba alespoň jedna fotka'
+    }
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
+  async function handleSubmit(publish: boolean) {
+    if (!validate(publish)) {
+      showToast('Oprav chyby ve formuláři', false)
+      setActiveTab('basic')
+      return
+    }
+    setSaving(true)
+    try {
+      // Build payload
+      const payload: Record<string, unknown> = {
+        name:              form.name.trim(),
+        species_id:        form.species_id,
+        sex:               form.sex,
+        birth_year:        form.birth_year ? parseInt(form.birth_year) : null,
+        age_months:        form.age_months ? parseInt(form.age_months) : null,
+        breed:             form.breed || null,
+        color:             form.color || null,
+        size:              form.size || null,
+        weight_kg:         form.weight_kg ? parseFloat(form.weight_kg) : null,
+        intake_date:       form.intake_date || null,
+        origin:            form.origin || null,
+        adoption_status:   form.adoption_status,
+        health_status:     form.health_status,
+        vaccinated:        form.vaccinated,
+        neutered:          form.neutered,
+        microchipped:      form.microchipped,
+        chip_number:       form.chip_number || null,
+        chip_date:         form.chip_date || null,
+        passport_number:   form.passport_number || null,
+        in_quarantine:     form.in_quarantine,
+        quarantine_until:  form.quarantine_until || null,
+        quarantine_reason: form.quarantine_reason || null,
+        medications:       form.medications || null,
+        medical_notes:     form.medical_notes || null,
+        vet_name:          form.vet_name || null,
+        vet_phone:         form.vet_phone || null,
+        last_vet_visit:    form.last_vet_visit || null,
+        good_with_kids:    form.good_with_kids || null,
+        good_with_dogs:    form.good_with_dogs || null,
+        good_with_cats:    form.good_with_cats || null,
+        good_with_other_animals: form.good_with_other_animals || null,
+        good_with_adults:  form.good_with_adults || null,
+        activity_level:    form.activity_level || null,
+        care_difficulty:   form.care_difficulty || null,
+        special_needs:     form.special_needs,
+        suitable_for_flat: form.suitable_for_flat,
+        suitable_for_house: form.suitable_for_house,
+        urgent:            form.urgent,
+        adoption_fee:      form.adoption_fee ? parseInt(form.adoption_fee) : null,
+        story:             form.story || null,
+        adopter_requirements: form.adopter_requirements || null,
+        description:       form.description || null,
+        internal_notes:    form.internal_notes || null,
+        found_location:    form.found_location || null,
+        found_date:        form.found_date || null,
+        rescue_find_type:  form.rescue_find_type || null,
+        rescue_prognosis:  form.rescue_prognosis || null,
+        rescue_public_description: form.rescue_public_description || null,
+        published:         publish,
+      }
+
+      let savedId = animalId
+
+      if (mode === 'create') {
+        const res = await fetch('/api/animals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, institution_id: institutionId }),
+        })
+        if (!res.ok) throw new Error(await res.text())
+        const json = await res.json()
+        savedId = json.id
+      } else {
+        const res = await fetch(`/api/animals/${animalId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) throw new Error(await res.text())
+      }
+
+      // Upload new photos
+      if (pendingPhotos.length > 0 && savedId) {
+        const newUrls = await uploadPendingPhotos(savedId)
+        const allPhotos = [...existingPhotos, ...newUrls]
+        const primary   = allPhotos[primaryIdx] ?? allPhotos[0] ?? null
+        await fetch(`/api/animals/${savedId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ photos: allPhotos, primary_photo: primary }),
+        })
+      } else if (savedId) {
+        const primary = existingPhotos[primaryIdx] ?? existingPhotos[0] ?? null
+        if (existingPhotos.length > 0 || removedPhotos.length > 0) {
+          await fetch(`/api/animals/${savedId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ photos: existingPhotos, primary_photo: primary }),
+          })
+        }
+      }
+
+      showToast(publish ? 'Uloženo a zveřejněno' : 'Uloženo jako draft')
+      setTimeout(() => router.push('/admin/animals'), 1200)
+    } catch (err) {
+      showToast(`Chyba: ${err instanceof Error ? err.message : 'Neznámá chyba'}`, false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ── Tabs config ────────────────────────────────────────────────────────────
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'basic',    label: '📋 Základní údaje' },
+    { id: 'health',   label: '🏥 Zdraví' },
+    ...(isShelter ? [{ id: 'behavior' as Tab, label: '🐾 Chování' }] : []),
+    { id: 'photos',   label: '📷 Fotky' },
+    ...(!isShelter ? [{ id: 'rescue' as Tab, label: '🦉 Záchrana' }] : []),
+  ]
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  return (
+    <div className="flex flex-col min-h-0">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-semibold text-white transition-all ${toast.ok ? 'bg-[#2D7A4F]' : 'bg-[#C0392B]'}`}>
+          {toast.msg}
+        </div>
+      )}
+
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-[#E0DDD8] mb-6 overflow-x-auto">
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setActiveTab(t.id)}
+            className={`px-4 py-2.5 text-sm font-semibold whitespace-nowrap rounded-t-lg transition-colors border-b-2 ${
+              activeTab === t.id
+                ? 'border-[#E8634A] text-[#E8634A] bg-[#FFF5F2]'
+                : 'border-transparent text-[#6B4030] hover:text-[#E8634A] hover:bg-[#FFF5F2]'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab panels */}
+      <div className="flex-1 pb-24">
+
+        {/* ── BASIC ── */}
+        {activeTab === 'basic' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <Field label="Jméno" required>
+              <input className={inputCls} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Např. Azor" />
+              {errors.name && <p className="text-xs text-[#E8634A] mt-1">{errors.name}</p>}
+            </Field>
+
+            <Field label="Druh" required>
+              <select className={selectCls} value={form.species_id} onChange={e => set('species_id', e.target.value)}>
+                <option value="">— vyberte druh —</option>
+                {species.map(s => <option key={s.id} value={s.id}>{s.name_cs}</option>)}
+              </select>
+              {errors.species_id && <p className="text-xs text-[#E8634A] mt-1">{errors.species_id}</p>}
+            </Field>
+
+            <Field label="Pohlaví" required>
+              <select className={selectCls} value={form.sex} onChange={e => set('sex', e.target.value)}>
+                <option value="">— vyberte —</option>
+                <option value="male">Samec</option>
+                <option value="female">Samice</option>
+                <option value="unknown">Neznámé</option>
+              </select>
+              {errors.sex && <p className="text-xs text-[#E8634A] mt-1">{errors.sex}</p>}
+            </Field>
+
+            <Field label="Stav" required>
+              <select className={selectCls} value={form.adoption_status} onChange={e => set('adoption_status', e.target.value)}>
+                {(isShelter ? ADOPTION_STATUS_OPTIONS : RESCUE_STATUS_OPTIONS).map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              {errors.adoption_status && <p className="text-xs text-[#E8634A] mt-1">{errors.adoption_status}</p>}
+            </Field>
+
+            <Field label="Datum příjmu" required>
+              <input type="date" className={inputCls} value={form.intake_date} onChange={e => set('intake_date', e.target.value)} />
+              {errors.intake_date && <p className="text-xs text-[#E8634A] mt-1">{errors.intake_date}</p>}
+            </Field>
+
+            <Field label="Původ">
+              <select className={selectCls} value={form.origin} onChange={e => set('origin', e.target.value)}>
+                <option value="">— vyberte původ —</option>
+                {ORIGIN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
+
+            <Field label="Rok narození" hint="Zadej celý rok (např. 2021)">
+              <input type="number" className={inputCls} value={form.birth_year} onChange={e => set('birth_year', e.target.value)} placeholder="2021" min="2000" max={new Date().getFullYear()} />
+            </Field>
+
+            <Field label="Věk v měsících" hint="Pro mláďata mladší 1 roku">
+              <input type="number" className={inputCls} value={form.age_months} onChange={e => set('age_months', e.target.value)} placeholder="4" min="0" max="11" />
+            </Field>
+
+            <Field label="Plemeno / rasa">
+              <input className={inputCls} value={form.breed} onChange={e => set('breed', e.target.value)} placeholder="Např. Labrador" />
+            </Field>
+
+            <Field label="Barva / zbarvení">
+              <input className={inputCls} value={form.color} onChange={e => set('color', e.target.value)} placeholder="Např. hnědá s bílou" />
+            </Field>
+
+            <Field label="Velikost">
+              <select className={selectCls} value={form.size} onChange={e => set('size', e.target.value)}>
+                <option value="">— vyberte —</option>
+                {SIZE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
+
+            <Field label="Hmotnost (kg)">
+              <input type="number" className={inputCls} value={form.weight_kg} onChange={e => set('weight_kg', e.target.value)} placeholder="12.5" step="0.1" min="0" />
+            </Field>
+
+            {isShelter && (
+              <Field label="Poplatek za adopci (Kč)" hint="0 = bez poplatku">
+                <input type="number" className={inputCls} value={form.adoption_fee} onChange={e => set('adoption_fee', e.target.value)} placeholder="0" min="0" />
+              </Field>
+            )}
+
+            <Field label="Místo nálezu">
+              <input className={inputCls} value={form.found_location} onChange={e => set('found_location', e.target.value)} placeholder="Např. Praha 5" />
+            </Field>
+
+            <Field label="Datum nálezu">
+              <input type="date" className={inputCls} value={form.found_date} onChange={e => set('found_date', e.target.value)} />
+            </Field>
+
+            <div className="md:col-span-2 flex flex-wrap gap-6 pt-2">
+              {isShelter && (
+                <Toggle checked={form.urgent} onChange={v => set('urgent', v)} label="Urgentní adopce" />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── HEALTH ── */}
+        {activeTab === 'health' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <Field label="Zdravotní stav">
+              <select className={selectCls} value={form.health_status} onChange={e => set('health_status', e.target.value)}>
+                {HEALTH_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
+
+            <div className="flex flex-wrap gap-6 items-end">
+              <Toggle checked={form.vaccinated}   onChange={v => set('vaccinated', v)}   label="Očkováno" />
+              <Toggle checked={form.neutered}     onChange={v => set('neutered', v)}     label="Kastrováno" />
+              <Toggle checked={form.microchipped} onChange={v => set('microchipped', v)} label="Čipováno" />
+            </div>
+
+            {form.microchipped && (
+              <>
+                <Field label="Číslo čipu">
+                  <input className={inputCls} value={form.chip_number} onChange={e => set('chip_number', e.target.value)} placeholder="985..." />
+                </Field>
+                <Field label="Datum čipování">
+                  <input type="date" className={inputCls} value={form.chip_date} onChange={e => set('chip_date', e.target.value)} />
+                </Field>
+              </>
+            )}
+
+            <Field label="Číslo pasu">
+              <input className={inputCls} value={form.passport_number} onChange={e => set('passport_number', e.target.value)} />
+            </Field>
+
+            <div className="md:col-span-2">
+              <Toggle checked={form.in_quarantine} onChange={v => set('in_quarantine', v)} label="V karanténě" />
+            </div>
+
+            {form.in_quarantine && (
+              <>
+                <Field label="Karanténa do">
+                  <input type="date" className={inputCls} value={form.quarantine_until} onChange={e => set('quarantine_until', e.target.value)} />
+                </Field>
+                <Field label="Důvod karantény">
+                  <input className={inputCls} value={form.quarantine_reason} onChange={e => set('quarantine_reason', e.target.value)} />
+                </Field>
+              </>
+            )}
+
+            <Field label="Léky">
+              <input className={inputCls} value={form.medications} onChange={e => set('medications', e.target.value)} placeholder="Název léku, dávkování..." />
+            </Field>
+
+            <Field label="Veterinář">
+              <input className={inputCls} value={form.vet_name} onChange={e => set('vet_name', e.target.value)} placeholder="MVDr. Novák" />
+            </Field>
+
+            <Field label="Telefon na veterináře">
+              <input type="tel" className={inputCls} value={form.vet_phone} onChange={e => set('vet_phone', e.target.value)} placeholder="+420..." />
+            </Field>
+
+            <Field label="Poslední návštěva u veterináře">
+              <input type="date" className={inputCls} value={form.last_vet_visit} onChange={e => set('last_vet_visit', e.target.value)} />
+            </Field>
+
+            <Field label="Zdravotní poznámky" hint="Diagnózy, průběh léčby, alergie...">
+              <textarea className={textareaCls} value={form.medical_notes} onChange={e => set('medical_notes', e.target.value)} />
+            </Field>
+
+            <Field label="Interní poznámky" hint="Vidí jen tým útulku">
+              <textarea className={textareaCls} value={form.internal_notes} onChange={e => set('internal_notes', e.target.value)} />
+            </Field>
+          </div>
+        )}
+
+        {/* ── BEHAVIOR (shelter only) ── */}
+        {activeTab === 'behavior' && isShelter && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <Field label="Vychází s dětmi">
+              <select className={selectCls} value={form.good_with_kids} onChange={e => set('good_with_kids', e.target.value)}>
+                {GOOD_WITH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
+
+            <Field label="Vychází se psy">
+              <select className={selectCls} value={form.good_with_dogs} onChange={e => set('good_with_dogs', e.target.value)}>
+                {GOOD_WITH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
+
+            <Field label="Vychází s kočkami">
+              <select className={selectCls} value={form.good_with_cats} onChange={e => set('good_with_cats', e.target.value)}>
+                {GOOD_WITH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
+
+            <Field label="Vychází s jinými zvířaty">
+              <select className={selectCls} value={form.good_with_other_animals} onChange={e => set('good_with_other_animals', e.target.value)}>
+                {GOOD_WITH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
+
+            <Field label="Vztah k cizím dospělým">
+              <select className={selectCls} value={form.good_with_adults} onChange={e => set('good_with_adults', e.target.value)}>
+                {GOOD_WITH_ADULTS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
+
+            <Field label="Úroveň aktivity">
+              <select className={selectCls} value={form.activity_level} onChange={e => set('activity_level', e.target.value)}>
+                <option value="">— vyberte —</option>
+                <option value="low">Klidný</option>
+                <option value="medium">Středně aktivní</option>
+                <option value="high">Velmi aktivní</option>
+              </select>
+            </Field>
+
+            <Field label="Náročnost péče">
+              <select className={selectCls} value={form.care_difficulty} onChange={e => set('care_difficulty', e.target.value)}>
+                <option value="">— vyberte —</option>
+                <option value="easy">Snadná</option>
+                <option value="medium">Střední</option>
+                <option value="hard">Náročná</option>
+              </select>
+            </Field>
+
+            <div className="flex flex-wrap gap-6 items-end pt-2">
+              <Toggle checked={form.special_needs}     onChange={v => set('special_needs', v)}     label="Speciální potřeby" />
+              <Toggle checked={form.suitable_for_flat} onChange={v => set('suitable_for_flat', v)} label="Vhodný do bytu" />
+              <Toggle checked={form.suitable_for_house} onChange={v => set('suitable_for_house', v)} label="Vhodný do domu" />
+            </div>
+
+            <Field label="Příběh zvířete" hint="Zobrazí se návštěvníkům webu">
+              <textarea className={textareaCls + ' min-h-[120px]'} value={form.story} onChange={e => set('story', e.target.value)} placeholder="Napiš krátký příběh Azora..." />
+            </Field>
+
+            <Field label="Požadavky na adoptéra" hint="Co by měl budoucí adoptér splňovat">
+              <textarea className={textareaCls} value={form.adopter_requirements} onChange={e => set('adopter_requirements', e.target.value)} placeholder="Např. dům se zahradou, bez malých dětí..." />
+            </Field>
+
+            <Field label="Popis (volný text)" hint="Doplňkový popis na profilu zvířete">
+              <textarea className={textareaCls + ' min-h-[100px]'} value={form.description} onChange={e => set('description', e.target.value)} />
+            </Field>
+          </div>
+        )}
+
+        {/* ── PHOTOS ── */}
+        {activeTab === 'photos' && (
+          <div className="space-y-6">
+            {errors.photos && (
+              <div className="px-4 py-3 rounded-lg bg-[#FAECE7] text-[#993C1D] text-sm font-semibold">
+                {errors.photos}
+              </div>
+            )}
+
+            {/* Drop zone */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => { e.preventDefault(); handleFileDrop(e.dataTransfer.files) }}
+              className="border-2 border-dashed border-[#D5CFC8] rounded-2xl p-10 text-center cursor-pointer hover:border-[#E8634A] hover:bg-[#FFF5F2] transition-colors"
+            >
+              <div className="text-4xl mb-3">📸</div>
+              <p className="font-semibold text-[#3D2010] mb-1">Přetáhni fotky sem nebo klikni pro výběr</p>
+              <p className="text-sm text-[#8B6550]">JPG, PNG, WebP • Max 8 MB • Doporučeno min. 800×600 px</p>
+              <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => handleFileDrop(e.target.files)} />
+            </div>
+
+            {/* Photo grid */}
+            {(existingPhotos.length > 0 || pendingPhotos.length > 0) && (
+              <div>
+                <p className="text-sm font-semibold text-[#3D2010] mb-3">
+                  Fotky ({existingPhotos.length + pendingPhotos.length}) — klikni na hvězdu pro nastavení hlavní fotky
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {existingPhotos.map((url, i) => (
+                    <div key={url} className="relative group rounded-xl overflow-hidden aspect-square">
+                      <Image src={url} alt="" fill className="object-cover" sizes="200px" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
+                      <button
+                        type="button"
+                        onClick={() => setPrimaryIdx(i)}
+                        className={`absolute top-2 left-2 text-xl leading-none ${i === primaryIdx ? 'text-yellow-400' : 'text-white/60 hover:text-yellow-400'}`}
+                        title="Nastavit jako hlavní fotku"
+                      >★</button>
+                      <button
+                        type="button"
+                        onClick={() => removeExisting(url)}
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white text-sm hidden group-hover:flex items-center justify-center hover:bg-[#E8634A]"
+                      >✕</button>
+                      {i === primaryIdx && (
+                        <span className="absolute bottom-2 left-2 text-[10px] font-bold bg-yellow-400 text-black px-2 py-0.5 rounded-full">Hlavní</span>
+                      )}
+                    </div>
+                  ))}
+                  {pendingPhotos.map((p, i) => {
+                    const globalIdx = existingPhotos.length + i
+                    return (
+                      <div key={p.preview} className="relative group rounded-xl overflow-hidden aspect-square">
+                        <Image src={p.preview} alt="" fill className="object-cover" sizes="200px" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-[10px] font-bold bg-[#E8634A]/90 text-white px-2 py-0.5 rounded-full">Nová</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPrimaryIdx(globalIdx)}
+                          className={`absolute top-2 left-2 text-xl leading-none ${globalIdx === primaryIdx ? 'text-yellow-400' : 'text-white/60 hover:text-yellow-400'}`}
+                        >★</button>
+                        <button
+                          type="button"
+                          onClick={() => removePending(i)}
+                          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white text-sm hidden group-hover:flex items-center justify-center hover:bg-[#E8634A]"
+                        >✕</button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── RESCUE (rescue_station only) ── */}
+        {activeTab === 'rescue' && !isShelter && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <Field label="Druh nálezu" hint="Jak bylo zvíře nalezeno">
+              <input className={inputCls} value={form.rescue_find_type} onChange={e => set('rescue_find_type', e.target.value)} placeholder="Např. střet s vozidlem, nalezeno vypadlé z hnízda..." />
+            </Field>
+
+            <Field label="Prognóza">
+              <select className={selectCls} value={form.rescue_prognosis} onChange={e => set('rescue_prognosis', e.target.value)}>
+                {RESCUE_PROGNOSIS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
+
+            <Field label="Veřejný popis případu" hint="Zobrazí se na profilu zvířete — popiš záchranný příběh">
+              <textarea className={textareaCls + ' min-h-[120px] md:col-span-2'} value={form.rescue_public_description} onChange={e => set('rescue_public_description', e.target.value)} placeholder="Sova byla nalezena..." />
+            </Field>
+
+            <Field label="Vztah k lidem" hint="Chování vůči personálu a návštěvníkům">
+              <select className={selectCls} value={form.good_with_adults} onChange={e => set('good_with_adults', e.target.value)}>
+                {GOOD_WITH_ADULTS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </Field>
+
+            <Field label="Zdravotní poznámky" hint="Diagnóza, léčba, průběh">
+              <textarea className={textareaCls} value={form.medical_notes} onChange={e => set('medical_notes', e.target.value)} />
+            </Field>
+
+            <Field label="Interní poznámky">
+              <textarea className={textareaCls} value={form.internal_notes} onChange={e => set('internal_notes', e.target.value)} />
+            </Field>
+          </div>
+        )}
+      </div>
+
+      {/* ── Sticky footer ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-sm border-t border-[#E0DDD8] px-4 py-3 flex items-center justify-between gap-3 md:left-64">
+        <button
+          type="button"
+          onClick={() => router.push('/admin/animals')}
+          className="text-sm font-semibold text-[#6B4030] hover:text-[#3D2010] transition-colors"
+        >
+          ← Zpět
+        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => handleSubmit(false)}
+            className="px-5 py-2.5 rounded-xl border border-[#D5CFC8] bg-white text-sm font-semibold text-[#3D2010] hover:bg-[#F5F2EF] disabled:opacity-50 transition-colors"
+          >
+            {saving ? 'Ukládám…' : 'Uložit jako draft'}
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => handleSubmit(true)}
+            className="px-5 py-2.5 rounded-xl bg-[#E8634A] text-white text-sm font-semibold hover:bg-[#D4512F] disabled:opacity-50 transition-colors"
+          >
+            {saving ? 'Ukládám…' : '✓ Uložit a zveřejnit'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
