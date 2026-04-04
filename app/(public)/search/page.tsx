@@ -79,11 +79,11 @@ export default async function SearchPage({ searchParams }: PageProps) {
               Zkus jiné slovo nebo se podívej na celý katalog.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/adopt" className="px-5 py-2.5 rounded-xl font-bold text-sm text-white no-underline"
+              <Link href="/adopt" className="px-5 py-2.5 rounded-lg font-bold text-sm text-white no-underline"
                 style={{ background: '#E8634A' }}>
                 Zvířata k adopci
               </Link>
-              <Link href="/rescue" className="px-5 py-2.5 rounded-xl font-bold text-sm text-white no-underline"
+              <Link href="/rescue" className="px-5 py-2.5 rounded-lg font-bold text-sm text-white no-underline"
                 style={{ background: '#2E9E8F' }}>
                 Záchranné stanice
               </Link>
@@ -116,8 +116,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
                 <div className="space-y-2">
                   {results.animals.map((a: any) => (
                     <Link key={a.id} href={`/animals/${a.id}`} className="no-underline group">
-                      <div className="flex items-center gap-4 p-3.5 bg-white rounded-xl border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-0.5 transition-all">
-                        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 relative"
+                      <div className="flex items-center gap-4 p-3.5 bg-white rounded-lg border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-0.5 transition-all">
+                        <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 relative"
                           style={{ background: '#FAECE7' }}>
                           {a.primary_photo
                             ? <Image src={a.primary_photo} alt={a.name} fill className="object-cover" />
@@ -172,8 +172,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
                     }
                     return (
                       <Link key={c.id} href={`/rescue/${c.id}`} className="no-underline group">
-                        <div className="flex items-center gap-4 p-3.5 bg-white rounded-xl border border-[#F0EDE8] hover:border-[#2E9E8F]/40 hover:-translate-y-0.5 transition-all">
-                          <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 relative"
+                        <div className="flex items-center gap-4 p-3.5 bg-white rounded-lg border border-[#F0EDE8] hover:border-[#2E9E8F]/40 hover:-translate-y-0.5 transition-all">
+                          <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 relative"
                             style={{ background: '#E1F5EE' }}>
                             {c.primary_photo
                               ? <Image src={c.primary_photo} alt={c.name ?? ''} fill className="object-cover" />
@@ -222,8 +222,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
                 <div className="space-y-2">
                   {results.institutions.map((i: any) => (
                     <Link key={i.id} href={`/institutions/${i.slug}`} className="no-underline group">
-                      <div className="flex items-center gap-4 p-3.5 bg-white rounded-xl border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-0.5 transition-all">
-                        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center text-2xl"
+                      <div className="flex items-center gap-4 p-3.5 bg-white rounded-lg border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-0.5 transition-all">
+                        <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center text-2xl"
                           style={{ background: i.type === 'shelter' ? '#FAECE7' : '#E1F5EE' }}>
                           {i.logo_url
                             ? <Image src={i.logo_url} alt={i.name} width={56} height={56} className="object-cover" />
@@ -263,8 +263,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
                 <div className="space-y-2">
                   {results.articles.map((a: any) => (
                     <Link key={a.id} href={`/articles/${a.slug}`} className="no-underline group">
-                      <div className="flex items-center gap-4 p-3.5 bg-white rounded-xl border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-0.5 transition-all">
-                        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 relative flex items-center justify-center"
+                      <div className="flex items-center gap-4 p-3.5 bg-white rounded-lg border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-0.5 transition-all">
+                        <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 relative flex items-center justify-center"
                           style={{ background: '#FAEEDA' }}>
                           {a.cover_url
                             ? <Image src={a.cover_url} alt={a.title} fill className="object-cover" />

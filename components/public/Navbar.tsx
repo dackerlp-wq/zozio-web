@@ -152,7 +152,7 @@ export function Navbar({ user }: NavbarProps) {
                 </button>
 
                 {dropdown && (
-                  <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-lg border border-[#F0EDE8] overflow-hidden z-50">
+                  <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-lg shadow-lg border border-[#F0EDE8] overflow-hidden z-50">
                     {/* Hlavička */}
                     <div className="px-4 py-3 border-b border-[#F0EDE8]">
                       <div className="font-bold text-sm text-espresso truncate">{user.name}</div>
@@ -234,7 +234,7 @@ export function Navbar({ user }: NavbarProps) {
 
             {/* Přihlášený user info */}
             {user && (
-              <div className="mb-5 flex items-center gap-3 px-3 py-3 bg-sand rounded-xl">
+              <div className="mb-5 flex items-center gap-3 px-3 py-3 bg-sand rounded-lg">
                 <div className="w-9 h-9 rounded-full bg-[#E8634A] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
                   {initials}
                 </div>
@@ -312,7 +312,7 @@ export function Navbar({ user }: NavbarProps) {
             {user ? (
               <button
                 onClick={handleLogout}
-                className="w-full px-4 py-3 rounded-xl text-sm font-bold border border-[#E0DDD8] text-[#993C1D] bg-white cursor-pointer hover:bg-[#FAECE7] transition-colors"
+                className="w-full px-4 py-3 rounded-lg text-sm font-bold border border-[#E0DDD8] text-[#993C1D] bg-white cursor-pointer hover:bg-[#FAECE7] transition-colors"
               >
                 ↩ Odhlásit se
               </button>

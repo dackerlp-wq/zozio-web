@@ -135,7 +135,7 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
               <SectionTitle>Průběh léčby</SectionTitle>
 
               {isDeceased ? (
-                <div className="p-5 rounded-2xl text-center"
+                <div className="p-5 rounded-lg text-center"
                   style={{ background: '#F0EDE8', border: '1px solid #E0DDD8' }}>
                   <div className="text-3xl mb-2">💔</div>
                   <p className="font-bold text-[#1A0F0A]">Toto zvíře bohužel nepřežilo.</p>
@@ -144,7 +144,7 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
                   )}
                 </div>
               ) : r.status === 'transferred' ? (
-                <div className="p-5 rounded-2xl"
+                <div className="p-5 rounded-lg"
                   style={{ background: '#F0EDE8', border: '1px solid #E0DDD8' }}>
                   <div className="font-bold text-[#1A0F0A] mb-1">🚐 Přemístěno jinam</div>
                   {r.treatment_notes && (
@@ -219,7 +219,7 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
             {/* Propuštění — úspěšný konec */}
             {isReleased && (
               <section className="mb-8">
-                <div className="p-6 rounded-2xl text-center"
+                <div className="p-6 rounded-lg text-center"
                   style={{ background: 'linear-gradient(135deg, #EAF3DE, #E1F5EE)', border: '1px solid #BDE8D0' }}>
                   <div className="text-5xl mb-3">🎉</div>
                   <h3 className="font-display font-extrabold text-xl text-[#1A0F0A] mb-2">
@@ -242,7 +242,7 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
                 <div className="flex gap-3 overflow-x-auto pb-2">
                   {similar.map((s: any) => (
                     <Link key={s.id} href={`/rescue/${s.id}`} className="no-underline group flex-shrink-0">
-                      <div className="w-36 bg-white rounded-xl overflow-hidden border border-[#F0EDE8] hover:border-[#2E9E8F]/40 transition-all">
+                      <div className="w-36 bg-white rounded-lg overflow-hidden border border-[#F0EDE8] hover:border-[#2E9E8F]/40 transition-all">
                         <div className="relative h-28 flex items-center justify-center overflow-hidden"
                           style={{ background: '#E1F5EE' }}>
                           {s.primary_photo
@@ -276,7 +276,7 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
             <div className="sticky top-24 space-y-4">
 
               {/* Info karta */}
-              <div className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden">
+              <div className="bg-white rounded-lg border border-[#F0EDE8] overflow-hidden">
                 {/* Název + meta */}
                 <div className="p-5 border-b border-[#F0EDE8]">
                   <RescaseHeader r={r} species={species} />
@@ -330,7 +330,7 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
 
               {/* CTA bez sbírky */}
               {!fundraiser && !isReleased && !isDeceased && (
-                <div className="bg-white rounded-2xl border border-[#F0EDE8] p-5 text-center">
+                <div className="bg-white rounded-lg border border-[#F0EDE8] p-5 text-center">
                   <div className="text-3xl mb-2">💛</div>
                   <p className="text-sm font-semibold text-[#1A0F0A] mb-1">Chceš pomoci?</p>
                   <p className="text-xs mb-4" style={{ color: '#8B6550' }}>
@@ -338,7 +338,7 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
                   </p>
                   {institution?.email && (
                     <a href={`mailto:${institution.email}`}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-white no-underline hover:opacity-90"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm text-white no-underline hover:opacity-90"
                       style={{ background: '#2E9E8F' }}>
                       ✉️ Napsat stanici
                     </a>
@@ -365,7 +365,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function InfoCard({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
-    <div className="flex items-start gap-3 p-3.5 bg-white rounded-xl border border-[#F0EDE8]">
+    <div className="flex items-start gap-3 p-3.5 bg-white rounded-lg border border-[#F0EDE8]">
       <span className="text-xl flex-shrink-0 mt-0.5">{icon}</span>
       <div>
         <div className="text-[11px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#8B6550' }}>{label}</div>

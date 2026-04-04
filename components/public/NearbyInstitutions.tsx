@@ -89,9 +89,9 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
     <div>
       {/* ── Geolokace banner ── */}
       {status === 'idle' && withGeo > 0 && (
-        <div className="mb-6 p-4 rounded-2xl flex items-center gap-4 border"
+        <div className="mb-6 p-4 rounded-lg flex items-center gap-4 border"
           style={{ background: '#FEFCF8', borderColor: '#F0DDD6' }}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
             style={{ background: '#FAECE7' }}>
             📍
           </div>
@@ -103,7 +103,7 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
           </div>
           <button
             onClick={requestLocation}
-            className="px-4 py-2 rounded-xl font-bold text-sm text-white border-none cursor-pointer hover:opacity-90 transition-all flex-shrink-0"
+            className="px-4 py-2 rounded-lg font-bold text-sm text-white border-none cursor-pointer hover:opacity-90 transition-all flex-shrink-0"
             style={{ background: '#E8634A' }}>
             Zjistit polohu
           </button>
@@ -111,7 +111,7 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
       )}
 
       {status === 'loading' && (
-        <div className="mb-6 p-4 rounded-2xl flex items-center gap-3 border"
+        <div className="mb-6 p-4 rounded-lg flex items-center gap-3 border"
           style={{ background: '#FEFCF8', borderColor: '#F0DDD6' }}>
           <div className="w-5 h-5 border-2 rounded-full animate-spin flex-shrink-0"
             style={{ borderColor: '#E8634A', borderTopColor: 'transparent' }} />
@@ -122,7 +122,7 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
       )}
 
       {status === 'ok' && (
-        <div className="mb-6 p-3 rounded-xl flex items-center gap-3"
+        <div className="mb-6 p-3 rounded-lg flex items-center gap-3"
           style={{ background: '#EAF3DE', border: '1px solid #BDE8D0' }}>
           <span>✓</span>
           <span className="text-sm font-semibold" style={{ color: '#1D6A42' }}>
@@ -138,7 +138,7 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
       )}
 
       {status === 'denied' && (
-        <div className="mb-6 p-3 rounded-xl flex items-center gap-3"
+        <div className="mb-6 p-3 rounded-lg flex items-center gap-3"
           style={{ background: '#FAECE7', border: '1px solid #F0DDD6' }}>
           <span>⚠️</span>
           <span className="text-sm font-medium" style={{ color: '#993C1D' }}>
@@ -154,7 +154,7 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
       )}
 
       {status === 'unavailable' && (
-        <div className="mb-6 p-3 rounded-xl" style={{ background: '#F0EDE8' }}>
+        <div className="mb-6 p-3 rounded-lg" style={{ background: '#F0EDE8' }}>
           <span className="text-sm" style={{ color: '#6B4030' }}>
             Geolokace není v tomto prohlížeči dostupná.
           </span>
@@ -180,7 +180,7 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
             <div className="text-center mt-6">
               <button
                 onClick={() => setShowAll(!showAll)}
-                className="px-6 py-2.5 rounded-xl font-bold text-sm border cursor-pointer hover:opacity-80 transition-all"
+                className="px-6 py-2.5 rounded-lg font-bold text-sm border cursor-pointer hover:opacity-80 transition-all"
                 style={{ borderColor: '#E0DDD8', color: '#6B4030', background: 'white' }}>
                 {showAll ? 'Zobrazit méně ↑' : `Zobrazit všech ${sorted.length} institucí ↓`}
               </button>
@@ -190,7 +190,7 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
       )}
 
       {/* CTA pro registraci */}
-      <div className="mt-14 p-6 rounded-2xl text-center border border-dashed border-[#E0DDD8]"
+      <div className="mt-14 p-6 rounded-lg text-center border border-dashed border-[#E0DDD8]"
         style={{ background: '#FAFAF8' }}>
         <p className="font-bold text-[#1A0F0A] mb-1">Chybí zde vaše instituce?</p>
         <p className="text-sm mb-4" style={{ color: '#8B6550' }}>
@@ -198,13 +198,13 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/auth/register?type=shelter">
-            <button className="px-5 py-2.5 rounded-xl font-bold text-sm text-white border-none cursor-pointer hover:opacity-90 transition-all"
+            <button className="px-5 py-2.5 rounded-lg font-bold text-sm text-white border-none cursor-pointer hover:opacity-90 transition-all"
               style={{ background: '#E8634A' }}>
               Registrovat útulek →
             </button>
           </Link>
           <Link href="/auth/register?type=rescue_station">
-            <button className="px-5 py-2.5 rounded-xl font-bold text-sm cursor-pointer border hover:opacity-80 transition-all"
+            <button className="px-5 py-2.5 rounded-lg font-bold text-sm cursor-pointer border hover:opacity-80 transition-all"
               style={{ background: 'white', color: '#1A0F0A', borderColor: '#E0DDD8' }}>
               Záchrannou stanici →
             </button>
@@ -225,14 +225,14 @@ function InstitutionCard({ inst }: { inst: Institution & { distKm: number | null
   return (
     <div className="relative group">
       <Link href={`/institutions/${inst.slug}`} className="no-underline">
-        <div className="bg-white rounded-2xl overflow-hidden border border-[#F0EDE8] hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
+        <div className="bg-white rounded-lg overflow-hidden border border-[#F0EDE8] hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
           style={{ borderTop: `3px solid ${accent}` }}>
 
           {/* Cover oblast */}
           <div className="relative h-28 flex items-center justify-center overflow-hidden"
             style={{ background: `linear-gradient(135deg, ${accentBg}, white)` }}>
             {/* Logo */}
-            <div className="relative z-10 w-16 h-16 rounded-xl border-2 border-white shadow-sm flex items-center justify-center text-2xl overflow-hidden"
+            <div className="relative z-10 w-16 h-16 rounded-lg border-2 border-white shadow-sm flex items-center justify-center text-2xl overflow-hidden"
               style={{ background: accentBg }}>
               {inst.logo_url
                 ? <Image src={inst.logo_url} alt={inst.name} width={64} height={64} className="object-cover" />

@@ -41,7 +41,7 @@ export function SearchInput({ initialValue = '' }: SearchInputProps) {
   return (
     <form onSubmit={handleSubmit} className="relative" role="search">
       <label htmlFor="main-search" className="sr-only">Hledat na Zozio</label>
-      <div className="flex items-center gap-0 rounded-2xl overflow-hidden border-2 transition-all"
+      <div className="flex items-center gap-0 rounded-lg overflow-hidden border-2 transition-all"
         style={{ borderColor: q ? '#E8634A' : '#E0DDD8', background: 'white' }}>
 
         {/* Lupa */}

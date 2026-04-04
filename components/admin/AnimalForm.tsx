@@ -319,6 +319,7 @@ export function AnimalForm({
   const [saving, setSaving]       = useState(false)
   const [toast, setToast]         = useState<{msg:string;ok:boolean}|null>(null)
   const [errors, setErrors]       = useState<Record<string,string>>({})
+  const [changeNote, setChangeNote] = useState('')
 
   // Species
   const [speciesList, setSpeciesList]   = useState<Species[]>(initialSpecies)
@@ -568,7 +569,7 @@ export function AnimalForm({
       } else {
         const res = await fetch(`/api/animals/${animalId}`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ ...payload, change_note: changeNote.trim() || null }),
         })
         if (!res.ok) throw new Error(await res.text())
       }
@@ -628,8 +629,7 @@ export function AnimalForm({
             }`}
           >
             <span>{t.icon}</span>
-            <span className="hidden xs:inline">{t.label}</span>
-            <span className="xs:hidden">{t.label.slice(0,4)}</span>
+            <span className="hidden sm:inline">{t.label}</span>
             {t.id === 'basic' && errorCount > 0 && (
               <span className="bg-[#E8634A] text-white text-[9px] font-bold px-1 py-px rounded ml-0.5">{errorCount}</span>
             )}
@@ -643,6 +643,19 @@ export function AnimalForm({
         {/* ═══ TAB: BASIC ═══ */}
         {activeTab === 'basic' && (
           <div>
+            {errorCount > 0 && (
+              <div className="mb-4 p-3 rounded-lg border border-[#E8634A] bg-[#FDEAE6]">
+                <p className="text-sm font-bold text-[#993C1D] mb-1.5">Oprav před uložením:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {errors.name          && <li className="text-xs text-[#993C1D]">Jméno — {errors.name}</li>}
+                  {errors.species_id    && <li className="text-xs text-[#993C1D]">Druh zvířete — {errors.species_id}</li>}
+                  {errors.sex           && <li className="text-xs text-[#993C1D]">Pohlaví — {errors.sex}</li>}
+                  {errors.adoption_status && <li className="text-xs text-[#993C1D]">Status — {errors.adoption_status}</li>}
+                  {errors.intake_date   && <li className="text-xs text-[#993C1D]">Datum příjmu — {errors.intake_date}</li>}
+                  {errors.photos        && <li className="text-xs text-[#993C1D]">Fotky — {errors.photos}</li>}
+                </ul>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
               <Field label="Jméno" required error={errors.name}>
                 <input className={inputCls} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Max, Luna, Běla..." />
@@ -1252,20 +1265,33 @@ export function AnimalForm({
         )}
 
         {/* ═══ Sticky footer ═══ */}
-        <div className="sticky bottom-0 bg-white border-t border-[#F0EDE8] -mx-4 sm:-mx-6 -mb-5 px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 rounded-b-xl mt-6 z-10">
-          <div className="text-xs text-[#A09890] hidden sm:flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#D5CFC8] inline-block" />
-            Neuloženo
-          </div>
-          <div className="flex gap-2">
-            <button type="button" disabled={saving} onClick={() => handleSubmit(false)}
-              className="flex-1 sm:flex-none px-4 py-3 sm:py-2.5 rounded-lg border-2 border-[#F0EDE8] bg-white text-sm font-bold text-[#6B4030] hover:bg-[#F5E6D3] disabled:opacity-50 transition-colors touch-manipulation">
-              {saving ? 'Ukládám...' : 'Uložit jako draft'}
-            </button>
-            <button type="button" disabled={saving} onClick={() => handleSubmit(true)}
-              className="flex-1 sm:flex-none px-4 py-3 sm:py-2.5 rounded-lg bg-[#E8634A] text-white text-sm font-bold shadow-[0_2px_12px_rgba(232,99,74,.3)] hover:bg-[#d4553e] disabled:opacity-50 transition-all touch-manipulation">
-              {saving ? 'Ukládám...' : '✓ Uložit a zveřejnit'}
-            </button>
+        <div className="sticky bottom-0 bg-white border-t border-[#F0EDE8] -mx-4 sm:-mx-6 -mb-5 px-4 sm:px-6 py-3 rounded-b-xl mt-6 z-10">
+          {mode === 'edit' && (
+            <div className="mb-2.5">
+              <textarea
+                value={changeNote}
+                onChange={e => setChangeNote(e.target.value)}
+                placeholder="Poznámka ke změně (volitelné) — uloží se do historie..."
+                rows={2}
+                className="w-full px-3 py-2 rounded-md border-2 border-[#F0EDE8] bg-[#FAFAF8] text-xs text-[#2C1810] placeholder:text-[#B8AEA8] focus:outline-none focus:border-[#E8634A] transition-colors resize-none"
+              />
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+            <div className="text-xs text-[#A09890] hidden sm:flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#D5CFC8] inline-block" />
+              Neuloženo
+            </div>
+            <div className="flex gap-2">
+              <button type="button" disabled={saving} onClick={() => handleSubmit(false)}
+                className="flex-1 sm:flex-none px-4 py-3 sm:py-2.5 rounded-lg border-2 border-[#F0EDE8] bg-white text-sm font-bold text-[#6B4030] hover:bg-[#F5E6D3] disabled:opacity-50 transition-colors touch-manipulation">
+                {saving ? 'Ukládám...' : 'Uložit jako draft'}
+              </button>
+              <button type="button" disabled={saving} onClick={() => handleSubmit(true)}
+                className="flex-1 sm:flex-none px-4 py-3 sm:py-2.5 rounded-lg bg-[#E8634A] text-white text-sm font-bold shadow-[0_2px_12px_rgba(232,99,74,.3)] hover:bg-[#d4553e] disabled:opacity-50 transition-all touch-manipulation">
+                {saving ? 'Ukládám...' : '✓ Uložit a zveřejnit'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

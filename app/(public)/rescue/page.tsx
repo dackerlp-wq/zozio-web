@@ -53,7 +53,7 @@ export default async function RescuePage({ searchParams }: PageProps) {
                 <div className="text-5xl mb-4">🔍</div>
                 <p className="font-bold text-xl text-[#1A0F0A] mb-2">Žádné výsledky</p>
                 <p className="text-sm mb-6" style={{ color: '#8B6550' }}>Zkus upravit filtry.</p>
-                <Link href="/rescue" className="inline-flex px-5 py-2.5 rounded-xl font-bold text-sm text-white no-underline"
+                <Link href="/rescue" className="inline-flex px-5 py-2.5 rounded-lg font-bold text-sm text-white no-underline"
                   style={{ background: '#2E9E8F' }}>Zrušit filtry</Link>
               </div>
             ) : (
@@ -111,7 +111,7 @@ function RescueCard({ c }: { c: any }) {
   return (
     <div className="relative group">
       <Link href={`/rescue/${c.id}`} className="no-underline">
-        <div className="bg-white rounded-2xl overflow-hidden border border-[#F0EDE8] hover:border-[#2E9E8F]/40 hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
+        <div className="bg-white rounded-lg overflow-hidden border border-[#F0EDE8] hover:border-[#2E9E8F]/40 hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
           style={{ borderTop: '3px solid #2E9E8F' }}>
 
           <div className="relative h-44 overflow-hidden flex-shrink-0" style={{ background: '#E1F5EE' }}>
@@ -160,7 +160,7 @@ function RescueCard({ c }: { c: any }) {
               </p>
             )}
             <div className="mt-auto pt-3 border-t border-[#F0EDE8]">
-              <button className="w-full py-2.5 rounded-xl font-bold text-xs text-white border-none cursor-pointer hover:opacity-90 transition-all"
+              <button className="w-full py-2.5 rounded-lg font-bold text-xs text-white border-none cursor-pointer hover:opacity-90 transition-all"
                 style={{ background: isReleased ? '#3B6D11' : '#2E9E8F' }}>
                 {isReleased ? '🎉 Příběh záchrany' : '💛 Podpořit léčbu'}
               </button>

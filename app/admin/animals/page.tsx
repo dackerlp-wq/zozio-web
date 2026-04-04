@@ -57,16 +57,28 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
     .select('id, name_cs, icon')
     .order('name_cs')
 
-  // Status counts for tabs (parallel)
-  const shelterTabStatuses = ['available', 'reserved', 'foster', 'adopted'] as const
-  const rescueTabStatuses  = ['intake', 'treatment', 'rehabilitation', 'released'] as const
-  const tabStatuses = isShelter ? shelterTabStatuses : rescueTabStatuses
-
   const statusField = isShelter ? 'adoption_status' : 'status'
   const table       = isShelter ? 'animals' : 'rescue_cases'
 
-  const [totalResult, ...tabCountResults] = await Promise.all([
-    service.from(table).select('id', { count: 'exact', head: true }).eq('institution_id', institution.id),
+  // Archivní stavy (nezobrazovat v hlavním výpisu)
+  const archiveStatuses = isShelter ? ['adopted', 'deceased'] : ['released', 'deceased']
+  const isArchive = filterStatus === 'archive'
+
+  // Počty pro záložky
+  const shelterTabStatuses = ['available', 'reserved', 'foster'] as const
+  const rescueTabStatuses  = ['intake', 'treatment', 'rehabilitation'] as const
+  const tabStatuses = isShelter ? shelterTabStatuses : rescueTabStatuses
+
+  const [activeResult, archiveResult, ...tabCountResults] = await Promise.all([
+    // Aktivní zvířata (bez archivu)
+    service.from(table).select('id', { count: 'exact', head: true })
+      .eq('institution_id', institution.id)
+      .not(statusField, 'in', `(${archiveStatuses.join(',')})`),
+    // Archivní zvířata
+    service.from(table).select('id', { count: 'exact', head: true })
+      .eq('institution_id', institution.id)
+      .in(statusField, archiveStatuses),
+    // Jednotlivé záložky
     ...tabStatuses.map(s =>
       service.from(table).select('id', { count: 'exact', head: true })
         .eq('institution_id', institution.id)
@@ -74,23 +86,32 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
     ),
   ])
 
-  const totalCount = totalResult.count ?? 0
-  const tabCounts  = tabCountResults.map(r => r.count ?? 0)
+  const activeCount  = activeResult.count ?? 0
+  const archiveCount = archiveResult.count ?? 0
+  const tabCounts    = tabCountResults.map(r => r.count ?? 0)
 
   // Main query
   const selectFields = isShelter
-    ? 'id, name, breed, birth_year, birth_month, urgent, adoption_status, health_status, in_quarantine, in_foster, species:animal_species(id, name_cs, icon), intake_date, created_at'
-    : 'id, name, case_number, estimated_age, status, health_status, species:animal_species(id, name_cs, icon), intake_date, created_at'
+    ? 'id, name, breed, birth_year, birth_month, urgent, adoption_status, health_status, in_quarantine, in_foster, photos, species:animal_species(id, name_cs, icon), intake_date, created_at'
+    : 'id, name, case_number, estimated_age, status, health_status, photos, species:animal_species(id, name_cs, icon), intake_date, created_at'
 
   let animalsQuery = service
     .from(table)
     .select(selectFields, { count: 'exact' })
     .eq('institution_id', institution.id) as any
 
-  if (filterStatus)  animalsQuery = animalsQuery.eq(statusField, filterStatus)
+  if (isArchive) {
+    animalsQuery = animalsQuery.in(statusField, archiveStatuses)
+  } else if (filterStatus) {
+    animalsQuery = animalsQuery.eq(statusField, filterStatus)
+  } else {
+    // Výchozí: skrýt archivní záznamy
+    animalsQuery = animalsQuery.not(statusField, 'in', `(${archiveStatuses.join(',')})`)
+  }
+
   if (filterSpecies) animalsQuery = animalsQuery.eq('species_id', filterSpecies)
   if (q)             animalsQuery = isShelter
-    ? animalsQuery.ilike('name', `%${q}%`)
+    ? animalsQuery.or(`name.ilike.%${q}%,breed.ilike.%${q}%,chip_number.ilike.%${q}%`)
     : animalsQuery.or(`name.ilike.%${q}%,case_number.ilike.%${q}%`)
 
   const { data: animals, count } = isShelter
@@ -103,18 +124,18 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
 
   // Tab definitions
   const shelterTabs = [
-    { value: '',          label: 'Všechna',    count: totalCount },
-    { value: 'available', label: 'K adopci',   count: tabCounts[0] },
-    { value: 'reserved',  label: 'Rezervovaná',count: tabCounts[1] },
-    { value: 'foster',    label: 'Pěstounská', count: tabCounts[2] },
-    { value: 'adopted',   label: 'Adoptovaná', count: tabCounts[3] },
+    { value: '',          label: 'Aktivní',     count: activeCount },
+    { value: 'available', label: 'K adopci',    count: tabCounts[0] },
+    { value: 'reserved',  label: 'Rezervovaná', count: tabCounts[1] },
+    { value: 'foster',    label: 'Pěstounská',  count: tabCounts[2] },
+    { value: 'archive',   label: 'Archiv',      count: archiveCount, muted: true },
   ]
   const rescueTabs = [
-    { value: '',               label: 'Všichni',      count: totalCount },
+    { value: '',               label: 'Aktivní',      count: activeCount },
     { value: 'intake',         label: 'Příjem',        count: tabCounts[0] },
     { value: 'treatment',      label: 'Léčba',         count: tabCounts[1] },
     { value: 'rehabilitation', label: 'Rehabilitace',  count: tabCounts[2] },
-    { value: 'released',       label: 'Propuštěno',    count: tabCounts[3] },
+    { value: 'archive',        label: 'Archiv',        count: archiveCount, muted: true },
   ]
   const tabs = isShelter ? shelterTabs : rescueTabs
   const activeColor = isShelter ? '#E8634A' : '#2E9E8F'
@@ -143,23 +164,24 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
 
       {/* Status tabs */}
       <div className="flex gap-0 border-b border-[#F0EDE8] mb-5 overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
-        {tabs.map(tab => {
+        {tabs.map((tab: any) => {
           const isActive = (filterStatus ?? '') === tab.value
+          const isMuted  = tab.muted && !isActive
           return (
             <Link
               key={tab.value}
               href={buildUrl({ status: tab.value || undefined, page: undefined })}
               className={`flex items-center gap-1.5 px-3 md:px-4 py-2.5 font-bold text-sm whitespace-nowrap border-b-2 transition-colors no-underline shrink-0`}
               style={{
-                borderColor: isActive ? activeColor : 'transparent',
-                color: isActive ? activeColor : '#8B6550',
+                borderColor: isActive ? (tab.muted ? '#8B6550' : activeColor) : 'transparent',
+                color: isActive ? (tab.muted ? '#8B6550' : activeColor) : (isMuted ? '#A09890' : '#8B6550'),
               }}
             >
               {tab.label}
               <span
                 className="inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full text-[10px] font-bold"
                 style={{
-                  backgroundColor: isActive ? activeColor : '#F5E6D3',
+                  backgroundColor: isActive ? (tab.muted ? '#8B6550' : activeColor) : '#F5E6D3',
                   color: isActive ? 'white' : '#8B6550',
                 }}
               >
@@ -174,9 +196,8 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
       <AdminAnimalSearch
         currentQ={q ?? ''}
         currentStatus={filterStatus ?? ''}
-        currentSpecies={filterSpecies ?? ''}
-        speciesList={speciesList ?? []}
         isShelter={isShelter}
+        institutionName={institution.name}
       />
 
       {items.length === 0 ? (
@@ -200,15 +221,18 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
               const age = isShelter
                 ? computeAge(item.birth_year, item.birth_month)
                 : item.estimated_age ?? null
+              const primaryPhoto = Array.isArray(item.photos) && item.photos.length > 0
+                ? (typeof item.photos[0] === 'string' ? item.photos[0] : item.photos[0]?.url)
+                : null
               return (
-                <div key={item.id} className="bg-white rounded-xl border border-[#F0EDE8] shadow-sm overflow-hidden">
+                <div key={item.id} className="bg-white rounded-lg border border-[#F0EDE8] shadow-sm overflow-hidden">
                   <div className="flex items-center gap-3 p-4">
-                    {/* Icon */}
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0"
-                      style={{ backgroundColor: '#F5E6D3' }}
-                    >
-                      {item.species?.icon ?? (isShelter ? '🐾' : '🦉')}
+                    {/* Foto nebo ikona */}
+                    <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-[#F5E6D3] flex items-center justify-center text-xl">
+                      {primaryPhoto
+                        ? <img src={primaryPhoto} alt={item.name ?? ''} className="w-full h-full object-cover" />
+                        : (item.species?.icon ?? (isShelter ? '🐾' : '🦉'))
+                      }
                     </div>
                     {/* Info */}
                     <div className="flex-1 min-w-0">
@@ -229,20 +253,19 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                     {/* Status badge */}
                     <Badge variant={statusVal} size="sm" />
                   </div>
-                  {/* Actions bar */}
-                  <div className="flex border-t border-[#F0EDE8]">
-                    <Link
-                      href={`/admin/animals/${item.id}`}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-[#8B6550] hover:text-espresso hover:bg-[#FFFCF8] transition-colors no-underline border-r border-[#F0EDE8]"
-                    >
-                      ✏️ Upravit
+                  {/* Akce */}
+                  <div className="flex border-t border-[#F0EDE8] divide-x divide-[#F0EDE8]">
+                    <Link href={`/admin/animals/${item.id}`}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-[#8B6550] hover:text-[#2C1810] hover:bg-[#FFFCF8] transition-colors no-underline">
+                      ✏️ Upravit záznam
                     </Link>
-                    <a
-                      href={`/admin/animals/${item.id}/qr`}
-                      target="_blank"
-                      className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#8B6550] hover:text-espresso hover:bg-[#FFFCF8] transition-colors no-underline"
-                    >
-                      ▣ QR
+                    <a href={`/admin/animals/${item.id}/qr`} target="_blank"
+                      className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#8B6550] hover:text-[#2C1810] hover:bg-[#FFFCF8] transition-colors no-underline">
+                      ▣ QR kód
+                    </a>
+                    <a href={`/admin/animals/${item.id}/pdf`} target="_blank"
+                      className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#8B6550] hover:text-[#2C1810] hover:bg-[#FFFCF8] transition-colors no-underline">
+                      📄 PDF
                     </a>
                   </div>
                 </div>
@@ -276,19 +299,22 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                   const age = isShelter
                     ? computeAge(item.birth_year, item.birth_month)
                     : item.estimated_age ?? null
+                  const primaryPhotoDesk = Array.isArray(item.photos) && item.photos.length > 0
+                    ? (typeof item.photos[0] === 'string' ? item.photos[0] : item.photos[0]?.url)
+                    : null
                   return (
                     <tr
                       key={item.id}
                       className="group border-b border-[#F0EDE8] last:border-0 hover:bg-[#FFFCF8] transition-colors"
                     >
                       {/* ZVÍŘE */}
-                      <td className="px-5 py-3.5">
+                      <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-                            style={{ backgroundColor: '#F5E6D3' }}
-                          >
-                            {item.species?.icon ?? (isShelter ? '🐾' : '🦉')}
+                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-[#F5E6D3] flex items-center justify-center text-lg">
+                            {primaryPhotoDesk
+                              ? <img src={primaryPhotoDesk} alt={item.name ?? ''} className="w-full h-full object-cover" />
+                              : (item.species?.icon ?? (isShelter ? '🐾' : '🦉'))
+                            }
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
@@ -329,24 +355,38 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                         {new Date(item.intake_date ?? item.created_at).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric' })}
                       </td>
 
-                      {/* AKCE — appear on row hover */}
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* AKCE — zobrazí se na hover */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {isArchive ? (
+                            <Link
+                              href={`/admin/animals/${item.id}`}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold text-[#8B6550] bg-[#F5E6D3] hover:bg-[#EDD8C0] transition-colors no-underline whitespace-nowrap"
+                            >
+                              Zobrazit detail
+                            </Link>
+                          ) : (
+                            <Link
+                              href={`/admin/animals/${item.id}`}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold text-[#6B4030] bg-[#F5E6D3] hover:bg-[#EDD8C0] transition-colors no-underline whitespace-nowrap"
+                            >
+                              ✏️ Upravit záznam
+                            </Link>
+                          )}
                           <a
                             href={`/admin/animals/${item.id}/qr`}
                             target="_blank"
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-[#8B6550] hover:bg-[#F5E6D3] hover:text-espresso transition-colors no-underline"
-                            title="QR karta"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold text-[#6B4030] bg-[#F5E6D3] hover:bg-[#EDD8C0] transition-colors no-underline whitespace-nowrap"
                           >
-                            ▣
+                            ▣ QR kód
                           </a>
-                          <Link
-                            href={`/admin/animals/${item.id}`}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-sm text-[#8B6550] hover:bg-[#F5E6D3] hover:text-espresso transition-colors no-underline"
-                            title="Upravit"
+                          <a
+                            href={`/admin/animals/${item.id}/pdf`}
+                            target="_blank"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold text-[#6B4030] bg-[#F5E6D3] hover:bg-[#EDD8C0] transition-colors no-underline whitespace-nowrap"
                           >
-                            ✏️
-                          </Link>
+                            📄 PDF
+                          </a>
                         </div>
                       </td>
                     </tr>

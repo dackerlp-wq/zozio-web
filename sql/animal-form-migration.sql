@@ -4,21 +4,14 @@
 -- Bezpečné opakované spuštění díky IF NOT EXISTS
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- Zdravotní stav
-ALTER TABLE animals ADD COLUMN IF NOT EXISTS health_status TEXT DEFAULT 'unknown'
-  CHECK (health_status IN ('healthy','in_treatment','post_surgery','chronic','unknown'));
+-- Věk v měsících (pro mláďata < 1 rok)
+ALTER TABLE animals ADD COLUMN IF NOT EXISTS age_months INTEGER;
 
 -- Původ zvířete
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS origin TEXT
   CHECK (origin IN ('municipal_capture','seized','found','surrendered','transferred','other'));
 
--- Datum příjmu
-ALTER TABLE animals ADD COLUMN IF NOT EXISTS intake_date DATE DEFAULT CURRENT_DATE;
-
--- Věk v měsících (pro mláďata < 1 rok)
-ALTER TABLE animals ADD COLUMN IF NOT EXISTS age_months INTEGER;
-
--- Vztah k dospělým / cizím lidem (shelter)
+-- Vztah k dospělým / cizím lidem
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS good_with_adults TEXT DEFAULT 'unknown'
   CHECK (good_with_adults IN ('friendly','shy','fearful','distrustful','unknown'));
 
@@ -32,28 +25,19 @@ ALTER TABLE animals ADD COLUMN IF NOT EXISTS rescue_prognosis TEXT
 -- Záchranná stanice — veřejný popis případu
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS rescue_public_description TEXT;
 
--- Příběh zvířete (shelter — zobrazí se na webu)
+-- Příběh zvířete (zobrazí se na webu)
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS story TEXT;
 
--- Požadavky na adoptéra (shelter)
+-- Požadavky na adoptéra
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS adopter_requirements TEXT;
 
--- Rozšíření adoption_status CHECK aby pokrylo i rescue statusy
--- (bezpečné jen pokud constraint existuje pod tímto názvem)
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conname = 'animals_adoption_status_check'
-  ) THEN
-    ALTER TABLE animals DROP CONSTRAINT animals_adoption_status_check;
-  END IF;
-  ALTER TABLE animals ADD CONSTRAINT animals_adoption_status_check
-    CHECK (adoption_status IN (
-      'available','reserved','adopted','foster',
-      'intake','treatment','rehabilitation','released','deceased'
-    ));
-END $$;
+-- Převod good_with_* z boolean na text (více možností: yes/ok/no/unknown)
+-- POZOR: tato část změní typ sloupců — spusť pouze pokud jsou všechny hodnoty NULL nebo true/false
+ALTER TABLE animals
+  ALTER COLUMN good_with_kids          TYPE TEXT USING CASE WHEN good_with_kids          THEN 'yes' WHEN good_with_kids          IS FALSE THEN 'no' ELSE 'unknown' END,
+  ALTER COLUMN good_with_dogs          TYPE TEXT USING CASE WHEN good_with_dogs          THEN 'yes' WHEN good_with_dogs          IS FALSE THEN 'no' ELSE 'unknown' END,
+  ALTER COLUMN good_with_cats          TYPE TEXT USING CASE WHEN good_with_cats          THEN 'yes' WHEN good_with_cats          IS FALSE THEN 'no' ELSE 'unknown' END,
+  ALTER COLUMN good_with_other_animals TYPE TEXT USING CASE WHEN good_with_other_animals THEN 'yes' WHEN good_with_other_animals IS FALSE THEN 'no' ELSE 'unknown' END;
 
 -- Index pro rychlé načítání podle data příjmu
 CREATE INDEX IF NOT EXISTS idx_animals_intake_date ON animals (institution_id, intake_date DESC);

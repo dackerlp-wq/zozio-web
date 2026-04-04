@@ -71,7 +71,7 @@ function FundraiserCard({ f, finished = false }: { f: any; finished?: boolean })
   const accent      = isShelter ? '#E8634A' : '#2E9E8F'
 
   return (
-    <div className={`bg-white rounded-2xl border overflow-hidden ${finished ? 'opacity-70' : 'hover:-translate-y-1 transition-all'}`}
+    <div className={`bg-white rounded-lg border overflow-hidden ${finished ? 'opacity-70' : 'hover:-translate-y-1 transition-all'}`}
       style={{ borderColor: finished ? '#F0EDE8' : 'rgba(232,99,74,0.15)' }}>
 
       <div className="p-5">
@@ -112,7 +112,7 @@ function FundraiserCard({ f, finished = false }: { f: any; finished?: boolean })
 
         {/* CTA */}
         {!finished && (
-          <button className="w-full mt-4 py-2.5 rounded-xl font-bold text-sm text-white cursor-pointer border-none hover:opacity-90 transition-all"
+          <button className="w-full mt-4 py-2.5 rounded-lg font-bold text-sm text-white cursor-pointer border-none hover:opacity-90 transition-all"
             style={{ background: accent }}>
             Přispět →
           </button>

@@ -92,13 +92,13 @@ export default async function ProfilPage() {
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Link href="/adopt"
-              className="px-4 py-2 rounded-xl text-sm font-bold no-underline border hover:opacity-80 transition-all"
+              className="px-4 py-2 rounded-lg text-sm font-bold no-underline border hover:opacity-80 transition-all"
               style={{ borderColor: '#E8634A', color: '#E8634A', background: 'white' }}>
               + Najít zvíře
             </Link>
             <form action="/auth/logout" method="POST">
               <button type="submit"
-                className="px-4 py-2 rounded-xl text-sm font-bold border cursor-pointer bg-white hover:opacity-80 transition-all"
+                className="px-4 py-2 rounded-lg text-sm font-bold border cursor-pointer bg-white hover:opacity-80 transition-all"
                 style={{ borderColor: '#E0DDD8', color: '#6B4030' }}>
                 Odhlásit
               </button>
@@ -112,7 +112,7 @@ export default async function ProfilPage() {
           <div className="space-y-6">
 
             {/* Aktuality z oblíbených institucí */}
-            <section className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden">
+            <section className="bg-white rounded-lg border border-[#F0EDE8] overflow-hidden">
               <div className="px-5 py-4 border-b border-[#F0EDE8] flex items-center justify-between">
                 <h2 className="font-bold text-[#1A0F0A]">
                   Aktuality od oblíbených
@@ -130,7 +130,7 @@ export default async function ProfilPage() {
                     Sleduj útulky a záchranné stanice — uvidíš jejich nová zvířata a příběhy.
                   </p>
                   <Link href="/institutions"
-                    className="inline-flex px-5 py-2.5 rounded-xl text-sm font-bold text-white no-underline"
+                    className="inline-flex px-5 py-2.5 rounded-lg text-sm font-bold text-white no-underline"
                     style={{ background: '#E8634A' }}>
                     Najít útulek →
                   </Link>
@@ -142,7 +142,7 @@ export default async function ProfilPage() {
                   {(newAnimals ?? []).map((a: any) => (
                     <Link key={a.id} href={`/animals/${a.id}`} className="no-underline group">
                       <div className="flex items-center gap-4 px-5 py-4 hover:bg-[#FAFAF8] transition-all">
-                        <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 relative flex items-center justify-center"
+                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 relative flex items-center justify-center"
                           style={{ background: '#FAECE7' }}>
                           {a.primary_photo
                             ? <Image src={a.primary_photo} alt={a.name} fill className="object-cover" />
@@ -174,7 +174,7 @@ export default async function ProfilPage() {
                   {(newArticles ?? []).map((a: any) => (
                     <Link key={a.id} href={`/articles/${a.slug}`} className="no-underline group">
                       <div className="flex items-center gap-4 px-5 py-4 hover:bg-[#FAFAF8] transition-all">
-                        <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 relative flex items-center justify-center"
+                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 relative flex items-center justify-center"
                           style={{ background: '#FAEEDA' }}>
                           {a.cover_url
                             ? <Image src={a.cover_url} alt={a.title} fill className="object-cover" />
@@ -206,7 +206,7 @@ export default async function ProfilPage() {
             </section>
 
             {/* Oblíbená zvířata */}
-            <section className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden">
+            <section className="bg-white rounded-lg border border-[#F0EDE8] overflow-hidden">
               <div className="px-5 py-4 border-b border-[#F0EDE8] flex items-center justify-between">
                 <h2 className="font-bold text-[#1A0F0A]">
                   Oblíbená zvířata
@@ -234,7 +234,7 @@ export default async function ProfilPage() {
                     const a = f.animal as any
                     return (
                       <Link key={a.id} href={`/animals/${a.id}`} className="no-underline group">
-                        <div className="rounded-xl overflow-hidden border border-[#F0EDE8] hover:-translate-y-0.5 transition-all relative">
+                        <div className="rounded-lg overflow-hidden border border-[#F0EDE8] hover:-translate-y-0.5 transition-all relative">
                           <div className="h-28 relative flex items-center justify-center" style={{ background: '#FAECE7' }}>
                             {a.primary_photo
                               ? <Image src={a.primary_photo} alt={a.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -269,7 +269,7 @@ export default async function ProfilPage() {
           <div className="space-y-5">
 
             {/* Oblíbené instituce */}
-            <section className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden">
+            <section className="bg-white rounded-lg border border-[#F0EDE8] overflow-hidden">
               <div className="px-4 py-4 border-b border-[#F0EDE8] flex items-center justify-between">
                 <h2 className="font-bold text-sm text-[#1A0F0A]">Sledované instituce</h2>
                 <Link href="/institutions" className="text-xs font-bold no-underline hover:opacity-70" style={{ color: '#E8634A' }}>
@@ -314,7 +314,7 @@ export default async function ProfilPage() {
             </section>
 
             {/* Dobrovolnické přihlášky */}
-            <section className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden">
+            <section className="bg-white rounded-lg border border-[#F0EDE8] overflow-hidden">
               <div className="px-4 py-4 border-b border-[#F0EDE8]">
                 <h2 className="font-bold text-sm text-[#1A0F0A]">Dobrovolnictví</h2>
               </div>
@@ -326,7 +326,7 @@ export default async function ProfilPage() {
                     Přihlas se jako dobrovolník na profilu útulku.
                   </p>
                   <Link href="/institutions"
-                    className="inline-flex px-4 py-2 rounded-xl text-xs font-bold text-white no-underline"
+                    className="inline-flex px-4 py-2 rounded-lg text-xs font-bold text-white no-underline"
                     style={{ background: '#E8634A' }}>
                     Najít útulek
                   </Link>
@@ -358,17 +358,17 @@ export default async function ProfilPage() {
             {/* Rychlé akce */}
             <div className="space-y-2">
               <Link href="/adopt"
-                className="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-[#F0EDE8] no-underline hover:-translate-y-0.5 transition-all">
+                className="flex items-center gap-3 p-3.5 bg-white rounded-lg border border-[#F0EDE8] no-underline hover:-translate-y-0.5 transition-all">
                 <span className="text-xl">🐾</span>
                 <span className="text-sm font-semibold text-[#1A0F0A]">Hledat zvíře k adopci</span>
               </Link>
               <Link href="/rescue"
-                className="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-[#F0EDE8] no-underline hover:-translate-y-0.5 transition-all">
+                className="flex items-center gap-3 p-3.5 bg-white rounded-lg border border-[#F0EDE8] no-underline hover:-translate-y-0.5 transition-all">
                 <span className="text-xl">🦉</span>
                 <span className="text-sm font-semibold text-[#1A0F0A]">Záchranné stanice</span>
               </Link>
               <Link href="/fundraisers"
-                className="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-[#F0EDE8] no-underline hover:-translate-y-0.5 transition-all">
+                className="flex items-center gap-3 p-3.5 bg-white rounded-lg border border-[#F0EDE8] no-underline hover:-translate-y-0.5 transition-all">
                 <span className="text-xl">💛</span>
                 <span className="text-sm font-semibold text-[#1A0F0A]">Přispět sbírce</span>
               </Link>

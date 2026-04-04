@@ -42,7 +42,7 @@ export function NewsletterSubscribe({ institutionId, institutionName, isShelter 
 
   if (state === 'success') {
     return (
-      <div className="rounded-2xl px-6 py-5 text-center" style={{ background: colorBg }}>
+      <div className="rounded-lg px-6 py-5 text-center" style={{ background: colorBg }}>
         <div className="text-3xl mb-2">📬</div>
         <p className="font-bold text-sm" style={{ color: colorDark }}>{message}</p>
         <p className="text-xs mt-1" style={{ color: colorDark, opacity: 0.75 }}>
@@ -53,7 +53,7 @@ export function NewsletterSubscribe({ institutionId, institutionName, isShelter 
   }
 
   return (
-    <div className="rounded-2xl border-2 px-6 py-5" style={{ borderColor: colorBg, background: '#FFFCF8' }}>
+    <div className="rounded-lg border-2 px-6 py-5" style={{ borderColor: colorBg, background: '#FFFCF8' }}>
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xl">📬</span>
         <h3 className="font-display font-extrabold text-base" style={{ color: '#1A0F0A' }}>
@@ -70,7 +70,7 @@ export function NewsletterSubscribe({ institutionId, institutionName, isShelter 
           placeholder="Jméno (nepovinné)"
           value={name}
           onChange={e => setName(e.target.value)}
-          className="w-full px-4 py-2.5 border-2 rounded-xl text-sm outline-none transition-colors bg-white"
+          className="w-full px-4 py-2.5 border-2 rounded-lg text-sm outline-none transition-colors bg-white"
           style={{ borderColor: '#F0EDE8', color: '#1A0F0A' }}
           onFocus={e => (e.target.style.borderColor = color)}
           onBlur={e => (e.target.style.borderColor = '#F0EDE8')}
@@ -81,7 +81,7 @@ export function NewsletterSubscribe({ institutionId, institutionName, isShelter 
           value={email}
           onChange={e => setEmail(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-          className="w-full px-4 py-2.5 border-2 rounded-xl text-sm outline-none transition-colors bg-white"
+          className="w-full px-4 py-2.5 border-2 rounded-lg text-sm outline-none transition-colors bg-white"
           style={{ borderColor: '#F0EDE8', color: '#1A0F0A' }}
           onFocus={e => (e.target.style.borderColor = color)}
           onBlur={e => (e.target.style.borderColor = '#F0EDE8')}
@@ -94,7 +94,7 @@ export function NewsletterSubscribe({ institutionId, institutionName, isShelter 
         <button
           onClick={handleSubmit}
           disabled={state === 'loading'}
-          className="w-full py-2.5 rounded-xl font-bold text-sm text-white transition-opacity disabled:opacity-60 cursor-pointer border-none"
+          className="w-full py-2.5 rounded-lg font-bold text-sm text-white transition-opacity disabled:opacity-60 cursor-pointer border-none"
           style={{ background: color }}
         >
           {state === 'loading' ? 'Přihlašuji…' : 'Odebírat novinky →'}

@@ -151,14 +151,14 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                   { label: 'Kastrovaný',  value: a.neutered },
                   { label: 'Čipovaný',    value: a.microchipped },
                 ].map(({ label, value }) => (
-                  <div key={label} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border"
+                  <div key={label} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border"
                     style={{ borderColor: value ? '#BDE8D0' : '#F0EDE8', background: value ? '#F0FBF5' : '#FAFAF8' }}>
                     <span className="text-base">{value ? '✓' : '—'}</span>
                     <span className="text-sm font-medium" style={{ color: value ? '#1D6A42' : '#8B6550' }}>{label}</span>
                   </div>
                 ))}
                 {a.special_needs && (
-                  <div className="col-span-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl border"
+                  <div className="col-span-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg border"
                     style={{ borderColor: '#F5D8A0', background: '#FFFBEF' }}>
                     <span>⚠️</span>
                     <span className="text-sm font-medium" style={{ color: '#7A4F00' }}>{a.special_needs}</span>
@@ -172,7 +172,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
               <section className="mb-8">
                 <SectionTitle>Příběh {a.name}</SectionTitle>
                 <Link href={`/articles/${(article as any).slug}`} className="no-underline group">
-                  <div className="flex items-start gap-4 p-4 rounded-2xl border hover:-translate-y-0.5 transition-all"
+                  <div className="flex items-start gap-4 p-4 rounded-lg border hover:-translate-y-0.5 transition-all"
                     style={{ background: '#FAECE7', borderColor: 'rgba(232,99,74,0.20)' }}>
                     <span className="text-3xl flex-shrink-0">📖</span>
                     <div>
@@ -196,7 +196,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                 <div className="flex gap-3 overflow-x-auto pb-2">
                   {similar.map((s: any) => (
                     <Link key={s.id} href={`/animals/${s.id}`} className="no-underline group flex-shrink-0">
-                      <div className="w-36 bg-white rounded-xl overflow-hidden border border-[#F0EDE8] hover:border-[#E8634A]/40 transition-all">
+                      <div className="w-36 bg-white rounded-lg overflow-hidden border border-[#F0EDE8] hover:border-[#E8634A]/40 transition-all">
                         <div className="relative h-28 bg-[#FAECE7] flex items-center justify-center overflow-hidden">
                           {s.primary_photo
                             ? <Image src={s.primary_photo} alt={s.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -217,7 +217,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
             {/* Adopční formulář — mobilní verze */}
             <div className="lg:hidden">
               {isAvailable && (
-                <div className="bg-white rounded-2xl border border-[#F0EDE8] p-5">
+                <div className="bg-white rounded-lg border border-[#F0EDE8] p-5">
                   <h2 className="font-bold text-xl text-[#1A0F0A] mb-1">Chci adoptovat {a.name}</h2>
                   <p className="text-sm mb-5" style={{ color: '#8B6550' }}>Vyplň žádost a útulok tě kontaktuje.</p>
                   <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
@@ -278,7 +278,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                     <div className="text-3xl mb-2">🏠</div>
                     <p className="font-bold text-[#1A0F0A]">{a.name} již byl adoptován!</p>
                     <Link href="/adopt" className="mt-3 inline-block">
-                      <button className="px-5 py-2.5 rounded-xl font-bold text-sm text-white border-none cursor-pointer hover:opacity-90"
+                      <button className="px-5 py-2.5 rounded-lg font-bold text-sm text-white border-none cursor-pointer hover:opacity-90"
                         style={{ background: '#E8634A' }}>
                         Najít další zvíře →
                       </button>
@@ -354,7 +354,7 @@ function CompatCard({ icon, label, value }: { icon: string; label: string; value
   const isNo  = value === false
 
   return (
-    <div className="flex flex-col items-center gap-2 py-4 px-3 rounded-2xl border text-center"
+    <div className="flex flex-col items-center gap-2 py-4 px-3 rounded-lg border text-center"
       style={{
         borderColor: isYes ? '#BDE8D0' : isNo ? '#F5C4B3' : '#F0EDE8',
         background:  isYes ? '#F0FBF5' : isNo ? '#FFF5F2' : '#FAFAF8',
@@ -371,7 +371,7 @@ function CompatCard({ icon, label, value }: { icon: string; label: string; value
 
 function ReservedBanner({ name }: { name: string }) {
   return (
-    <div className="text-center py-4 rounded-xl" style={{ background: '#FAEEDA' }}>
+    <div className="text-center py-4 rounded-lg" style={{ background: '#FAEEDA' }}>
       <div className="text-3xl mb-2">⏳</div>
       <p className="font-bold text-[#1A0F0A] mb-1">{name} je momentálně rezervovaný</p>
       <p className="text-xs mb-3" style={{ color: '#8B6550' }}>Můžeš podat žádost a být na řadě.</p>

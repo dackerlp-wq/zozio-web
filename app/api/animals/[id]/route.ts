@@ -22,7 +22,6 @@ async function checkAccess(userId: string, animalId: string, service: ReturnType
 }
 
 // Whitelist — pouze skutečné sloupce tabulky animals
-// Odstraní nested join objekty (species:{...}, institution:{...}) které Supabase odmítne
 const ALLOWED_COLUMNS = new Set([
   'name', 'species_id', 'sex', 'birth_year', 'size', 'breed', 'color',
   'weight_kg', 'description', 'published', 'adoption_status', 'urgent',
@@ -36,21 +35,30 @@ const ALLOWED_COLUMNS = new Set([
   'found_location', 'found_date', 'finder_name', 'finder_phone',
   'previous_owner', 'previous_owner_phone',
   'internal_notes', 'staff_assigned', 'photos', 'primary_photo', 'institution_id',
-  // New columns from animal-form-migration
-  'health_status', 'origin', 'intake_date', 'age_months', 'good_with_adults',
-  'rescue_find_type', 'rescue_prognosis', 'rescue_public_description',
-  'story', 'adopter_requirements',
+  // Existují v DB
+  'health_status', 'intake_date',
   // Structured fields (JSONB)
   'vaccination_records', 'medications_data', 'breed_id', 'breed_custom',
+  'age_months', 'origin', 'good_with_adults',
+  'rescue_find_type', 'rescue_prognosis', 'rescue_public_description',
+  'story', 'adopter_requirements',
 ])
+
+// good_with_* jsou v DB boolean, formulář posílá 'yes'/'ok'/'no'/'unknown'
+function convertGoodWith(value: unknown): boolean | null {
+  if (value === 'yes' || value === 'ok') return true
+  if (value === 'no') return false
+  return null
+}
+
+const GOOD_WITH_COLS = ['good_with_kids', 'good_with_dogs', 'good_with_cats', 'good_with_other_animals']
 
 function sanitizePayload(body: Record<string, unknown>): Record<string, unknown> {
   const payload: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(body)) {
     if (!ALLOWED_COLUMNS.has(key)) continue
-    // Odmítni nested objekty — povol primitives, null, arrays
     if (value !== null && typeof value === 'object' && !Array.isArray(value)) continue
-    payload[key] = value
+    payload[key] = GOOD_WITH_COLS.includes(key) ? convertGoodWith(value) : value
   }
   return payload
 }
@@ -70,7 +78,8 @@ export async function PUT(
     if (!animal) return NextResponse.json({ error: 'Nemáš přístup' }, { status: 403 })
 
     const body = await request.json()
-    const payload = sanitizePayload(body)
+    const { change_note, ...rest } = body as Record<string, unknown>
+    const payload = sanitizePayload(rest)
     payload.updated_at = new Date().toISOString()
 
     const { error } = await service
@@ -83,10 +92,22 @@ export async function PUT(
       throw error
     }
 
+    // Zaeviduj do historie pokud je zadána poznámka (neblokující)
+    if (change_note) {
+      service.from('animal_status_history').insert({
+        animal_id:  id,
+        new_status: payload.adoption_status ?? null,
+        note:       change_note,
+        changed_by: user.id,
+      }).then(({ error: hErr }) => {
+        if (hErr) console.error('history insert error:', hErr)
+      })
+    }
+
     return NextResponse.json({ success: true })
 
   } catch (error) {
-    console.error('PUT /api/animals/[id] error:', error)
+    console.error('PUT /api/animals/[id] error:', error instanceof Error ? error.message : JSON.stringify(error))
     return NextResponse.json({ error: 'Interní chyba' }, { status: 500 })
   }
 }

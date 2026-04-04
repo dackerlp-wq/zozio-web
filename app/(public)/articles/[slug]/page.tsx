@@ -114,7 +114,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
 
             {/* Cover */}
             {article.cover_url && (
-              <div className="rounded-2xl overflow-hidden mb-8 shadow-md">
+              <div className="rounded-lg overflow-hidden mb-8 shadow-md">
                 <Image
                   src={article.cover_url}
                   alt={article.title}
@@ -178,7 +178,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
 function AnimalPanel({ animal: a, status }: { animal: any; status: any }) {
   const species = a.species
   return (
-    <div className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden">
+    <div className="bg-white rounded-lg border border-[#F0EDE8] overflow-hidden">
       <div className="px-4 pt-4 pb-2">
         <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#8B6550' }}>
           Zvíře z příběhu
@@ -204,7 +204,7 @@ function AnimalPanel({ animal: a, status }: { animal: any; status: any }) {
           <div className="text-xs mb-3" style={{ color: '#8B6550' }}>
             {[species?.name_cs, a.breed].filter(Boolean).join(' · ')}
           </div>
-          <div className="py-2 rounded-xl text-center text-xs font-bold text-white"
+          <div className="py-2 rounded-lg text-center text-xs font-bold text-white"
             style={{ background: '#E8634A' }}>
             {a.adoption_status === 'available' ? 'Adoptovat →' : 'Zobrazit profil →'}
           </div>
@@ -220,7 +220,7 @@ function InstitutionPanel({ inst, isShelter }: { inst: any; isShelter: boolean }
   const accentText = isShelter ? '#993C1D' : '#0F6E56'
   const accent     = isShelter ? '#E8634A' : '#2E9E8F'
   return (
-    <div className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden">
+    <div className="bg-white rounded-lg border border-[#F0EDE8] overflow-hidden">
       <div className="px-4 pt-4 pb-0">
         <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: '#8B6550' }}>
           Autor příběhu
@@ -228,7 +228,7 @@ function InstitutionPanel({ inst, isShelter }: { inst: any; isShelter: boolean }
       </div>
       <Link href={`/institutions/${inst.slug}`} className="no-underline group block px-4 pb-4 pt-2 hover:opacity-90 transition-opacity">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center text-xl"
+          <div className="w-12 h-12 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center text-xl"
             style={{ background: accentBg }}>
             {inst.logo_url
               ? <Image src={inst.logo_url} alt={inst.name} width={48} height={48} className="object-cover" />
@@ -249,7 +249,7 @@ function InstitutionPanel({ inst, isShelter }: { inst: any; isShelter: boolean }
             {inst.short_description}
           </p>
         )}
-        <div className="py-2 rounded-xl text-center text-xs font-bold text-white"
+        <div className="py-2 rounded-lg text-center text-xs font-bold text-white"
           style={{ background: accent }}>
           Zobrazit profil →
         </div>
@@ -261,14 +261,14 @@ function InstitutionPanel({ inst, isShelter }: { inst: any; isShelter: boolean }
 /* ── Další příběhy ── */
 function OtherArticles({ articles, institutionName }: { articles: any[]; institutionName: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-[#F0EDE8] p-4">
+    <div className="bg-white rounded-lg border border-[#F0EDE8] p-4">
       <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: '#8B6550' }}>
         Další od {institutionName}
       </p>
       <div className="space-y-2">
         {articles.map((a: any) => (
           <Link key={a.id} href={`/articles/${a.slug}`} className="no-underline group">
-            <div className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[#FAFAF8] transition-all">
+            <div className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-[#FAFAF8] transition-all">
               <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 relative flex items-center justify-center"
                 style={{ background: '#FAECE7' }}>
                 {a.cover_url

@@ -37,7 +37,7 @@ export function RescueFilter({ species, cities, params }: RescueFilterProps) {
   )
 
   const panel = (
-    <div className="bg-white rounded-2xl border border-[#F0EDE8] p-4">
+    <div className="bg-white rounded-lg border border-[#F0EDE8] p-4">
 
       {/* Stav léčby */}
       <Section title="Stav léčby">
@@ -109,7 +109,7 @@ export function RescueFilter({ species, cities, params }: RescueFilterProps) {
       {activeCount > 0 && (
         <>
           {divider}
-          <Link href="/rescue" className="block w-full py-2.5 rounded-xl text-xs font-bold text-center no-underline hover:opacity-80 transition-all"
+          <Link href="/rescue" className="block w-full py-2.5 rounded-lg text-xs font-bold text-center no-underline hover:opacity-80 transition-all"
             style={{ background: '#F0EDE8', color: '#6B4030' }}>
             Zrušit filtry ({activeCount})
           </Link>
@@ -123,7 +123,7 @@ export function RescueFilter({ species, cities, params }: RescueFilterProps) {
       <div className="hidden lg:block sticky top-24">{panel}</div>
       <div className="lg:hidden">
         <details className="group">
-          <summary className="flex items-center justify-between px-4 py-3 rounded-xl border font-semibold text-sm cursor-pointer list-none"
+          <summary className="flex items-center justify-between px-4 py-3 rounded-lg border font-semibold text-sm cursor-pointer list-none"
             style={{ background: 'white', borderColor: '#E0DDD8', color: '#1A0F0A' }}>
             <span className="flex items-center gap-2">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

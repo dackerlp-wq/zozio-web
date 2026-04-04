@@ -64,7 +64,7 @@ export function InstitutionTabs({
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
               {animals.map(a => (
                 <Link key={a.id} href={`/animals/${a.id}`} className="no-underline group">
-                  <div className="bg-white rounded-2xl overflow-hidden border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-1 transition-all">
+                  <div className="bg-white rounded-lg overflow-hidden border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-1 transition-all">
                     <div className="relative h-36 overflow-hidden" style={{ background: '#FAECE7' }}>
                       {a.primary_photo
                         ? <Image src={a.primary_photo} alt={a.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -100,7 +100,7 @@ export function InstitutionTabs({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {rescueCases.map((c: any) => (
                 <Link key={c.id} href={`/rescue/${c.id}`} className="no-underline group">
-                  <div className="bg-white rounded-2xl overflow-hidden border border-[#F0EDE8] hover:border-[#2E9E8F]/40 hover:-translate-y-1 transition-all">
+                  <div className="bg-white rounded-lg overflow-hidden border border-[#F0EDE8] hover:border-[#2E9E8F]/40 hover:-translate-y-1 transition-all">
                     <div className="relative h-40 overflow-hidden" style={{ background: '#E1F5EE' }}>
                       {c.primary_photo
                         ? <Image src={c.primary_photo} alt={c.name ?? ''} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -135,7 +135,7 @@ export function InstitutionTabs({
               {fundraisers.map((f: any) => {
                 const pct = Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100)
                 return (
-                  <div key={f.id} className="bg-white rounded-2xl border border-[#F0EDE8] p-5">
+                  <div key={f.id} className="bg-white rounded-lg border border-[#F0EDE8] p-5">
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div>
                         <div className="font-bold text-[#1A0F0A] mb-1">{f.title}</div>
@@ -173,7 +173,7 @@ export function InstitutionTabs({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {articles.map((a: any) => (
                 <Link key={a.id} href={`/articles/${a.slug}`} className="no-underline group">
-                  <div className="bg-white rounded-2xl overflow-hidden border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-1 transition-all h-full flex flex-col">
+                  <div className="bg-white rounded-lg overflow-hidden border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-1 transition-all h-full flex flex-col">
                     <div className="h-40 relative overflow-hidden" style={{ background: '#FAECE7' }}>
                       {a.cover_url
                         ? <Image src={a.cover_url} alt={a.title} fill className="object-cover group-hover:scale-105 transition-transform" />
@@ -222,7 +222,7 @@ export function InstitutionTabs({
               { icon: '📞', label: 'Telefon',   value: i.phone,   href: `tel:${i.phone}` },
               { icon: '🌐', label: 'Web',       value: i.website?.replace(/^https?:\/\//, ''), href: i.website },
             ].filter(c => c.value).map(({ icon, label, value, href }) => (
-              <div key={label} className="flex items-start gap-4 p-4 bg-white rounded-xl border border-[#F0EDE8]">
+              <div key={label} className="flex items-start gap-4 p-4 bg-white rounded-lg border border-[#F0EDE8]">
                 <span className="text-xl flex-shrink-0 mt-0.5">{icon}</span>
                 <div>
                   <div className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#8B6550' }}>{label}</div>
@@ -245,7 +245,7 @@ export function InstitutionTabs({
                 href={`https://www.google.com/maps/dir/?api=1&destination=${i.lat},${i.lng}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm text-white no-underline hover:opacity-90 transition-all"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-lg font-bold text-sm text-white no-underline hover:opacity-90 transition-all"
                 style={{ background: isShelter ? '#E8634A' : '#2E9E8F' }}
               >
                 🗺️ Navigovat v Google Maps
@@ -266,7 +266,7 @@ export function InstitutionTabs({
           {i.lat && i.lng ? (
             <div>
               <h2 className="font-bold text-xl text-[#1A0F0A] mb-5">Kde nás najdete</h2>
-              <div className="rounded-2xl overflow-hidden border border-[#F0EDE8] shadow-sm">
+              <div className="rounded-lg overflow-hidden border border-[#F0EDE8] shadow-sm">
                 <iframe
                   src={`https://frame.mapy.cz/zakladni?x=${i.lng}&y=${i.lat}&z=15&source=coor&id=${i.lng}%2C${i.lat}`}
                   width="100%"
@@ -279,7 +279,7 @@ export function InstitutionTabs({
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-center h-48 rounded-2xl border border-dashed border-[#E0DDD8]">
+            <div className="flex items-center justify-center h-48 rounded-lg border border-dashed border-[#E0DDD8]">
               <p className="text-sm text-center" style={{ color: '#8B6550' }}>
                 Mapa není k dispozici.<br />
                 <span className="text-xs">Správce musí doplnit souřadnice.</span>

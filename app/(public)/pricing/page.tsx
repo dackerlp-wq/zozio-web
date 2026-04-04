@@ -86,7 +86,7 @@ export default function PricingPage() {
       <section className="pb-20 px-5 md:px-10">
         <div className="max-w-[1000px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-5">
           {PLANS.map(plan => (
-            <div key={plan.id} className={`rounded-2xl overflow-hidden border ${plan.featured ? 'border-[#E8634A]' : 'border-[#F0EDE8]'}`}
+            <div key={plan.id} className={`rounded-lg overflow-hidden border ${plan.featured ? 'border-[#E8634A]' : 'border-[#F0EDE8]'}`}
               style={{ boxShadow: plan.featured ? '0 8px 32px rgba(232,99,74,0.15)' : undefined }}>
 
               {plan.featured && (
@@ -108,7 +108,7 @@ export default function PricingPage() {
                 </div>
 
                 <Link href={`/auth/register?plan=${plan.id}`}>
-                  <button className="w-full py-3 rounded-xl font-bold text-sm cursor-pointer border-none hover:opacity-90 transition-all mb-5"
+                  <button className="w-full py-3 rounded-lg font-bold text-sm cursor-pointer border-none hover:opacity-90 transition-all mb-5"
                     style={plan.btnStyle as any}>
                     {plan.price === 0 ? 'Začít zdarma' : `Vybrat ${plan.name}`}
                   </button>
@@ -143,7 +143,7 @@ export default function PricingPage() {
               { q: 'Jsou neziskové organizace zvýhodněny?', a: 'Ano. Registrované neziskové organizace a spolky dostanou 30% slevu. Napište nám.' },
               { q: 'Co se stane s daty pokud odejdu?', a: 'Vaše data vám patří. Export je možný kdykoli. Po ukončení je uchováváme 90 dní.' },
             ].map(({ q, a }) => (
-              <div key={q} className="p-5 bg-white rounded-2xl border border-[#F0EDE8]">
+              <div key={q} className="p-5 bg-white rounded-lg border border-[#F0EDE8]">
                 <div className="font-bold text-[#1A0F0A] mb-1">{q}</div>
                 <p className="text-sm" style={{ color: '#8B6550' }}>{a}</p>
               </div>

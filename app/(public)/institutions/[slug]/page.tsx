@@ -77,7 +77,7 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
         <div className="absolute bottom-0 left-0 right-0 px-5 md:px-10 pb-5 max-w-[1100px] mx-auto">
           <div className="flex items-end gap-4">
             {/* Logo */}
-            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl border-4 border-white flex-shrink-0 overflow-hidden flex items-center justify-center text-3xl shadow-lg"
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-lg border-4 border-white flex-shrink-0 overflow-hidden flex items-center justify-center text-3xl shadow-lg"
               style={{ background: isShelter ? '#FAECE7' : '#E1F5EE' }}>
               {i.logo_url
                 ? <Image src={i.logo_url} alt={i.name} width={96} height={96} className="object-cover" />

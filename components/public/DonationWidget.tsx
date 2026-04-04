@@ -41,7 +41,7 @@ export function DonationWidget({ fundraiser: f, variant = 'rescue' }: DonationWi
 
   if (!f.active) {
     return (
-      <div className="bg-white rounded-2xl border border-[#F0EDE8] p-5">
+      <div className="bg-white rounded-lg border border-[#F0EDE8] p-5">
         <div className="text-center py-2">
           <div className="text-3xl mb-2">✅</div>
           <p className="font-bold text-[#1A0F0A] mb-1">Sbírka ukončena</p>
@@ -54,7 +54,7 @@ export function DonationWidget({ fundraiser: f, variant = 'rescue' }: DonationWi
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden">
+    <div className="bg-white rounded-lg border border-[#F0EDE8] overflow-hidden">
 
       {/* Header */}
       <div className="p-5 border-b border-[#F0EDE8]">
@@ -104,7 +104,7 @@ export function DonationWidget({ fundraiser: f, variant = 'rescue' }: DonationWi
                 <button
                   key={amt}
                   onClick={() => { setSelected(amt); setCustom('') }}
-                  className="py-2.5 rounded-xl text-sm font-bold cursor-pointer border-2 transition-all"
+                  className="py-2.5 rounded-lg text-sm font-bold cursor-pointer border-2 transition-all"
                   style={selected === amt && !custom
                     ? { background: accentBg, borderColor: accent, color: accentText }
                     : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
@@ -123,7 +123,7 @@ export function DonationWidget({ fundraiser: f, variant = 'rescue' }: DonationWi
                 onChange={e => { setCustom(e.target.value); setSelected(null) }}
                 placeholder="Jiná částka..."
                 min="10"
-                className="w-full px-4 py-2.5 rounded-xl border-2 text-sm outline-none transition-all pr-10"
+                className="w-full px-4 py-2.5 rounded-lg border-2 text-sm outline-none transition-all pr-10"
                 style={{
                   borderColor: custom ? accent : '#F0EDE8',
                   background: custom ? accentBg : 'white',
@@ -138,7 +138,7 @@ export function DonationWidget({ fundraiser: f, variant = 'rescue' }: DonationWi
             <button
               onClick={handleDonate}
               disabled={amount < 10}
-              className="w-full py-3.5 rounded-xl font-bold text-base text-white cursor-pointer border-none transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full py-3.5 rounded-lg font-bold text-base text-white cursor-pointer border-none transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ background: amount >= 10 ? accent : '#C8C5BF' }}
             >
               {amount >= 10

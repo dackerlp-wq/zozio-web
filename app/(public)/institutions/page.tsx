@@ -53,18 +53,18 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
               type="search" name="q"
               defaultValue={params.q ?? ''}
               placeholder="Hledat název, město..."
-              className="flex-1 px-4 py-2.5 rounded-xl border text-sm outline-none"
+              className="flex-1 px-4 py-2.5 rounded-lg border text-sm outline-none"
               style={{ borderColor: '#E0DDD8', background: 'white', color: '#1A0F0A' }}
             />
             <button type="submit"
-              className="px-5 py-2.5 rounded-xl font-bold text-sm text-white border-none cursor-pointer hover:opacity-90"
+              className="px-5 py-2.5 rounded-lg font-bold text-sm text-white border-none cursor-pointer hover:opacity-90"
               style={{ background: '#E8634A' }}>
               Hledat
             </button>
             {params.q && (
               <Link href={`/institutions${type !== 'all' ? `?type=${type}` : ''}`}
                 aria-label="Zrušit hledání"
-                className="px-3 py-2.5 rounded-xl font-bold text-sm border no-underline hover:opacity-80"
+                className="px-3 py-2.5 rounded-lg font-bold text-sm border no-underline hover:opacity-80"
                 style={{ borderColor: '#E0DDD8', color: '#6B4030', background: 'white' }}>
                 ✕
               </Link>
@@ -119,7 +119,7 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
 
         {/* Hint pokud žádná instituce nemá souřadnice */}
         {withGeo === 0 && institutions.length > 0 && (
-          <div className="mb-5 p-3 rounded-xl flex items-center gap-3"
+          <div className="mb-5 p-3 rounded-lg flex items-center gap-3"
             style={{ background: '#F0EDE8', border: '1px solid #E0DDD8' }}>
             <span className="text-sm" style={{ color: '#8B6550' }}>
               💡 Tip: Aby fungovalo řazení podle vzdálenosti, musí mít útulky vyplněné GPS souřadnice v nastavení.
