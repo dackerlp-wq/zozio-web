@@ -36,6 +36,10 @@ const ALLOWED_COLUMNS = new Set([
   'found_location', 'found_date', 'finder_name', 'finder_phone',
   'previous_owner', 'previous_owner_phone',
   'internal_notes', 'staff_assigned', 'photos', 'primary_photo', 'institution_id',
+  // New columns from animal-form-migration
+  'health_status', 'origin', 'intake_date', 'age_months', 'good_with_adults',
+  'rescue_find_type', 'rescue_prognosis', 'rescue_public_description',
+  'story', 'adopter_requirements',
 ])
 
 function sanitizePayload(body: Record<string, unknown>): Record<string, unknown> {
