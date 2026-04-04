@@ -7,7 +7,7 @@ interface Breed {
   origin_country?: string; size_category?: string; energy_level?: string
   hypoallergenic?: boolean; description?: string; is_custom?: boolean
   institution_id?: string; created_at: string
-  species?: { name_cs: string }
+  species?: { name_cs: string }[]
 }
 
 const SIZE_LABELS: Record<string, string> = { small: 'Malé', medium: 'Střední', large: 'Velké', xlarge: 'Obří' }
@@ -210,7 +210,7 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
                     {b.institution_id && <span className="px-1.5 py-px text-[10px] font-bold bg-[#E6F1FB] text-[#185FA5] rounded">instituce</span>}
                   </div>
                   <div className="flex flex-wrap gap-2 mt-1">
-                    <span className="text-xs text-[#8B6550]">{b.species?.name_cs ?? '—'}</span>
+                    <span className="text-xs text-[#8B6550]">{b.species?.[0]?.name_cs ?? '—'}</span>
                     {b.size_category && <span className="text-xs text-[#A09890]">· {SIZE_LABELS[b.size_category]}</span>}
                     {b.energy_level && <span className="text-xs text-[#A09890]">· {ENERGY_LABELS[b.energy_level]}</span>}
                     {b.hypoallergenic && <span className="text-xs text-[#2D8A4E]">· Hypoalergenní</span>}
