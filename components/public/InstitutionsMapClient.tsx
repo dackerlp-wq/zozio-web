@@ -27,61 +27,67 @@ export function InstitutionsMapClient({ institutions }: Props) {
   const markersRef    = useRef<Record<string, any>>({})
   const coverageRef   = useRef<any[]>([])
   const polygonCache  = useRef<Record<string, any>>({}) // place name → GeoJSON feature or null
-  const [selected,    setSelected]    = useState<MapInstitution | null>(null)
-  const [filter,      setFilter]      = useState<'all' | 'shelter' | 'rescue_station'>('all')
-  const [search,      setSearch]      = useState('')
-  const [searchTerms, setSearchTerms] = useState<string[]>([]) // search + its geographic parents
+  const [selected,   setSelected]   = useState<MapInstitution | null>(null)
+  const [filter,     setFilter]     = useState<'all' | 'shelter' | 'rescue_station'>('all')
+  const [search,     setSearch]     = useState('')
+  // Geographic hierarchy resolved from Nominatim: [placeName, "Okres X", "Y kraj"]
+  const [hierarchy,  setHierarchy]  = useState<string[]>([])
   const searchTimer = useRef<any>(null)
 
   const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
-  // When search changes, resolve geographic hierarchy via Nominatim
   useEffect(() => {
     clearTimeout(searchTimer.current)
-    if (!search.trim()) { setSearchTerms([]); return }
-    setSearchTerms([search]) // immediate basic match
+    setHierarchy([])  // clear immediately so stale data doesn't leak into filter
+    if (!search.trim()) return
     searchTimer.current = setTimeout(async () => {
       try {
-        const q = encodeURIComponent(search)
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${q}&countrycodes=cz,sk&format=json&limit=1&addressdetails=1`,
+        const res  = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(search)}&countrycodes=cz,sk&format=json&limit=1&addressdetails=1`,
           { headers: { 'Accept-Language': 'cs' } }
         )
-        const data = await res.json()
-        if (!data[0]?.address) return
-        const addr = data[0].address
-        // Collect all relevant hierarchy terms
-        const terms = new Set<string>([search])
-        // city / town / village
-        const city = addr.city || addr.town || addr.village || addr.hamlet
-        if (city) terms.add(city)
-        // district: "Okres Kladno" format
-        if (addr.county) {
-          terms.add(addr.county)
-          if (!addr.county.toLowerCase().startsWith('okres')) terms.add(`Okres ${addr.county}`)
+        const [hit] = await res.json()
+        if (!hit?.address) return
+        const a     = hit.address
+        const terms: string[] = []
+
+        // 1. Place name itself
+        const place = a.city || a.town || a.village || a.hamlet
+        if (place) terms.push(place)
+
+        // 2. District — Nominatim CZ: state_district = "okres Kladno"
+        const sd = a.state_district // e.g. "okres Kladno"
+        if (sd) {
+          const bare = sd.replace(/^okres\s+/i, '').trim()  // "Kladno"
+          terms.push(`Okres ${bare}`)                        // "Okres Kladno"
         }
-        // state (kraj)
-        if (addr.state) {
-          terms.add(addr.state)
-          if (!addr.state.toLowerCase().includes('kraj')) terms.add(`${addr.state} kraj`)
-        }
-        setSearchTerms([...terms])
+
+        // 3. Region — Nominatim CZ: state = "Středočeský kraj"
+        if (a.state) terms.push(a.state)
+
+        setHierarchy(terms)
       } catch {}
-    }, 400)
+    }, 350)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
+
+  // Does a coverage entry match the search hierarchy?
+  function coverageMatches(coverageCity: string, q: string, geo: string[]): boolean {
+    const nc = norm(coverageCity)
+    // Direct substring match with typed query
+    if (nc.includes(norm(q))) return true
+    // Match against resolved geographic hierarchy (district, region)
+    return geo.some(term => norm(term) === nc)
+  }
 
   const withCoords = institutions.filter(i => i.lat && i.lng)
   const filtered   = withCoords.filter(i => {
     if (filter !== 'all' && i.type !== filter) return false
     if (search) {
-      const terms = searchTerms.length ? searchTerms : [search]
-      const matchesName = terms.some(t => norm(i.name).includes(norm(t)))
-      const matchesCity = i.city ? terms.some(t => norm(i.city!).includes(norm(t))) : false
-      const matchesCoverage = i.coverage_cities?.some(c =>
-        terms.some(t => norm(c).includes(norm(t)) || norm(t).includes(norm(c)))
-      )
-      if (!matchesName && !matchesCity && !matchesCoverage) return false
+      const matchesName     = norm(i.name).includes(norm(search))
+      const matchesOwnCity  = i.city ? norm(i.city).includes(norm(search)) : false
+      const matchesCoverage = i.coverage_cities?.some(c => coverageMatches(c, search, hierarchy))
+      if (!matchesName && !matchesOwnCity && !matchesCoverage) return false
     }
     return true
   })
