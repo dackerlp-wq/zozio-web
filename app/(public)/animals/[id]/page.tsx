@@ -113,9 +113,25 @@ export default async function AnimalDetailPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Jméno + status — mobilní verze */}
+            {/* Jméno + status + útulek — mobilní verze */}
             <div className="lg:hidden mb-6">
               <AnimalNameBlock a={a} age={age} sexLabel={sexLabel} sizeLabel={sizeLabel} species={species} status={status} />
+              {institution && (
+                <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-xl border border-[#F0EDE8] bg-white">
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#8B6550' }}>
+                      {institution.type === 'shelter' ? 'Útulek' : 'Záchranná stanice'}
+                    </div>
+                    <div className="font-semibold text-sm text-[#1A0F0A]">{institution.name}</div>
+                    {institution.city && <div className="text-xs mt-0.5" style={{ color: '#8B6550' }}>📍 {institution.city}</div>}
+                  </div>
+                  <Link href={`/institutions/${institution.slug}`}
+                    className="text-xs font-bold no-underline px-3 py-1.5 rounded-lg border transition-all hover:opacity-80 flex-shrink-0"
+                    style={{ borderColor: '#E0DDD8', color: '#6B4030' }}>
+                    Profil →
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Urgentní banner — mobil */}
@@ -366,10 +382,10 @@ function AnimalInfoBox({ a, age, sexLabel, sizeLabel, species }: any) {
 
 function CompatibilitySection({ a }: { a: any }) {
   const cards = [
-    { icon: '🧒', label: 'Děti',      value: a.good_with_kids },
-    { icon: '🐕', label: 'Psi',       value: a.good_with_dogs },
-    { icon: '🐈', label: 'Kočky',     value: a.good_with_cats },
-    { icon: '🧑', label: 'Dospělí',   value: a.good_with_adults },
+    { icon: '🧒', label: 'Děti',    value: a.good_with_kids },
+    { icon: '🐕', label: 'Psi',     value: a.good_with_dogs },
+    { icon: '🐈', label: 'Kočky',   value: a.good_with_cats },
+    { icon: '🧑', label: 'Dospělí', value: a.good_with_adults },
   ].filter(c => c.value !== undefined && c.value !== null)
 
   if (!cards.length) return null
@@ -377,7 +393,7 @@ function CompatibilitySection({ a }: { a: any }) {
   return (
     <section className="mb-7">
       <SectionTitle>Kompatibilita</SectionTitle>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${cards.length}, 1fr)` }}>
         {cards.map(({ icon, label, value }) => (
           <CompatCard key={label} icon={icon} label={label} value={value} />
         ))}
@@ -391,14 +407,14 @@ function CompatCard({ icon, label, value }: { icon: string; label: string; value
   const isNo  = value === false
 
   return (
-    <div className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl border text-center"
+    <div className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-xl border text-center"
       style={{
         borderColor: isYes ? '#BDE8D0' : isNo ? '#F5C4B3' : '#F0EDE8',
         background:  isYes ? '#F0FBF5' : isNo ? '#FFF5F2' : '#FAFAF8',
       }}>
-      <span className="text-2xl">{icon}</span>
-      <span className="text-sm font-semibold" style={{ color: '#1A0F0A' }}>{label}</span>
-      <span className="text-xs font-bold"
+      <span className="text-xl">{icon}</span>
+      <span className="text-xs font-semibold leading-tight" style={{ color: '#1A0F0A' }}>{label}</span>
+      <span className="text-[11px] font-bold"
         style={{ color: isYes ? '#1D6A42' : isNo ? '#993C1D' : '#8B6550' }}>
         {isYes ? 'Ano' : isNo ? 'Ne' : 'Neznámo'}
       </span>
@@ -422,12 +438,12 @@ function HealthSection({ a }: { a: any }) {
     <section className="mb-7">
       <SectionTitle>Zdraví a veterinární stav</SectionTitle>
       {items.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+        <div className="flex flex-wrap gap-2 mb-3">
           {items.map(({ label, value }) => (
-            <div key={label} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border"
-              style={{ borderColor: value ? '#BDE8D0' : '#F0EDE8', background: value ? '#F0FBF5' : '#FAFAF8' }}>
-              <span className="text-base">{value ? '✓' : '—'}</span>
-              <span className="text-sm font-medium" style={{ color: value ? '#1D6A42' : '#8B6550' }}>{label}</span>
+            <div key={label} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold"
+              style={{ borderColor: value ? '#BDE8D0' : '#F0EDE8', background: value ? '#F0FBF5' : '#FAFAF8', color: value ? '#1D6A42' : '#8B6550' }}>
+              <span>{value ? '✓' : '—'}</span>
+              <span>{label}</span>
             </div>
           ))}
         </div>
