@@ -61,16 +61,16 @@ export function FavoriteButton({ type, id, initialFav = false, size = 'md', clas
         loading ? 'opacity-50' : 'hover:scale-110'
       } ${className}`}
       style={{
-        width:      isSmall ? 32 : 38,
-        height:     isSmall ? 32 : 38,
+        width:      isSmall ? 32 : 44,
+        height:     isSmall ? 32 : 44,
         background: fav ? '#FAECE7' : 'rgba(255,255,255,0.9)',
         backdropFilter: 'blur(4px)',
         boxShadow:  '0 1px 4px rgba(0,0,0,0.12)',
       }}
     >
       <svg
-        width={isSmall ? 14 : 17}
-        height={isSmall ? 14 : 17}
+        width={isSmall ? 14 : 20}
+        height={isSmall ? 14 : 20}
         viewBox="0 0 24 24"
         fill={fav ? '#E8634A' : 'none'}
         stroke={fav ? '#E8634A' : '#8B6550'}
