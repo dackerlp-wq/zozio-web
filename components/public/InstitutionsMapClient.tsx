@@ -35,10 +35,11 @@ export function InstitutionsMapClient({ institutions }: Props) {
   const filtered   = withCoords.filter(i => {
     if (filter !== 'all' && i.type !== filter) return false
     if (search) {
-      const q = search.toLowerCase()
-      const matchesName     = i.name.toLowerCase().includes(q)
-      const matchesCity     = i.city?.toLowerCase().includes(q)
-      const matchesCoverage = i.coverage_cities?.some(c => c.toLowerCase().includes(q))
+      const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      const q = norm(search)
+      const matchesName     = norm(i.name).includes(q)
+      const matchesCity     = i.city ? norm(i.city).includes(q) : false
+      const matchesCoverage = i.coverage_cities?.some(c => norm(c).includes(q))
       if (!matchesName && !matchesCity && !matchesCoverage) return false
     }
     return true
