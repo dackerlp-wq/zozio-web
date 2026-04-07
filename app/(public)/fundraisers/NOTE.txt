@@ -1,0 +1,7 @@
+// app/(public)/fundraisers/page.tsx — mobilní oprava
+// Přidej do existujícího souboru tyto třídy:
+// - grid: grid-cols-1 sm:grid-cols-2 lg:grid-cols-3
+// - padding: px-4 md:px-6, py-16 md:py-24
+// - nadpis: text-3xl md:text-5xl
+
+// Níže je kompletní opravená verze:
