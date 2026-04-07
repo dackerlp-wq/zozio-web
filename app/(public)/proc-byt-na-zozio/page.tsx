@@ -171,6 +171,98 @@ const features = [
   },
 ]
 
+// ─── Legal obligations ───────────────────────────────────────────────────────
+
+const legalShelter = [
+  {
+    icon: '📋',
+    obligation: 'Evidence každého přijatého zvířete',
+    law: '§ 25 odst. 3 zák. č. 246/1992 Sb.',
+    detail: 'Provozovatel útulku musí vést seznam přijatých zvířat — druh, číslo čipu, hmotnost, datum a místo nálezu, informace o původním chovateli.',
+    howZozio: 'Každé zvíře v Zozio má automaticky evidované všechny zákonné údaje. Export na vyžádání orgánu ochrany zvířat.',
+  },
+  {
+    icon: '🌐',
+    obligation: 'Provoz webu se seznamem zvířat a fotkami',
+    law: '§ 25 odst. 4 zák. č. 246/1992 Sb. (od 1. 2. 2021)',
+    detail: 'Útulek je povinen provozovat webové stránky s aktuálním přehledem všech zvířat včetně fotografií a údajů o původu.',
+    howZozio: 'Každé zvíře přidané do Zozio se okamžitě zobrazí na veřejném profilu útulku. Fotky, popis, původ — splňuje zákonný požadavek ze dne na den.',
+  },
+  {
+    icon: '🔖',
+    obligation: 'Evidence vydaných zvířat a nových chovatelů',
+    law: '§ 25 odst. 3 zák. č. 246/1992 Sb.',
+    detail: 'Útulek musí evidovat seznam vydaných zvířat s datem předání a adresou nového chovatele.',
+    howZozio: 'Při schválení adopce Zozio zaznamená datum, adoptivní rodinu a stav automaticky. Vše dohledatelné v historii zvířete.',
+  },
+  {
+    icon: '💉',
+    obligation: 'Evidence čipování — mikročip do 30 dnů',
+    law: 'Zákon č. 166/1999 Sb. (veterinární zákon)',
+    detail: 'Každý pes musí být označen mikročipem. Pokud ho nemá, útulek ho musí nechat čipovat do 30 dnů. Číslo čipu se zapisuje do evidence.',
+    howZozio: 'Pole pro číslo čipu, datum čipování a veterináře je součástí karty každého zvířete. Upozornění při chybějícím čipu.',
+  },
+  {
+    icon: '🏥',
+    obligation: 'Karanténní záznamy a veterinární péče',
+    law: '§ 42 zák. č. 166/1999 Sb.; vyhl. č. 176/2023 Sb.',
+    detail: 'Nově přijatá zvířata musí projít karanténou. Veterinární záznamy (diagnózy, očkování, léčba) musí být vedeny a dostupné pro kontrolu.',
+    howZozio: 'Záložka Zdraví v kartě zvířete eviduje karanténu, veterináře, záznamy o očkování, nemocech a léčbě.',
+  },
+  {
+    icon: '🛡️',
+    obligation: 'GDPR — ochrana osobních údajů zájemců o adopci',
+    law: 'Nař. EU 2016/679 (GDPR); zákon č. 110/2019 Sb.',
+    detail: 'Útulek jako správce osobních údajů musí dodržovat GDPR při zpracování žádostí o adopci — informační povinnost, zabezpečení, lhůty uchování.',
+    howZozio: 'Adopční žádosti jsou uloženy na zabezpečeném serveru, přístupné jen oprávněným pracovníkům. Data zájemců nejsou sdílena třetím stranám.',
+  },
+]
+
+const legalRescue = [
+  {
+    icon: '📜',
+    obligation: 'Povolení k provozu od MŽP',
+    law: '§ 42 zák. č. 114/1992 Sb.',
+    detail: 'Záchrannou stanici lze provozovat POUZE na základě rozhodnutí Ministerstva životního prostředí. Označení "záchranná stanice" smí používat jen držitel platného povolení.',
+    howZozio: 'Zozio eviduje číslo a datum povolení MŽP jako součást profilu instituce — dokladovatelné pro kontroly ČIŽP.',
+  },
+  {
+    icon: '🦉',
+    obligation: 'Evidence každého přijatého živočicha',
+    law: 'Vyhl. č. 316/2009 Sb. o handicapovaných živočiších',
+    detail: 'Záchranná stanice musí evidovat druh, datum a místo nálezu, zdravotní stav při příjmu a kdo zvíře přinesl.',
+    howZozio: 'Každý záchranný případ v Zozio má příjmový list se všemi zákonem požadovanými údaji. Exportovatelné pro státní správu.',
+  },
+  {
+    icon: '🩺',
+    obligation: 'Dokumentace průběhu péče',
+    law: 'Vyhl. č. 316/2009 Sb.',
+    detail: 'Záznamy o léčbě, rehabilitaci a krmení musí být vedeny u každého živočicha po celou dobu jeho pobytu ve stanici.',
+    howZozio: 'Záložka Léčba a Rehabilitace zaznamenává každý veterinární úkon, medikaci a průběh zotavení s datem a zodpovědnou osobou.',
+  },
+  {
+    icon: '🌿',
+    obligation: 'Evidence propuštění do přírody',
+    law: 'Vyhl. č. 316/2009 Sb.',
+    detail: 'Záznamy o datu, místě a způsobu navrácení živočicha do přírody (nebo doklad o uhynutí/utracení) musí být uchovávány.',
+    howZozio: 'Workflow propuštění v Zozio zaznamenává místo, datum a osobu zodpovědnou za propuštění. Stav "Propuštěn do přírody" uzavře případ s kompletní historií.',
+  },
+  {
+    icon: '🌍',
+    obligation: 'CITES — evidence chráněných druhů',
+    law: 'Zákon č. 100/2004 Sb.; vyhl. č. 227/2004 Sb.',
+    detail: 'Při péči o exempláře druhů CITES (příloha A, B) musí stanice vést registraci u MŽP, hlásit úhyn nebo předání a mít doklady o původu.',
+    howZozio: 'Označení CITES v kartě živočicha upozorní pracovníky na zvláštní evidenční povinnosti. Záznamy o původu a přesunech dohledatelné.',
+  },
+  {
+    icon: '📁',
+    obligation: 'Záznamy o personálu — 3 roky po ukončení',
+    law: 'Vyhl. č. 316/2009 Sb.',
+    detail: 'Dokumentace o odborné průpravě všech osob pečujících o živočichy musí být uchovávána 3 roky po ukončení jejich činnosti.',
+    howZozio: 'Evidence pracovníků a dobrovolníků v Zozio zahrnuje záznamy o aktivitách a certifikacích — archivovatelné i po ukončení spolupráce.',
+  },
+]
+
 const rescueExtras = [
   {
     icon: '🦉',
@@ -428,6 +520,93 @@ export default function ProcBytNaZozioPage() {
                 </div>
               )
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── ZÁKONNÉ POVINNOSTI ── */}
+      <section className="py-16 md:py-24 px-4 md:px-12" style={{ background: '#1A0F0A' }}>
+        <div className="max-w-[1100px] mx-auto">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 font-body text-xs font-bold px-4 py-2 rounded-pill mb-4"
+              style={{ background: 'rgba(240,165,0,0.15)', color: '#F0A500' }}>
+              ⚖️ ZÁKONNÉ POVINNOSTI
+            </div>
+            <h2 className="font-display font-extrabold text-3xl md:text-4xl text-white mb-4">
+              Zozio vám pomáhá plnit zákon
+            </h2>
+            <p className="text-base max-w-[600px] mx-auto leading-relaxed" style={{ color: '#9B8070' }}>
+              Útulky a záchranné stanice mají přesně definované zákonné povinnosti — od evidence zvířat přes GDPR až po reporty pro státní správu.
+              Nesplnění hrozí pokutami až <strong className="text-white">100 000 Kč</strong> pro fyzické
+              a až <strong className="text-white">3 000 000 Kč</strong> pro právnické osoby.
+              Zozio tyto povinnosti řeší automaticky.
+            </p>
+          </div>
+
+          {/* Útulky */}
+          <div className="mb-12">
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-2xl">🏠</span>
+              <h3 className="font-display font-extrabold text-xl text-white">Útulky pro psy a kočky</h3>
+              <span className="text-xs font-bold px-3 py-1 rounded-pill" style={{ background: 'rgba(232,99,74,0.2)', color: '#E8634A' }}>
+                Zákon č. 246/1992 Sb. + veterinární zákon
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {legalShelter.map(item => (
+                <div key={item.obligation} className="rounded-lg p-5 border" style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}>
+                  <div className="flex items-start gap-3 mb-3">
+                    <span className="text-2xl flex-shrink-0">{item.icon}</span>
+                    <div>
+                      <div className="font-display font-bold text-white text-sm mb-0.5">{item.obligation}</div>
+                      <div className="text-[10px] font-bold font-mono" style={{ color: '#F0A500' }}>{item.law}</div>
+                    </div>
+                  </div>
+                  <p className="text-xs leading-relaxed mb-3" style={{ color: '#7A6A5A' }}>{item.detail}</p>
+                  <div className="flex items-start gap-2 rounded-md p-2.5" style={{ background: 'rgba(232,99,74,0.08)', borderLeft: '3px solid #E8634A' }}>
+                    <span className="flex-shrink-0 text-xs font-bold mt-0.5" style={{ color: '#E8634A' }}>✓</span>
+                    <p className="text-xs font-semibold leading-relaxed" style={{ color: '#C8A898' }}>{item.howZozio}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Záchranné stanice */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <span className="text-2xl">🚑</span>
+              <h3 className="font-display font-extrabold text-xl text-white">Záchranné stanice pro volně žijící živočichy</h3>
+              <span className="text-xs font-bold px-3 py-1 rounded-pill" style={{ background: 'rgba(46,158,143,0.2)', color: '#2E9E8F' }}>
+                Zákon č. 114/1992 Sb. + vyhl. 316/2009 Sb.
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {legalRescue.map(item => (
+                <div key={item.obligation} className="rounded-lg p-5 border" style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}>
+                  <div className="flex items-start gap-3 mb-3">
+                    <span className="text-2xl flex-shrink-0">{item.icon}</span>
+                    <div>
+                      <div className="font-display font-bold text-white text-sm mb-0.5">{item.obligation}</div>
+                      <div className="text-[10px] font-bold font-mono" style={{ color: '#F0A500' }}>{item.law}</div>
+                    </div>
+                  </div>
+                  <p className="text-xs leading-relaxed mb-3" style={{ color: '#7A6A5A' }}>{item.detail}</p>
+                  <div className="flex items-start gap-2 rounded-md p-2.5" style={{ background: 'rgba(46,158,143,0.08)', borderLeft: '3px solid #2E9E8F' }}>
+                    <span className="flex-shrink-0 text-xs font-bold mt-0.5" style={{ color: '#2E9E8F' }}>✓</span>
+                    <p className="text-xs font-semibold leading-relaxed" style={{ color: '#C8A898' }}>{item.howZozio}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div className="mt-10 rounded-lg p-5 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <p className="text-xs leading-relaxed" style={{ color: '#5A4A3A' }}>
+              Informace jsou informativní a nezahrnují veškeré právní předpisy. Doporučujeme konzultovat konkrétní povinnosti s právníkem nebo příslušným orgánem státní správy (SVS, MŽP, ČIŽP).
+              Zozio neposkytuje právní poradenství.
+            </p>
           </div>
         </div>
       </section>
