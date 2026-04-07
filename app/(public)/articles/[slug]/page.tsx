@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 
 export const revalidate = 3600 // 1 hodina — fallback, primárně invaliduje revalidatePath v API
@@ -63,8 +64,10 @@ export default async function ArticleDetailPage({ params }: PageProps) {
     <div className="space-y-4">
       {animal && <AnimalPanel animal={animal} status={animalStatus} />}
       {inst && <InstitutionPanel inst={inst} isShelter={isShelter} />}
-      {inst?.otherArticles?.length > 0 && (
-        <OtherArticles articles={inst.otherArticles} institutionName={inst.name} />
+      {inst?.id && (
+        <Suspense fallback={null}>
+          <OtherArticlesLoader institutionId={inst.id} currentSlug={slug} institutionName={inst.name} />
+        </Suspense>
       )}
     </div>
   )
@@ -123,6 +126,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                   width={740} height={420}
                   className="w-full object-cover"
                   style={{ maxHeight: '400px' }}
+                  priority
                 />
               </div>
             )}
@@ -260,6 +264,25 @@ function InstitutionPanel({ inst, isShelter }: { inst: any; isShelter: boolean }
   )
 }
 
+/* ── Další příběhy — async loader ── */
+async function OtherArticlesLoader({ institutionId, currentSlug, institutionName }: {
+  institutionId: string
+  currentSlug: string
+  institutionName: string
+}) {
+  const supabase = await createClient()
+  const { data: others } = await supabase
+    .from('articles')
+    .select('id, title, slug, cover_url')
+    .eq('institution_id', institutionId)
+    .eq('published', true)
+    .neq('slug', currentSlug)
+    .order('published_at', { ascending: false })
+    .limit(3)
+  if (!others?.length) return null
+  return <OtherArticles articles={others} institutionName={institutionName} />
+}
+
 /* ── Další příběhy ── */
 function OtherArticles({ articles, institutionName }: { articles: any[]; institutionName: string }) {
   return (
@@ -304,19 +327,6 @@ async function getArticle(slug: string) {
     .single()
 
   if (!article) return null
-
-  const inst = article.institution as any
-  if (inst?.id) {
-    const { data: others } = await supabase
-      .from('articles')
-      .select('id, title, slug, cover_url')
-      .eq('institution_id', inst.id)
-      .eq('published', true)
-      .neq('slug', slug)
-      .order('published_at', { ascending: false })
-      .limit(3)
-    if (others?.length) inst.otherArticles = others
-  }
 
   return article
 }

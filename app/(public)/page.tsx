@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Suspense } from 'react'
 import { createServiceClient } from '@/lib/supabase/service'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -15,25 +16,76 @@ export const metadata: Metadata = {
 }
 
 export default async function HomePage() {
-  const [animals, rescueCases, fundraisers, stats, articles, pinnedArticle, species] = await Promise.all([
+  const [animals, species] = await Promise.all([
     getFeaturedAnimals(),
-    getFeaturedRescueCases(),
-    getActiveFundraisers(),
-    getStats(),
-    getLatestArticles(),
-    getPinnedArticle(),
     getSpecies(),
   ])
 
   return (
     <main className="overflow-x-hidden">
       <HeroSection animals={animals} species={species} />
-      <StatsStrip stats={stats} />
+      <Suspense fallback={<StatsStripSkeleton />}>
+        <StatsStripAsync />
+      </Suspense>
       <AnimalsSection animals={animals} />
-      <RescueSection cases={rescueCases} fundraisers={fundraisers} />
-      <StoriesSection articles={articles} pinnedArticle={pinnedArticle} />
+      <Suspense fallback={<RescueSectionSkeleton />}>
+        <RescueSectionAsync />
+      </Suspense>
+      <Suspense fallback={<StoriesSectionSkeleton />}>
+        <StoriesSectionAsync />
+      </Suspense>
       <InstitutionsCta />
     </main>
+  )
+}
+
+/* ── ASYNC WRAPPERS ── */
+async function StatsStripAsync() {
+  const stats = await getStats()
+  return <StatsStrip stats={stats} />
+}
+
+async function RescueSectionAsync() {
+  const [cases, fundraisers] = await Promise.all([
+    getFeaturedRescueCases(),
+    getActiveFundraisers(),
+  ])
+  return <RescueSection cases={cases} fundraisers={fundraisers} />
+}
+
+async function StoriesSectionAsync() {
+  const [articles, pinnedArticle] = await Promise.all([
+    getLatestArticles(),
+    getPinnedArticle(),
+  ])
+  return <StoriesSection articles={articles} pinnedArticle={pinnedArticle} />
+}
+
+/* ── SKELETON FALLBACKS ── */
+function StatsStripSkeleton() {
+  return (
+    <div className="bg-espresso px-4 md:px-12 py-6 md:py-8">
+      <div className="max-w-[1100px] mx-auto grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-0">
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} className={`text-center py-2 ${i < 3 ? 'md:border-r border-white/10' : ''}`}>
+            <div className="h-6 w-12 mx-auto rounded bg-white/10 animate-pulse mb-2" />
+            <div className="h-4 w-20 mx-auto rounded bg-white/10 animate-pulse" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function RescueSectionSkeleton() {
+  return (
+    <div className="py-12 md:py-20 px-4 md:px-12 min-h-[320px]" style={{ background: '#F5F0EB' }} />
+  )
+}
+
+function StoriesSectionSkeleton() {
+  return (
+    <div className="py-12 md:py-20 px-4 md:px-12 min-h-[320px] bg-warm" />
   )
 }
 
@@ -122,7 +174,7 @@ function HeroSection({ animals, species }: { animals: any[]; species: any[] }) {
                 <Link key={animal.id} href={`/animals/${animal.id}`}>
                   <div className={`relative rounded-2xl overflow-hidden shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ${i === 0 ? 'aspect-square' : i === 1 ? 'aspect-[4/3]' : i === 2 ? 'aspect-[4/3]' : 'aspect-square'}`}>
                     {animal.primary_photo ? (
-                      <Image src={animal.primary_photo} alt={animal.name} fill className="object-cover" sizes="280px" />
+                      <Image src={animal.primary_photo} alt={animal.name} fill className="object-cover" sizes="280px" priority={i === 0} />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-sand to-coral-light flex items-center justify-center text-5xl">
                         {animal.species?.icon ?? '🐾'}
