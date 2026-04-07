@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { createServiceClient } from '@/lib/supabase/service'
 import { breedSlug } from '@/lib/breed-slug'
 
-export const revalidate = 3600
+export const dynamic = 'force-dynamic'
 
 export interface BreedProfile {
   // Identity
@@ -86,17 +86,23 @@ export default async function BreedProfilePage({ params }: Props) {
   const speciesInfo = Array.isArray(breed.species) ? breed.species[0] : breed.species
   const p = (breed.profile ?? {}) as BreedProfile
 
-  const { data: animals } = await supabase
-    .from('animals')
-    .select('id, name, gender, age_years, age_months, photo_url, institution:institutions(id, name, slug)')
-    .eq('published', true)
-    .eq('adoption_status', 'available')
-    .eq('species_id', breed.species_id)
-    .or(`breed_id.eq.${breed.id},breed.eq.${breed.name_cs}`)
-    .order('created_at', { ascending: false })
-    .limit(20)
+  const baseQuery = () =>
+    supabase
+      .from('animals')
+      .select('id, name, sex, birth_year, birth_month, primary_photo, institution:institutions(id, name, slug)')
+      .eq('published', true)
+      .eq('adoption_status', 'available')
+      .order('created_at', { ascending: false })
 
-  const animalList = animals ?? []
+  const [byId, byName] = await Promise.all([
+    baseQuery().eq('breed_id', breed.id).limit(20),
+    baseQuery().eq('species_id', breed.species_id).eq('breed', breed.name_cs).limit(20),
+  ])
+
+  const seen = new Set<string>()
+  const animalList = [...(byId.data ?? []), ...(byName.data ?? [])]
+    .filter(a => { if (seen.has(a.id)) return false; seen.add(a.id); return true })
+    .slice(0, 20)
 
   return (
     <main className="min-h-screen pt-20 md:pt-24 pb-16" style={{ background: '#FFFCF8' }}>
@@ -442,33 +448,35 @@ function Stars({ n }: { n: number }) {
 }
 
 type AnimalRow = {
-  id: string; name: string; gender?: string; age_years?: number; age_months?: number
-  photo_url?: string; institution?: { id: string; name: string; slug: string } | { id: string; name: string; slug: string }[] | null
+  id: string; name: string; sex?: string; birth_year?: number; birth_month?: number
+  primary_photo?: string; institution?: { id: string; name: string; slug: string } | { id: string; name: string; slug: string }[] | null
 }
 
 function AdoptionRow({ animal }: { animal: AnimalRow }) {
   const inst = Array.isArray(animal.institution) ? animal.institution[0] : animal.institution
+  const currentYear = new Date().getFullYear()
+  const ageYears = animal.birth_year ? currentYear - animal.birth_year : null
   return (
     <Link href={`/adopt/${animal.id}`}
       className="flex items-center gap-3 px-4 py-3 hover:bg-[#FDFCFA] transition-colors no-underline group">
       <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#F5F0EB] flex-shrink-0">
-        {animal.photo_url
+        {animal.primary_photo
           // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={animal.photo_url} alt={animal.name} className="w-full h-full object-cover" />
+          ? <img src={animal.primary_photo} alt={animal.name} className="w-full h-full object-cover" />
           : <div className="w-full h-full flex items-center justify-center text-xl">🐾</div>}
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-bold text-sm text-[#1A0F0A] truncate group-hover:text-[#E8634A] transition-colors">{animal.name}</p>
         {inst && <p className="text-xs truncate" style={{ color: '#A08070' }}>{inst.name}</p>}
         <div className="flex gap-1 mt-0.5">
-          {animal.gender && (
+          {animal.sex && (
             <span className="text-[10px] font-bold" style={{ color: '#8B6550' }}>
-              {animal.gender === 'male' ? '♂' : animal.gender === 'female' ? '♀' : ''}
+              {animal.sex === 'male' ? '♂' : animal.sex === 'female' ? '♀' : ''}
             </span>
           )}
-          {animal.age_years != null && (
+          {ageYears != null && (
             <span className="text-[10px]" style={{ color: '#A08070' }}>
-              {animal.age_years === 0 ? `${animal.age_months ?? 0} měs.` : `${animal.age_years} r.`}
+              {ageYears === 0 ? `${animal.birth_month ? 12 - animal.birth_month : '?'} měs.` : `${ageYears} r.`}
             </span>
           )}
         </div>
