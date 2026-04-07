@@ -3,6 +3,7 @@ import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { findCzechPlace } from '@/lib/czech-places'
 
 export interface MapInstitution {
   id: string
@@ -22,9 +23,10 @@ interface Props {
 }
 
 export function InstitutionsMapClient({ institutions }: Props) {
-  const mapRef      = useRef<HTMLDivElement>(null)
-  const mapInstance = useRef<any>(null)
-  const markersRef  = useRef<Record<string, any>>({})
+  const mapRef        = useRef<HTMLDivElement>(null)
+  const mapInstance   = useRef<any>(null)
+  const markersRef    = useRef<Record<string, any>>({})
+  const coverageRef   = useRef<any[]>([])
   const [selected,  setSelected]  = useState<MapInstitution | null>(null)
   const [filter,    setFilter]    = useState<'all' | 'shelter' | 'rescue_station'>('all')
   const [search,    setSearch]    = useState('')
@@ -77,9 +79,11 @@ export function InstitutionsMapClient({ institutions }: Props) {
   }, [filter, search])
 
   function buildMarkers(L: any, map: any) {
-    // Remove old markers
+    // Remove old markers and coverage
     Object.values(markersRef.current).forEach((m: any) => m.remove())
     markersRef.current = {}
+    clearCoverage()
+    setSelected(null)
 
     filtered.forEach(inst => {
       if (!inst.lat || !inst.lng) return
@@ -130,14 +134,44 @@ export function InstitutionsMapClient({ institutions }: Props) {
         .addTo(map)
         .bindPopup(popup)
 
-      marker.on('click', () => setSelected(inst))
+      marker.on('click', () => {
+        setSelected(inst)
+        drawCoverage(L, map, inst)
+      })
       markersRef.current[inst.id] = marker
+    })
+  }
+
+  function clearCoverage() {
+    coverageRef.current.forEach(c => c.remove())
+    coverageRef.current = []
+  }
+
+  function drawCoverage(L: any, map: any, inst: MapInstitution) {
+    clearCoverage()
+    if (!inst.coverage_cities?.length) return
+    const isShelterInst = inst.type === 'shelter'
+    const color = isShelterInst ? '#E8634A' : '#2E9E8F'
+
+    inst.coverage_cities.forEach(cityName => {
+      const place = findCzechPlace(cityName)
+      if (!place) return
+      const circle = L.circle([place.lat, place.lng], {
+        radius:      place.radius * 1000,
+        color,
+        fillColor:   color,
+        fillOpacity: 0.12,
+        weight:      1.5,
+        opacity:     0.5,
+      }).addTo(map)
+      coverageRef.current.push(circle)
     })
   }
 
   function flyTo(inst: MapInstitution) {
     if (!mapInstance.current || !inst.lat || !inst.lng) return
-    mapInstance.current.flyTo([inst.lat, inst.lng], 13, { duration: 0.8 })
+    import('leaflet').then(L => drawCoverage(L, mapInstance.current, inst))
+    mapInstance.current.flyTo([inst.lat, inst.lng], 11, { duration: 0.8 })
     markersRef.current[inst.id]?.openPopup()
     setSelected(inst)
   }
