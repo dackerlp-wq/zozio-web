@@ -347,18 +347,39 @@ function AnimalInfoBox({ a, age, sexLabel, sizeLabel, species }: any) {
     ? new Date(a.intake_date).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
 
+  const isFemale = a.sex === 'female'
+
+  const activityLabel: Record<string, string> = {
+    low:    isFemale ? '😴 Klidná'          : '😴 Klidný',
+    medium: '🚶 Středně aktivní',
+    high:   isFemale ? '🏃 Velmi aktivní'   : '🏃 Velmi aktivní',
+  }
+  const difficultyLabel: Record<string, string> = {
+    easy:      isFemale ? '⭐ Nenáročná'           : '⭐ Nenáročný',
+    medium:    isFemale ? '⭐⭐ Středně náročná'   : '⭐⭐ Středně náročný',
+    demanding: isFemale ? '⭐⭐⭐ Náročná'         : '⭐⭐⭐ Náročný',
+  }
+
+  const homeTypes = [
+    a.suitable_for_flat  && '🏢 Byt',
+    a.suitable_for_house && '🏡 Dům',
+  ].filter(Boolean).join(', ')
+
   const rows: { icon: string; label: string; value: string }[] = [
-    species?.name_cs         && { icon: '🐾', label: 'Druh',       value: species.name_cs },
-    a.breed                  && { icon: '🔖', label: 'Rasa',        value: a.breed },
-    age                      && { icon: '🎂', label: 'Věk',         value: age },
-    sexLabel                 && { icon: '⚥',  label: 'Pohlaví',    value: sexLabel },
-    a.size                   && { icon: '📏', label: 'Velikost',    value: sizeLabel[a.size] ?? a.size },
-    a.weight_kg              && { icon: '⚖️', label: 'Váha',        value: `${a.weight_kg} kg` },
-    a.coat_color             && { icon: '🎨', label: 'Barva srsti', value: a.coat_color },
-    a.coat_type              && { icon: '✂️', label: 'Typ srsti',   value: a.coat_type },
-    a.origin                 && { icon: '📍', label: 'Původ',       value: a.origin },
-    intakeDate               && { icon: '🏠', label: 'V útulku od', value: intakeDate },
-    a.intake_reason          && { icon: '💬', label: 'Důvod příchodu', value: a.intake_reason },
+    species?.name_cs                  && { icon: '🐾', label: 'Druh',          value: species.name_cs },
+    a.breed                           && { icon: '🔖', label: 'Rasa',           value: a.breed },
+    age                               && { icon: '🎂', label: 'Věk',            value: age },
+    sexLabel                          && { icon: '⚥',  label: 'Pohlaví',        value: sexLabel },
+    a.size                            && { icon: '📏', label: 'Velikost',        value: sizeLabel[a.size] ?? a.size },
+    a.weight_kg                       && { icon: '⚖️', label: 'Váha',           value: `${a.weight_kg} kg` },
+    a.activity_level                  && { icon: '⚡', label: 'Aktivita',        value: activityLabel[a.activity_level] ?? a.activity_level },
+    a.care_difficulty                 && { icon: '🎯', label: 'Náročnost péče', value: difficultyLabel[a.care_difficulty] ?? a.care_difficulty },
+    homeTypes                         && { icon: '🏠', label: 'Ideální domov',  value: homeTypes },
+    a.coat_color                      && { icon: '🎨', label: 'Barva srsti',    value: a.coat_color },
+    a.coat_type                       && { icon: '✂️', label: 'Typ srsti',      value: a.coat_type },
+    a.origin                          && { icon: '📍', label: 'Původ',           value: a.origin },
+    intakeDate                        && { icon: '📅', label: 'V útulku od',    value: intakeDate },
+    a.intake_reason                   && { icon: '💬', label: 'Důvod příchodu', value: a.intake_reason },
   ].filter(Boolean) as { icon: string; label: string; value: string }[]
 
   if (!rows.length) return null
