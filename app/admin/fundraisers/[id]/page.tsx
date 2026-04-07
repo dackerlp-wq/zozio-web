@@ -25,7 +25,7 @@ export default async function EditFundraiserPage({ params }: PageProps) {
 
   const { data: institution } = await service
     .from('institutions')
-    .select('id, name, type')
+    .select('id, name, type, darujme_api_id')
     .eq('id', membership.institution_id)
     .single()
 
@@ -40,17 +40,6 @@ export default async function EditFundraiserPage({ params }: PageProps) {
 
   if (!fundraiser) notFound()
 
-  const isShelter = institution.type === 'shelter'
-
-  const [animalsData, rescueCasesData] = await Promise.all([
-    isShelter
-      ? service.from('animals').select('id, name').eq('institution_id', institution.id).eq('published', true)
-      : Promise.resolve({ data: [] }),
-    !isShelter
-      ? service.from('rescue_cases').select('id, name, case_number').eq('institution_id', institution.id)
-      : Promise.resolve({ data: [] }),
-  ])
-
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
@@ -64,10 +53,9 @@ export default async function EditFundraiserPage({ params }: PageProps) {
       <FundraiserForm
         institutionId={institution.id}
         institutionType={institution.type}
-        animals={(animalsData.data ?? []) as any[]}
-        rescueCases={(rescueCasesData.data ?? []) as any[]}
         mode="edit"
         fundraiser={fundraiser}
+        hasDarujmeCredentials={!!institution.darujme_api_id}
       />
     </div>
   )

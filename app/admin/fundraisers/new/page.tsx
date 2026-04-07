@@ -20,22 +20,11 @@ export default async function NewFundraiserPage() {
 
   const { data: institution } = await service
     .from('institutions')
-    .select('id, name, type')
+    .select('id, name, type, darujme_api_id')
     .eq('id', membership.institution_id)
     .single()
 
   if (!institution) redirect('/admin/dashboard')
-
-  const isShelter = institution.type === 'shelter'
-
-  const [animalsData, rescueCasesData] = await Promise.all([
-    isShelter
-      ? service.from('animals').select('id, name').eq('institution_id', institution.id).eq('published', true).in('adoption_status', ['available', 'reserved'])
-      : Promise.resolve({ data: [] }),
-    !isShelter
-      ? service.from('rescue_cases').select('id, name, case_number').eq('institution_id', institution.id).not('status', 'in', '("released","deceased")')
-      : Promise.resolve({ data: [] }),
-  ])
 
   return (
     <div>
@@ -50,9 +39,8 @@ export default async function NewFundraiserPage() {
       <FundraiserForm
         institutionId={institution.id}
         institutionType={institution.type}
-        animals={(animalsData.data ?? []) as any[]}
-        rescueCases={(rescueCasesData.data ?? []) as any[]}
         mode="create"
+        hasDarujmeCredentials={!!institution.darujme_api_id}
       />
     </div>
   )

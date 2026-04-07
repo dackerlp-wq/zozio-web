@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 
 const mainLinks = [
   { href: '/adopt',        label: '🐾 Zvířata k adopci',  desc: 'Psi, kočky a další hledají domov' },
-  { href: '/rescue',       label: '🦉 Záchranné stanice',  desc: 'Volně žijící zvířata v léčbě' },
+  { href: '/rescue',       label: '🦉 Ohrožená zvířata',   desc: 'Volně žijící zvířata v péči záchranných stanic' },
   { href: '/institutions', label: '🏠 Útulky a stanice',   desc: 'Adresář všech institucí v ČR/SR' },
   { href: '/fundraisers',  label: '💛 Sbírky',             desc: 'Přispěj konkrétnímu zvířeti' },
   { href: '/articles',     label: '📖 Příběhy',            desc: 'Úspěšné adopce a záchranné příběhy' },

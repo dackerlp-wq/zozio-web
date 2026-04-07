@@ -40,7 +40,7 @@ export function AnimalCard({ animal }: AnimalCardProps) {
         </div>
 
         <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-pill text-[10px] font-bold bg-shelter-bg text-shelter-dark">
-          🏠 {animal.institution?.name ?? 'Útulok'}
+          🏠 {animal.institution?.name ?? 'Útulek'}
         </span>
       </div>
 

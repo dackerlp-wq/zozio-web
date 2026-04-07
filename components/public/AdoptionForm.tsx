@@ -63,7 +63,7 @@ export function AdoptionForm({ animalId, animalName, institutionId }: AdoptionFo
           Žádost odeslána!
         </h3>
         <p className="text-sm text-gray">
-          Útulok tě brzy kontaktuje na <strong>{form.applicant_email}</strong>.
+          Útulek tě brzy kontaktuje na <strong>{form.applicant_email}</strong>.
         </p>
       </div>
     )

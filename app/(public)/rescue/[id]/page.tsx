@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { PhotoGallery } from '@/components/public/PhotoGallery'
 import { ShareButtons } from '@/components/public/ShareButtons'
 import { DonationWidget } from '@/components/public/DonationWidget'
@@ -44,8 +44,10 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
   const r           = rescueCase as any
   const institution = r.institution as any
   const species     = r.species     as any
-  const fundraiser  = await getFundraiser(id)
-  const similar     = await getSimilarCases(id, r.institution_id)
+  const [fundraiser, similar] = await Promise.all([
+    getFundraiser(id),
+    getSimilarCases(id, r.institution_id),
+  ])
 
   const currentStep = STEP_ORDER[r.status] ?? 0
   const isReleased  = r.status === 'released'
@@ -435,7 +437,7 @@ function RescaseHeader({ r, species }: any) {
 /* ── Data ── */
 
 async function getRescueCase(id: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data } = await supabase
     .from('rescue_cases')
     .select('*, institution:institutions(id,name,city,type,slug,email,phone), species:animal_species(id,name_cs,icon)')
@@ -446,7 +448,7 @@ async function getRescueCase(id: string) {
 }
 
 async function getFundraiser(rescueCaseId: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data } = await supabase
     .from('fundraisers')
     .select('*')
@@ -457,7 +459,7 @@ async function getFundraiser(rescueCaseId: string) {
 }
 
 async function getSimilarCases(id: string, institutionId: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data } = await supabase
     .from('rescue_cases')
     .select('id, name, case_number, primary_photo, status, species:animal_species(name_cs,icon)')
