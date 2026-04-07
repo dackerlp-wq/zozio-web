@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { InstitutionTabs } from '@/components/public/InstitutionTabs'
 import { FavoriteButton } from '@/components/public/FavoriteButton'
 
@@ -115,7 +115,7 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
       {/* ── Statistiky ── */}
       <div className="border-b border-[#F0EDE8] bg-white">
         <div className="max-w-[1100px] mx-auto px-5 md:px-10">
-          <dl className="flex flex-wrap gap-0">
+          <dl className="grid grid-cols-4">
             {[
               {
                 num:   isShelter ? (animals as any[]).length : (rescueCases as any[]).length,
@@ -126,9 +126,9 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
               { num: volunteers, label: 'dobrovolníků', color: '#6B4030' },
               { num: (articles as any[]).length, label: 'příběhů', color: '#6B4030' },
             ].map(({ num, label, color }) => (
-              <div key={label} className="px-6 py-4 border-r border-[#F0EDE8] last:border-r-0 first:pl-0">
-                <dd className="font-display font-extrabold text-2xl" style={{ color }}>{num}</dd>
-                <dt className="text-xs font-medium mt-0.5" style={{ color: '#6B4030' }}>{label}</dt>
+              <div key={label} className="px-4 md:px-6 py-3 md:py-4 border-r border-[#F0EDE8] last:border-r-0 first:pl-0">
+                <dd className="font-display font-extrabold text-xl md:text-2xl" style={{ color }}>{num}</dd>
+                <dt className="text-[11px] md:text-xs font-medium mt-0.5 leading-tight" style={{ color: '#6B4030' }}>{label}</dt>
               </div>
             ))}
           </dl>
@@ -136,7 +136,7 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
       </div>
 
       {/* ── Taby + obsah ── */}
-      <div className="max-w-[1100px] mx-auto px-5 md:px-10 pb-16">
+      <div className="max-w-[1100px] mx-auto px-0 md:px-10 pb-16">
         <InstitutionTabs
           tabs={tabs}
           activeTab={activeTab}
@@ -156,7 +156,7 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
 /* ── Data ── */
 
 async function getInstitution(slug: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data } = await supabase
     .from('institutions')
     .select('*')
@@ -167,10 +167,10 @@ async function getInstitution(slug: string) {
 }
 
 async function getAnimals(id: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data } = await supabase
     .from('animals')
-    .select('id, name, breed, birth_year, primary_photo, urgent, adoption_status, vaccinated, neutered, species:animal_species(name_cs,icon)')
+    .select('id, name, breed, birth_year, sex, size, primary_photo, urgent, adoption_status, vaccinated, neutered, microchipped, good_with_kids, good_with_dogs, good_with_cats, species:animal_species(name_cs,icon)')
     .eq('institution_id', id)
     .eq('published', true)
     .in('adoption_status', ['available', 'reserved', 'foster'])
@@ -181,10 +181,10 @@ async function getAnimals(id: string) {
 }
 
 async function getRescueCases(id: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data } = await supabase
     .from('rescue_cases')
-    .select('id, name, case_number, status, cause_of_injury, primary_photo, species:animal_species(name_cs,icon)')
+    .select('id, name, case_number, status, intake_date, cause_of_injury, primary_photo, species:animal_species(name_cs,icon)')
     .eq('institution_id', id)
     .eq('published', true)
     .not('status', 'in', '("deceased")')
@@ -193,10 +193,10 @@ async function getRescueCases(id: string) {
 }
 
 async function getFundraisers(id: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data } = await supabase
     .from('fundraisers')
-    .select('id, title, description, goal_amount, current_amount, active')
+    .select('id, title, description, goal_amount, current_amount, active, deadline, image_url, darujme_url, darujme_donors_count, darujme_synced_at')
     .eq('institution_id', id)
     .order('active', { ascending: false })
     .order('created_at', { ascending: false })
@@ -204,7 +204,7 @@ async function getFundraisers(id: string) {
 }
 
 async function getArticles(id: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data } = await supabase
     .from('articles')
     .select('id, title, slug, perex, cover_url, category, published_at')
@@ -215,7 +215,7 @@ async function getArticles(id: string) {
 }
 
 async function getVolunteerCount(id: string) {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { count } = await supabase
     .from('volunteers')
     .select('id', { count: 'exact', head: true })

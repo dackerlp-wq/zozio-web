@@ -1,112 +1,271 @@
 import type { Metadata } from 'next'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import Link from 'next/link'
-import { Button } from '@/components/ui/Button'
+import Image from 'next/image'
+
+export const revalidate = 300
 
 export const metadata: Metadata = {
   title: 'Příběhy adopcí a záchran | Zozio',
   description: 'Čtěte příběhy úspěšných adopcí a záchran zvířat z celé ČR a SR.',
 }
 
-export default async function ArticlesPage() {
-  const supabase = await createClient()
-  const { data: articles } = await supabase
+const PAGE_SIZE = 12
+
+const CATEGORIES = [
+  { key: '',       label: 'Vše' },
+  { key: 'story',  label: '🐾 Příběhy' },
+  { key: 'rescue', label: '🦉 Záchranné' },
+  { key: 'tips',   label: '💡 Tipy' },
+  { key: 'news',   label: '📰 Novinky' },
+]
+
+const categoryLabel: Record<string, string> = {
+  story:  '🐾 Příběh adopce',
+  rescue: '🦉 Záchranný příběh',
+  tips:   '💡 Tipy',
+  news:   '📰 Novinky',
+}
+
+interface PageProps {
+  searchParams: Promise<{ cat?: string; page?: string }>
+}
+
+export default async function ArticlesPage({ searchParams }: PageProps) {
+  const { cat = '', page: pageStr = '1' } = await searchParams
+  const page = Math.max(1, parseInt(pageStr, 10) || 1)
+  const offset = (page - 1) * PAGE_SIZE
+
+  const supabase = createServiceClient()
+
+  // Pinned hero + paginated list in parallel
+  const pinnedQuery = supabase
     .from('articles')
-    .select('*')
+    .select('id, title, slug, perex, cover_url, category, published_at, institution:institutions(name, slug)')
+    .eq('published', true)
+    .eq('pinned', true)
+    .single()
+
+  let listQuery = supabase
+    .from('articles')
+    .select('id, title, slug, perex, cover_url, category, published_at, institution:institutions(name, slug)', { count: 'exact' })
     .eq('published', true)
     .order('published_at', { ascending: false })
-    .limit(12)
+    .range(offset, offset + PAGE_SIZE - 1)
 
-  const items = articles ?? []
+  if (cat) listQuery = listQuery.eq('category', cat)
 
-  // Statické ukázkové příběhy pokud není nic v DB
-  const staticStories = [
-    { id: '1', title: 'Max našel svůj domov', perex: 'Po třech měsících v útulku si Maxe adoptovala rodina z Prahy. Dnes žije na chatě se dvěma dětmi.', category: 'story', emoji: '🐕', institution: 'Útulok Praha Chodov' },
-    { id: '2', title: 'Výr Vocálko se vrátil do přírody', perex: 'Přijeli k nám s přebitým křídlem. Po třech měsících rehabilitace se Vocálko vrátil do lesů u Jihlavy.', category: 'rescue', emoji: '🦉', institution: 'Záchranná stanice Jihlava' },
-    { id: '3', title: 'Luna — z bázlivé kočky na královnu bytu', perex: 'Luna přišla do útulku podvyživená a bázlivá. Dnes žije v bytě v Brně a je absolutní vládkyní pohovky.', category: 'story', emoji: '🐱', institution: 'Kočičí azyl Ostrava' },
-    { id: '4', title: 'Lišák Ryšavák přežil otravu', perex: 'Byl nalezen u průmyslové zóny v kritickém stavu. Díky rychlé léčbě se uzdravil a vrátil do přírody.', category: 'rescue', emoji: '🦊', institution: 'ČSOP Plzeň' },
-    { id: '5', title: 'Fífa — malá dáma s velkým srdcem', perex: 'Tiny jorkšírská teriérka, která v útulku nevěřila lidem. Dnes je neodmyslitelnou součástí rodiny se třemi dětmi.', category: 'story', emoji: '🐕', institution: 'Psí útulek Brno' },
-    { id: '6', title: 'Ježeček se probudil ze zimního spánku', perex: 'Byl nalezen v zahradě v únoru — příliš brzy. Po péči záchranné stanice se koncem dubna vrátil ven.', category: 'rescue', emoji: '🦔', institution: 'Záchranná stanice Jihlava' },
-  ]
+  const [{ data: pinned }, { data: articlesRaw, count }] = await Promise.all([
+    pinnedQuery,
+    listQuery,
+  ])
 
-  const categoryLabel: Record<string, string> = {
-    story:  '🐾 Příběh adopce',
-    rescue: '🦉 Záchranný příběh',
-    tips:   '💡 Tipy',
-    news:   '📰 Novinky',
-  }
+  const articles = articlesRaw ?? []
+  const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE)
 
-  const categoryColor: Record<string, string> = {
-    story:  'bg-coral-light text-coral-dark',
-    rescue: 'bg-rescue-bg text-rescue-dark',
-    tips:   'bg-amber-light text-warning',
-    news:   'bg-sand text-brown-mid',
+  function buildUrl(params: { cat?: string; page?: number }) {
+    const q = new URLSearchParams()
+    const c = params.cat !== undefined ? params.cat : cat
+    const p = params.page ?? 1
+    if (c) q.set('cat', c)
+    if (p > 1) q.set('page', String(p))
+    const qs = q.toString()
+    return `/articles${qs ? `?${qs}` : ''}`
   }
 
   return (
     <main className="min-h-screen bg-warm pt-20 md:pt-24 pb-16 md:pb-20">
-      <div className="max-w-[1200px] mx-auto px-4 md:px-6">
+      <div className="max-w-[1100px] mx-auto px-4 md:px-6">
 
-        <div className="text-center mb-10 md:mb-12">
-          <span className="inline-flex items-center gap-1.5 bg-coral-light text-coral-dark font-body text-xs font-bold px-4 py-1.5 rounded-pill uppercase tracking-wider mb-4">
+        {/* Header */}
+        <div className="mb-8 md:mb-10">
+          <span className="inline-flex items-center gap-1.5 bg-coral-light text-coral-dark font-body text-xs font-bold px-4 py-1.5 rounded-pill uppercase tracking-wider mb-3">
             📖 Příběhy
           </span>
-          <h1 className="font-display font-extrabold text-3xl md:text-5xl text-espresso mb-3 leading-tight">
-            Příběhy, které<br className="hidden md:block" /> zahřejí srdce
+          <h1 className="font-display font-extrabold text-3xl md:text-4xl text-espresso mb-2 leading-tight">
+            Příběhy, které zahřejí srdce
           </h1>
-          <p className="text-base md:text-lg text-brown-mid max-w-[480px] mx-auto leading-relaxed">
+          <p className="text-sm md:text-base text-brown-mid max-w-[520px] leading-relaxed">
             Adopce, záchranné příběhy a novinky ze světa útulků a záchranných stanic.
           </p>
         </div>
 
-        {items.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {items.map(article => (
-              <article key={article.id} className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-pale hover:-translate-y-1 hover:shadow-md transition-all">
-                {article.cover_url ? (
-                  <div className="h-44 bg-sand">
-                    <img src={article.cover_url} alt={article.title} className="w-full h-full object-cover" />
+        {/* Pinned hero — show only on first page with no category filter */}
+        {pinned && !cat && page === 1 && (
+          <Link href={`/articles/${pinned.slug}`} className="no-underline block mb-10 group">
+            <div className="relative rounded-2xl overflow-hidden border border-amber/40 shadow-sm bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-2">
+                {/* Image */}
+                <div className="relative h-56 md:h-auto md:min-h-[320px] bg-sand">
+                  {pinned.cover_url ? (
+                    <Image
+                      src={pinned.cover_url}
+                      alt={pinned.title}
+                      fill
+                      loading="eager"
+                      className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                      sizes="(max-width: 768px) 100vw, 550px"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-7xl bg-gradient-to-br from-sand to-coral-light">
+                      🐾
+                    </div>
+                  )}
+                  <div className="absolute top-4 left-4">
+                    <span className="bg-amber text-white text-xs font-bold px-3 py-1 rounded-pill">
+                      📌 Doporučujeme
+                    </span>
                   </div>
-                ) : (
-                  <div className="h-44 bg-gradient-to-br from-sand to-coral-light flex items-center justify-center text-5xl">
-                    🐾
+                </div>
+
+                {/* Content */}
+                <div className="p-7 md:p-10 flex flex-col justify-center">
+                  <span className="inline-flex items-center text-xs font-bold text-coral-dark mb-3">
+                    {categoryLabel[pinned.category ?? 'story'] ?? '📖 Příběh'}
+                  </span>
+                  <h2 className="font-display font-extrabold text-2xl md:text-3xl text-espresso mb-3 leading-tight group-hover:text-coral transition-colors">
+                    {pinned.title}
+                  </h2>
+                  {pinned.perex && (
+                    <p className="text-sm md:text-base text-brown-mid leading-relaxed line-clamp-3 mb-4">
+                      {pinned.perex}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-3 text-xs text-gray">
+                    {(pinned.institution as any)?.name && (
+                      <span className="font-semibold text-espresso">{(pinned.institution as any).name}</span>
+                    )}
+                    {pinned.published_at && (
+                      <>
+                        <span>·</span>
+                        <span>{new Date(pinned.published_at).toLocaleDateString('cs-CZ')}</span>
+                      </>
+                    )}
                   </div>
+                  <div className="mt-5">
+                    <span className="inline-flex items-center gap-1.5 text-sm font-bold text-coral group-hover:gap-3 transition-all">
+                      Číst příběh →
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+        )}
+
+        {/* Category tabs */}
+        <div className="flex gap-2 overflow-x-auto pb-1 mb-7 scrollbar-hide">
+          {CATEGORIES.map(c => (
+            <Link
+              key={c.key}
+              href={buildUrl({ cat: c.key, page: 1 })}
+              className={`no-underline flex-shrink-0 text-sm font-bold px-4 py-2 rounded-pill border transition-all
+                ${cat === c.key
+                  ? 'bg-espresso text-white border-espresso'
+                  : 'bg-white text-gray border-gray-pale hover:border-gray-light hover:text-espresso'
+                }`}
+            >
+              {c.label}
+            </Link>
+          ))}
+        </div>
+
+        {/* Grid */}
+        {articles.length > 0 ? (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+              {articles.map(article => (
+                <ArticleCard key={article.id} article={article} />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-10">
+                {page > 1 && (
+                  <Link href={buildUrl({ page: page - 1 })}
+                    className="no-underline px-4 py-2 rounded-lg border border-gray-pale bg-white text-sm font-semibold text-gray hover:border-espresso hover:text-espresso transition-all">
+                    ← Předchozí
+                  </Link>
                 )}
-                <div className="p-5">
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-pill text-xs font-bold mb-3 ${categoryColor[article.category ?? 'story'] ?? 'bg-sand text-gray'}`}>
-                    {categoryLabel[article.category ?? 'story'] ?? '📖 Příběh'}
-                  </span>
-                  <h2 className="font-display font-extrabold text-lg text-espresso mb-2 leading-tight">{article.title}</h2>
-                  {article.perex && <p className="text-sm text-brown-mid leading-relaxed line-clamp-2 mb-3">{article.perex}</p>}
-                  <div className="flex items-center justify-between text-xs text-gray">
-                    <span>{article.author_name ?? 'Zozio'}</span>
-                    {article.published_at && <span>{new Date(article.published_at).toLocaleDateString('cs-CZ')}</span>}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
+                <span className="text-sm text-gray px-3">
+                  {page} / {totalPages}
+                </span>
+                {page < totalPages && (
+                  <Link href={buildUrl({ page: page + 1 })}
+                    className="no-underline px-4 py-2 rounded-lg border border-gray-pale bg-white text-sm font-semibold text-gray hover:border-espresso hover:text-espresso transition-all">
+                    Další →
+                  </Link>
+                )}
+              </div>
+            )}
+          </>
         ) : (
-          // Statické ukázkové příběhy
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {staticStories.map(s => (
-              <article key={s.id} className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-pale hover:-translate-y-1 hover:shadow-md transition-all">
-                <div className="h-44 bg-gradient-to-br from-sand to-coral-light flex items-center justify-center text-6xl">
-                  {s.emoji}
-                </div>
-                <div className="p-5">
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-pill text-xs font-bold mb-3 ${categoryColor[s.category] ?? 'bg-sand text-gray'}`}>
-                    {categoryLabel[s.category]}
-                  </span>
-                  <h2 className="font-display font-extrabold text-lg text-espresso mb-2 leading-tight">{s.title}</h2>
-                  <p className="text-sm text-brown-mid leading-relaxed mb-3">{s.perex}</p>
-                  <div className="text-xs text-gray">{s.institution}</div>
-                </div>
-              </article>
-            ))}
+          <div className="text-center py-20 text-gray">
+            <div className="text-5xl mb-4">📭</div>
+            <p className="font-bold text-espresso mb-1">Žádné články v této kategorii</p>
+            <Link href="/articles" className="text-sm text-coral font-semibold no-underline hover:opacity-80">
+              Zobrazit vše
+            </Link>
           </div>
         )}
       </div>
     </main>
+  )
+}
+
+function ArticleCard({ article }: { article: any }) {
+  const institution = article.institution as any
+  const readingMins = article.perex
+    ? Math.max(1, Math.ceil(article.perex.split(' ').length / 200))
+    : null
+
+  return (
+    <Link href={`/articles/${article.slug}`} className="no-underline group">
+      <article className="bg-white rounded-xl overflow-hidden border border-gray-pale hover:-translate-y-1 hover:shadow-md transition-all h-full flex flex-col">
+        {/* Image */}
+        <div className="relative h-40 md:h-48 bg-sand flex-shrink-0">
+          {article.cover_url ? (
+            <Image
+              src={article.cover_url}
+              alt={article.title}
+              fill
+              className="object-cover group-hover:scale-[1.03] transition-transform duration-500"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-5xl bg-gradient-to-br from-sand to-coral-light">
+              🐾
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="p-4 md:p-5 flex flex-col flex-1">
+          <span className="text-[11px] font-bold text-coral-dark mb-2">
+            {categoryLabel[article.category ?? 'story'] ?? '📖 Příběh'}
+          </span>
+          <h2 className="font-display font-extrabold text-sm md:text-base text-espresso mb-2 leading-tight line-clamp-2 group-hover:text-coral transition-colors flex-1">
+            {article.title}
+          </h2>
+          {article.perex && (
+            <p className="text-xs text-brown-mid leading-relaxed line-clamp-2 mb-3 hidden md:block">
+              {article.perex}
+            </p>
+          )}
+          <div className="flex items-center justify-between text-[11px] text-gray mt-auto pt-2 border-t border-gray-pale">
+            <span className="font-semibold truncate max-w-[120px]">
+              {institution?.name ?? 'Zozio'}
+            </span>
+            <span className="flex-shrink-0 ml-2">
+              {article.published_at
+                ? new Date(article.published_at).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })
+                : readingMins ? `${readingMins} min čtení` : null
+              }
+            </span>
+          </div>
+        </div>
+      </article>
+    </Link>
   )
 }
