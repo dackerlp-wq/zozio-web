@@ -67,7 +67,7 @@ export function BreedSearch({ breeds }: { breeds: BreedSearchItem[] }) {
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           onKeyDown={handleKey}
           placeholder="Hledat plemeno..."
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors focus:outline-none"
+          className="w-full pl-9 pr-4 py-2.5 rounded-lg border-2 text-sm font-medium transition-colors focus:outline-none"
           style={{
             background: 'white',
             borderColor: open && q ? '#E8634A' : '#F0EDE8',
@@ -88,7 +88,7 @@ export function BreedSearch({ breeds }: { breeds: BreedSearchItem[] }) {
       {open && results.length > 0 && (
         <ul
           ref={listRef}
-          className="absolute top-full left-0 right-0 mt-1.5 rounded-xl border border-[#F0EDE8] bg-white shadow-lg overflow-hidden z-50"
+          className="absolute top-full left-0 right-0 mt-1.5 rounded-lg border border-[#F0EDE8] bg-white shadow-lg overflow-hidden z-50"
           style={{ maxHeight: '320px', overflowY: 'auto' }}>
           {results.map((b, i) => (
             <li key={b.slug}>
@@ -121,7 +121,7 @@ export function BreedSearch({ breeds }: { breeds: BreedSearchItem[] }) {
       )}
 
       {open && q.trim().length >= 1 && results.length === 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 rounded-xl border border-[#F0EDE8] bg-white shadow-lg px-4 py-3 text-sm z-50"
+        <div className="absolute top-full left-0 right-0 mt-1.5 rounded-lg border border-[#F0EDE8] bg-white shadow-lg px-4 py-3 text-sm z-50"
           style={{ color: '#A08070' }}>
           Žádné plemeno nenalezeno pro „{q}"
         </div>

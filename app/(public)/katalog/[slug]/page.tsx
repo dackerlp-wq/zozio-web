@@ -99,7 +99,7 @@ export default async function BreedProfilePage({ params }: Props) {
         </nav>
 
         {/* ─── HERO ────────────────────────────────── */}
-        <div className="rounded-2xl overflow-hidden mb-8"
+        <div className="rounded-lg overflow-hidden mb-8"
           style={{ background: 'linear-gradient(135deg, #2C1810 0%, #4A2C1A 60%, #6B3A20 100%)' }}>
           <div className="px-6 md:px-10 py-8 md:py-10">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -122,7 +122,7 @@ export default async function BreedProfilePage({ params }: Props) {
               </div>
               {animalList.length > 0 && (
                 <Link href={`/adopt?species=${breed.species_id}&breed=${encodeURIComponent(breed.name_cs)}`}
-                  className="flex-shrink-0 px-5 py-3 rounded-xl font-bold text-white no-underline hover:opacity-90 transition-opacity text-sm"
+                  className="flex-shrink-0 px-5 py-3 rounded-lg font-bold text-white no-underline hover:opacity-90 transition-opacity text-sm"
                   style={{ background: '#E8634A' }}>
                   {animalList.length} k adopci →
                 </Link>
@@ -268,7 +268,7 @@ export default async function BreedProfilePage({ params }: Props) {
                 <h2 className="font-display font-extrabold text-[#1A0F0A] text-base mb-3">🧩 Zajímavosti</h2>
                 <div className="space-y-3">
                   {p.fun_facts.map((f, i) => (
-                    <div key={i} className="rounded-xl p-4 border border-[#F0EDE8] bg-white flex gap-3">
+                    <div key={i} className="rounded-lg p-4 border border-[#F0EDE8] bg-white flex gap-3">
                       <span className="text-xl flex-shrink-0">{['🐕‍🦺', '🧠', '🎬', '🏆', '🌍'][i % 5]}</span>
                       <p className="text-sm leading-relaxed" style={{ color: '#2C1810' }}>{f}</p>
                     </div>
@@ -279,7 +279,7 @@ export default async function BreedProfilePage({ params }: Props) {
 
             {/* Summary */}
             {p.summary && (
-              <div className="p-6 rounded-2xl border-l-4" style={{ background: '#FBF0EC', borderColor: '#E8634A' }}>
+              <div className="p-6 rounded-lg border-l-4" style={{ background: '#FBF0EC', borderColor: '#E8634A' }}>
                 <h2 className="font-display font-extrabold text-[#1A0F0A] text-base mb-2">✔️ Shrnutí</h2>
                 <p className="text-sm leading-relaxed" style={{ color: '#4A2C1A' }}>{p.summary}</p>
               </div>
@@ -289,7 +289,7 @@ export default async function BreedProfilePage({ params }: Props) {
 
           {/* RIGHT: adoptions sidebar */}
           <aside className="w-full lg:w-[300px] xl:w-[320px] flex-shrink-0 lg:sticky lg:top-24">
-            <div className="rounded-xl border border-[#F0EDE8] bg-white overflow-hidden">
+            <div className="rounded-lg border border-[#F0EDE8] bg-white overflow-hidden">
               <div className="px-4 py-3 border-b border-[#F0EDE8] flex items-center justify-between"
                 style={{ background: '#FBF0EC' }}>
                 <h2 className="font-display font-extrabold text-sm text-[#1A0F0A]">
@@ -359,7 +359,7 @@ function HeroStat({ icon, label }: { icon: string; label: string }) {
 
 function Section({ icon, title, accent, children }: { icon: string; title: string; accent: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-[#F0EDE8] bg-white overflow-hidden">
+    <div className="rounded-lg border border-[#F0EDE8] bg-white overflow-hidden">
       <div className="px-5 py-3 flex items-center gap-2 border-b border-[#F0EDE8]"
         style={{ borderLeft: `4px solid ${accent}` }}>
         <span className="text-base">{icon}</span>

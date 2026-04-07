@@ -116,7 +116,7 @@ export default async function KatalogPage() {
         </div>
 
         {/* CTA */}
-        <div className="mt-16 p-8 rounded-xl text-center" style={{ background: '#FBF0EC' }}>
+        <div className="mt-16 p-8 rounded-lg text-center" style={{ background: '#FBF0EC' }}>
           <p className="font-display font-extrabold text-[#1A0F0A] text-lg md:text-xl mb-2">
             Hledáš konkrétní zvíře?
           </p>

@@ -271,7 +271,7 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
       {/* Import modal */}
       {importOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-[#F0EDE8] flex items-center justify-between">
               <h3 className="font-bold text-[#2C1810]">Import plemene z JSON</h3>
               <button type="button" onClick={() => { setImportOpen(false); setImportJson(''); setImportError('') }}
@@ -324,7 +324,7 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
 
       {/* Edit / Add form */}
       {isEditing && (
-        <div className="bg-[#FDEAE6]/50 border-2 border-[#E8634A]/30 rounded-xl p-5 mb-5 space-y-4">
+        <div className="bg-[#FDEAE6]/50 border-2 border-[#E8634A]/30 rounded-lg p-5 mb-5 space-y-4">
           <h3 className="font-bold text-[#2C1810]">{adding ? 'Přidat nové plemeno' : `Upravit: ${form.name_cs}`}</h3>
 
           {/* ── Basic fields ── */}
@@ -482,7 +482,7 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
       )}
 
       {/* Breeds table */}
-      <div className="bg-white rounded-xl border border-[#F0EDE8] overflow-hidden">
+      <div className="bg-white rounded-lg border border-[#F0EDE8] overflow-hidden">
         <div className="px-4 py-3 border-b border-[#F0EDE8]">
           <span className="text-sm font-bold text-[#2C1810]">{filtered.length} plemen</span>
         </div>
