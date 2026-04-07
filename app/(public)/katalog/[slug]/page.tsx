@@ -92,7 +92,7 @@ export default async function BreedProfilePage({ params }: Props) {
     .eq('published', true)
     .eq('adoption_status', 'available')
     .eq('species_id', breed.species_id)
-    .eq('breed', breed.name_cs)
+    .or(`breed_id.eq.${breed.id},breed.eq.${breed.name_cs}`)
     .order('created_at', { ascending: false })
     .limit(20)
 
