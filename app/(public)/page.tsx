@@ -206,11 +206,11 @@ function HeroSection({ animals, species }: { animals: any[]; species: any[] }) {
       {animals.length > 0 && (
         <div className="lg:hidden pb-4 pt-2">
           <div className="flex gap-3 overflow-x-auto px-4 pb-2" style={{ scrollbarWidth: 'none' }}>
-            {animals.slice(0, 6).map(animal => (
+            {animals.slice(0, 6).map((animal, i) => (
               <Link key={animal.id} href={`/animals/${animal.id}`} className="no-underline flex-shrink-0">
                 <div className="relative w-32 h-32 rounded-2xl overflow-hidden shadow-sm">
                   {animal.primary_photo ? (
-                    <Image src={animal.primary_photo} alt={animal.name} fill className="object-cover" sizes="128px" />
+                    <Image src={animal.primary_photo} alt={animal.name} fill className="object-cover" sizes="128px" priority={i === 0} />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-sand to-coral-light flex items-center justify-center text-4xl">
                       {animal.species?.icon ?? '🐾'}
