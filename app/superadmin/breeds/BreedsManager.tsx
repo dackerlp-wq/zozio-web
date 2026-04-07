@@ -70,15 +70,25 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
   const [importOpen, setImportOpen] = useState(false)
   const [importJson, setImportJson] = useState('')
   const [importError, setImportError] = useState('')
+  const [filterNoProfile, setFilterNoProfile] = useState(false)
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok })
     setTimeout(() => setToast(null), 3000)
   }
 
+  function hasProfile(b: Breed) {
+    if (!b.profile) return false
+    const p = b.profile as Record<string, unknown>
+    return Object.values(p).some(v => v && (Array.isArray(v) ? v.length > 0 : String(v).trim() !== ''))
+  }
+
+  const needsProfileBreeds = breeds.filter(b => !hasProfile(b))
+
   const filtered = breeds.filter(b => {
     if (filterSpecies && b.species_id !== filterSpecies) return false
     if (filterQ && !b.name_cs.toLowerCase().includes(filterQ.toLowerCase())) return false
+    if (filterNoProfile && hasProfile(b)) return false
     return true
   })
 
@@ -265,6 +275,31 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-white text-sm font-bold shadow-lg ${toast.ok ? 'bg-[#2D7A4F]' : 'bg-[#D83030]'}`}>
           {toast.msg}
+        </div>
+      )}
+
+      {/* Needs-profile banner */}
+      {needsProfileBreeds.length > 0 && (
+        <div className="flex items-center gap-3 mb-5 px-4 py-3 rounded-lg border"
+          style={{ background: '#FFF7ED', borderColor: '#FED7AA' }}>
+          <span className="text-lg flex-shrink-0">⚠️</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold" style={{ color: '#92400E' }}>
+              {needsProfileBreeds.length} {needsProfileBreeds.length === 1 ? 'plemeno nemá' : 'plemen nemá'} vyplněný profil
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: '#B45309' }}>
+              Profil se zobrazuje na veřejné stránce /katalog/[rasa] — doplňte popis, povahu, historii a zajímavosti.
+            </p>
+          </div>
+          <button type="button"
+            onClick={() => setFilterNoProfile(f => !f)}
+            className="flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold transition-colors"
+            style={{
+              background: filterNoProfile ? '#92400E' : '#FEF3C7',
+              color: filterNoProfile ? 'white' : '#92400E',
+            }}>
+            {filterNoProfile ? 'Zobrazit vše' : 'Zobrazit jen bez profilu'}
+          </button>
         </div>
       )}
 
@@ -502,9 +537,10 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
                     {b.name_sk && <span className="text-xs text-[#A09890]">/ {b.name_sk}</span>}
                     {b.profile?.name_en && <span className="text-xs text-[#A09890]">({b.profile.name_en})</span>}
                     {b.is_custom && <span className="px-1.5 py-px text-[10px] font-bold bg-[#FFF3D6] text-[#7a5800] rounded">vlastní</span>}
-                    {b.profile && Object.keys(b.profile).some(k => !!(b.profile as Record<string,unknown>)[k]) && (
-                      <span className="px-1.5 py-px text-[10px] font-bold bg-[#EBF7F0] text-[#2D7A4F] rounded">✓ profil</span>
-                    )}
+                    {hasProfile(b)
+                      ? <span className="px-1.5 py-px text-[10px] font-bold bg-[#EBF7F0] text-[#2D7A4F] rounded">✓ profil</span>
+                      : <span className="px-1.5 py-px text-[10px] font-bold bg-[#FFF7ED] text-[#C2410C] rounded">⚠ bez profilu</span>
+                    }
                   </div>
                   <div className="flex flex-wrap gap-2 mt-0.5">
                     <span className="text-xs text-[#8B6550]">{b.species?.[0]?.name_cs ?? '—'}</span>

@@ -203,14 +203,7 @@ async function getData(): Promise<{ species: SpeciesWithBreeds[] }> {
     const count = breedCount[`${b.species_id}::${b.name_cs}`] ?? 0
     breedsBySpecies[b.species_id].push({ name: b.name_cs, count, slug: breedSlug(b.name_cs) })
   }
-  for (const a of animalList) {
-    if (!a.species_id || !a.breed) continue
-    const list = breedsBySpecies[a.species_id] ?? []
-    if (!list.find(b => b.name === a.breed)) {
-      list.push({ name: a.breed, count: breedCount[`${a.species_id}::${a.breed}`] ?? 1, slug: breedSlug(a.breed) })
-      breedsBySpecies[a.species_id] = list
-    }
-  }
+  // NOTE: breeds come exclusively from animal_breeds table — no fallback from animals.breed text field
   for (const sid of Object.keys(breedsBySpecies)) {
     breedsBySpecies[sid].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'cs'))
   }

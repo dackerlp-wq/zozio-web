@@ -408,9 +408,18 @@ export function AnimalForm({
   }
 
   // ── Breed handlers ─────────────────────────────────────────────────────────
+  function normBreed(s: string) {
+    return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+  }
+
   const filteredBreeds = breedSearch.trim()
-    ? breeds.filter(b => b.name_cs.toLowerCase().includes(breedSearch.toLowerCase()))
+    ? breeds.filter(b => normBreed(b.name_cs).includes(normBreed(breedSearch)))
     : breeds
+
+  // Exact duplicate — same name after normalization
+  const exactMatch = breedSearch.trim()
+    ? breeds.find(b => normBreed(b.name_cs) === normBreed(breedSearch))
+    : null
 
   function selectBreed(b: Breed) {
     set('breed_id', b.id)
@@ -421,6 +430,8 @@ export function AnimalForm({
 
   async function addCustomBreed() {
     if (!breedSearch.trim() || !form.species_id) return
+    // If exact match exists, select it instead of creating duplicate
+    if (exactMatch) { selectBreed(exactMatch); return }
     try {
       const res = await fetch('/api/breeds', {
         method: 'POST',
@@ -431,7 +442,7 @@ export function AnimalForm({
       if (!res.ok) throw new Error(newBreed.error)
       setBreeds(prev => [...prev, newBreed])
       selectBreed(newBreed)
-      showToast(`Přidáno plemeno: ${newBreed.name_cs}`)
+      showToast(`Přidáno: ${newBreed.name_cs} — superadmin doplní profil`)
     } catch (e) {
       showToast(`Chyba: ${e instanceof Error ? e.message : 'Neznámá'}`, false)
     }
@@ -740,20 +751,36 @@ export function AnimalForm({
                   />
                   {breedOpen && form.species_id && (
                     <div className="absolute z-20 w-full mt-1 bg-white border-2 border-[#F0EDE8] rounded-lg shadow-lg max-h-52 overflow-y-auto">
-                      {filteredBreeds.length > 0 ? filteredBreeds.map(b => (
-                        <button key={b.id} type="button" onClick={() => selectBreed(b)}
-                          className="w-full text-left px-3 py-2.5 text-sm font-semibold text-[#2C1810] hover:bg-[#FDEAE6] transition-colors border-b border-[#F0EDE8] last:border-0 touch-manipulation">
-                          {b.name_cs}
-                          {b.is_custom && <span className="ml-2 text-[10px] text-[#8B6550] font-normal">vlastní</span>}
-                        </button>
-                      )) : (
+                      {filteredBreeds.length > 0 ? (
+                        <>
+                          {filteredBreeds.map(b => (
+                            <button key={b.id} type="button" onClick={() => selectBreed(b)}
+                              className="w-full text-left px-3 py-2.5 text-sm font-semibold text-[#2C1810] hover:bg-[#FDEAE6] transition-colors border-b border-[#F0EDE8] last:border-0 touch-manipulation flex items-center justify-between gap-2">
+                              <span>{b.name_cs}</span>
+                              {b.is_custom && <span className="text-[10px] text-[#8B6550] font-normal flex-shrink-0">vlastní</span>}
+                            </button>
+                          ))}
+                          {/* If typed text doesn't exactly match any result, offer to create */}
+                          {breedSearch.trim() && !exactMatch && (
+                            <button type="button" onClick={addCustomBreed}
+                              className="w-full text-left px-3 py-2.5 text-sm font-semibold text-[#E8634A] hover:bg-[#FDEAE6] transition-colors border-t border-[#F0EDE8] touch-manipulation">
+                              ＋ Vytvořit „{breedSearch}"
+                            </button>
+                          )}
+                        </>
+                      ) : (
                         breedSearch.trim() ? (
-                          <button type="button" onClick={addCustomBreed}
-                            className="w-full text-left px-3 py-2.5 text-sm font-semibold text-[#E8634A] hover:bg-[#FDEAE6] touch-manipulation">
-                            ＋ Přidat „{breedSearch}" jako vlastní plemeno
-                          </button>
+                          <div>
+                            <button type="button" onClick={addCustomBreed}
+                              className="w-full text-left px-3 py-2.5 text-sm font-semibold text-[#E8634A] hover:bg-[#FDEAE6] touch-manipulation">
+                              ＋ Vytvořit rasu „{breedSearch}"
+                            </button>
+                            <div className="px-3 py-2 text-[11px] text-[#A09890] border-t border-[#F0EDE8] leading-snug">
+                              Rasa bude uložena bez detailního profilu.<br />Superadmin ji může doplnit v&nbsp;sekci Rasy zvířat.
+                            </div>
+                          </div>
                         ) : (
-                          <div className="px-3 py-2.5 text-sm text-[#A09890]">Žádná plemena — začni psát</div>
+                          <div className="px-3 py-2.5 text-sm text-[#A09890]">Začni psát název rasy...</div>
                         )
                       )}
                     </div>
