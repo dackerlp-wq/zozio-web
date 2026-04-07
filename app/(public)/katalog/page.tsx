@@ -1,26 +1,41 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createServiceClient } from '@/lib/supabase/service'
+import { breedSlug } from '@/lib/breed-slug'
+import { BreedSearch } from '@/components/public/BreedSearch'
+import type { BreedSearchItem } from '@/components/public/BreedSearch'
 
 export const metadata: Metadata = {
-  title: 'Katalog ras a druhů zvířat | Zozio',
-  description: 'Přehled všech druhů a ras zvířat k adopci na Zozio — psi, kočky, exotická zvířata a další. Najdi svého nového mazlíčka.',
+  title: 'Katalog plemen psů a koček | Zozio',
+  description: 'Přehled plemen psů a koček k adopci na Zozio. Najdi svého nového mazlíčka a zjisti vše o jeho povaze, velikosti a potřebách.',
 }
 
 export const revalidate = 3600
+
+const DOG_NAMES = ['pes', 'psi', 'psy']
+const CAT_NAMES = ['kočka', 'kočky', 'kocka']
 
 interface SpeciesWithBreeds {
   id: string
   name_cs: string
   icon: string | null
   animalCount: number
-  breeds: { name: string; count: number }[]
+  breeds: { name: string; count: number; slug: string }[]
 }
 
 export default async function KatalogPage() {
-  const { species, breedsBySpecies } = await getData()
-
+  const { species } = await getData()
   const total = species.reduce((s, sp) => s + sp.animalCount, 0)
+
+  const searchBreeds: BreedSearchItem[] = species.flatMap(sp =>
+    sp.breeds.map(b => ({
+      name: b.name,
+      slug: b.slug,
+      speciesIcon: sp.icon ?? '🐾',
+      speciesName: sp.name_cs,
+      count: b.count,
+    }))
+  ).sort((a, b) => a.name.localeCompare(b.name, 'cs'))
 
   return (
     <main className="min-h-screen pt-20 md:pt-24 pb-16" style={{ background: '#FFFCF8' }}>
@@ -30,16 +45,17 @@ export default async function KatalogPage() {
         <div className="py-8 md:py-10 border-b border-[#F0EDE8] mb-10">
           <h1 className="font-display font-extrabold text-[#1A0F0A] mb-2"
             style={{ fontSize: 'clamp(24px, 4vw, 36px)' }}>
-            Katalog ras a druhů zvířat
+            Katalog plemen psů a koček
           </h1>
           <p className="text-sm md:text-base mb-4" style={{ color: '#6B4030' }}>
-            Přehled všech druhů a ras zvířat hledajících domov na Zozio
+            Přehled plemen hledajících domov na Zozio — zjisti povahu, velikost a potřeby každého plemene
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Stat label="druhů zvířat" value={species.filter(s => s.animalCount > 0).length} />
-            <Stat label="ras v databázi" value={species.reduce((n, s) => n + s.breeds.length, 0)} />
+          <div className="flex flex-wrap items-center gap-3 mb-5">
+            <Stat label="druhů" value={species.filter(s => s.animalCount > 0).length} />
+            <Stat label="plemen v databázi" value={species.reduce((n, s) => n + s.breeds.length, 0)} />
             <Stat label="zvířat k adopci" value={total} color="#E8634A" />
           </div>
+          <BreedSearch breeds={searchBreeds} />
         </div>
 
         {/* Species sections */}
@@ -70,7 +86,7 @@ export default async function KatalogPage() {
                   {sp.breeds.map(breed => (
                     <Link
                       key={breed.name}
-                      href={`/adopt?species=${sp.id}&breed=${encodeURIComponent(breed.name)}`}
+                      href={`/katalog/${breed.slug}`}
                       className="group flex items-center justify-between gap-2 px-3.5 py-3 rounded-lg border border-[#F0EDE8] bg-white hover:border-[#E8634A] hover:shadow-sm transition-all no-underline">
                       <span className="text-sm font-semibold text-[#1A0F0A] group-hover:text-[#E8634A] transition-colors leading-snug">
                         {breed.name}
@@ -90,7 +106,6 @@ export default async function KatalogPage() {
                 </p>
               )}
 
-              {/* No animals notice */}
               {sp.animalCount === 0 && (
                 <p className="text-xs mt-3" style={{ color: '#A08070' }}>
                   Momentálně žádná zvířata tohoto druhu nečekají na adopci.
@@ -129,39 +144,48 @@ function Stat({ label, value, color = '#1A0F0A' }: { label: string; value: numbe
   )
 }
 
-async function getData(): Promise<{ species: SpeciesWithBreeds[]; breedsBySpecies: Record<string, { name: string; count: number }[]> }> {
+async function getData(): Promise<{ species: SpeciesWithBreeds[] }> {
   const supabase = createServiceClient()
 
-  // Fetch all species
   const { data: speciesData } = await supabase
     .from('animal_species')
     .select('id, name_cs, icon')
     .order('name_cs')
 
-  // Fetch available animals with species_id and breed
+  // Filter to only dogs and cats
+  const filtered = (speciesData ?? []).filter(sp => {
+    const n = sp.name_cs.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    return DOG_NAMES.some(d => n.includes(d.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) ||
+      CAT_NAMES.some(c => n.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')))
+  })
+
+  if (filtered.length === 0) {
+    return { species: [] }
+  }
+
+  const speciesIds = filtered.map(s => s.id)
+
   const { data: animals } = await supabase
     .from('animals')
     .select('species_id, breed')
     .eq('published', true)
     .eq('adoption_status', 'available')
-    .not('species_id', 'is', null)
+    .in('species_id', speciesIds)
 
-  // Fetch all breeds from animal_breeds table
   const { data: breedsData } = await supabase
     .from('animal_breeds')
     .select('species_id, name_cs')
+    .in('species_id', speciesIds)
     .order('name_cs')
 
   const animalList = animals ?? []
 
-  // Count animals per species
   const speciesCount: Record<string, number> = {}
   for (const a of animalList) {
     if (a.species_id) speciesCount[a.species_id] = (speciesCount[a.species_id] ?? 0) + 1
   }
 
-  // Count animals per breed (per species)
-  type BreedKey = string // "speciesId::breedName"
+  type BreedKey = string
   const breedCount: Record<BreedKey, number> = {}
   for (const a of animalList) {
     if (a.species_id && a.breed) {
@@ -170,36 +194,31 @@ async function getData(): Promise<{ species: SpeciesWithBreeds[]; breedsBySpecie
     }
   }
 
-  // Build breed sets per species from animal_breeds table
-  // then enrich with counts from actual animals
-  const breedsBySpecies: Record<string, { name: string; count: number }[]> = {}
+  const breedsBySpecies: Record<string, { name: string; count: number; slug: string }[]> = {}
   for (const b of (breedsData ?? [])) {
     if (!b.species_id) continue
     if (!breedsBySpecies[b.species_id]) breedsBySpecies[b.species_id] = []
     const count = breedCount[`${b.species_id}::${b.name_cs}`] ?? 0
-    breedsBySpecies[b.species_id].push({ name: b.name_cs, count })
+    breedsBySpecies[b.species_id].push({ name: b.name_cs, count, slug: breedSlug(b.name_cs) })
   }
-  // Also add breeds that appear in animals but not in animal_breeds table
   for (const a of animalList) {
     if (!a.species_id || !a.breed) continue
     const list = breedsBySpecies[a.species_id] ?? []
     if (!list.find(b => b.name === a.breed)) {
-      list.push({ name: a.breed, count: breedCount[`${a.species_id}::${a.breed}`] ?? 1 })
+      list.push({ name: a.breed, count: breedCount[`${a.species_id}::${a.breed}`] ?? 1, slug: breedSlug(a.breed) })
       breedsBySpecies[a.species_id] = list
     }
   }
-  // Sort breeds by count desc, then alpha
   for (const sid of Object.keys(breedsBySpecies)) {
     breedsBySpecies[sid].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'cs'))
   }
 
-  const species: SpeciesWithBreeds[] = (speciesData ?? []).map(sp => ({
+  const species: SpeciesWithBreeds[] = filtered.map(sp => ({
     ...sp,
     animalCount: speciesCount[sp.id] ?? 0,
     breeds: breedsBySpecies[sp.id] ?? [],
   }))
-  // Sort: species with animals first
   species.sort((a, b) => b.animalCount - a.animalCount)
 
-  return { species, breedsBySpecies }
+  return { species }
 }

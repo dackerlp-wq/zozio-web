@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   if (!membership) return NextResponse.json({ error: 'Nemáš přístup' }, { status: 403 })
 
   const body = await request.json()
-  const { species_id, name_cs, name_sk, origin_country, size_category, energy_level, hypoallergenic, description } = body
+  const { species_id, name_cs, name_sk, origin_country, size_category, energy_level, hypoallergenic, description, profile } = body
 
   if (!species_id || !name_cs?.trim()) {
     return NextResponse.json({ error: 'Chybí species_id nebo name_cs' }, { status: 400 })
@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       energy_level: energy_level || null,
       hypoallergenic: hypoallergenic ?? false,
       description: description?.trim() || null,
+      profile: profile ?? null,
       institution_id: membership.institution_id,
       is_custom: true,
     })
