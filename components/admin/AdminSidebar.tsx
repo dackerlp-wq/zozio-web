@@ -31,6 +31,7 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
     ),
     { href: '/admin/fundraisers', icon: '💛', label: 'Sbírky' },
     { href: '/admin/volunteers',  icon: '🙋', label: 'Dobrovolníci' },
+    { href: '/admin/coverage',   icon: '🗺️', label: 'Dosah na mapě' },
     { href: '/admin/articles',   icon: '📝', label: 'Články' },
     { href: '/admin/newsletter', icon: '📬', label: 'Newsletter' },
     { href: '/admin/widget',     icon: '🔗', label: 'Widget' },

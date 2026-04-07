@@ -1,0 +1,272 @@
+'use client'
+import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+
+export interface MapInstitution {
+  id: string
+  name: string
+  slug: string
+  type: 'shelter' | 'rescue_station'
+  city: string | null
+  lat: number | null
+  lng: number | null
+  logo_url: string | null
+  coverage_cities: string[] | null
+  animal_count?: number
+}
+
+interface Props {
+  institutions: MapInstitution[]
+}
+
+export function InstitutionsMapClient({ institutions }: Props) {
+  const mapRef      = useRef<HTMLDivElement>(null)
+  const mapInstance = useRef<any>(null)
+  const markersRef  = useRef<Record<string, any>>({})
+  const [selected,  setSelected]  = useState<MapInstitution | null>(null)
+  const [filter,    setFilter]    = useState<'all' | 'shelter' | 'rescue_station'>('all')
+  const [search,    setSearch]    = useState('')
+
+  const withCoords = institutions.filter(i => i.lat && i.lng)
+  const filtered   = withCoords.filter(i => {
+    if (filter !== 'all' && i.type !== filter) return false
+    if (search && !i.name.toLowerCase().includes(search.toLowerCase()) &&
+        !i.city?.toLowerCase().includes(search.toLowerCase())) return false
+    return true
+  })
+
+  // Init map
+  useEffect(() => {
+    if (!mapRef.current || mapInstance.current) return
+
+    import('leaflet').then(L => {
+      const map = L.map(mapRef.current!, {
+        center:    [49.8, 15.5],
+        zoom:      7,
+        zoomControl: true,
+      })
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 18,
+      }).addTo(map)
+
+      mapInstance.current = map
+      buildMarkers(L, map)
+    })
+
+    return () => {
+      if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Rebuild markers when filter/search changes
+  useEffect(() => {
+    if (!mapInstance.current) return
+    import('leaflet').then(L => buildMarkers(L, mapInstance.current))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, search])
+
+  function buildMarkers(L: any, map: any) {
+    // Remove old markers
+    Object.values(markersRef.current).forEach((m: any) => m.remove())
+    markersRef.current = {}
+
+    filtered.forEach(inst => {
+      if (!inst.lat || !inst.lng) return
+
+      const isShelter = inst.type === 'shelter'
+      const color     = isShelter ? '#E8634A' : '#2E9E8F'
+      const bg        = isShelter ? '#FAECE7' : '#E1F5EE'
+
+      const icon = L.divIcon({
+        html: `<div style="
+          width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+          background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.25);
+          display:flex;align-items:center;justify-content:center;
+        "><span style="transform:rotate(45deg);font-size:14px">${isShelter ? '🏠' : '🚑'}</span></div>`,
+        className: '',
+        iconSize:  [32, 32],
+        iconAnchor:[16, 32],
+        popupAnchor:[0, -34],
+      })
+
+      const coverageHtml = inst.coverage_cities?.length
+        ? `<div style="margin-top:8px;border-top:1px solid #F0EDE8;padding-top:8px">
+            <div style="font-size:10px;font-weight:700;color:#8B6550;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Dosah</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              ${inst.coverage_cities.slice(0, 8).map(c =>
+                `<span style="font-size:11px;padding:1px 6px;border-radius:100px;background:${bg};color:${color};font-weight:600">${c}</span>`
+              ).join('')}
+              ${inst.coverage_cities.length > 8 ? `<span style="font-size:11px;color:#8B6550">+${inst.coverage_cities.length - 8} dalších</span>` : ''}
+            </div>
+          </div>`
+        : ''
+
+      const popup = L.popup({ maxWidth: 240, className: 'zoz-popup' }).setContent(`
+        <div style="font-family:system-ui;padding:2px">
+          <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
+            ${isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
+          </div>
+          <div style="font-weight:700;font-size:14px;color:#1A0F0A;margin-bottom:2px">${inst.name}</div>
+          ${inst.city ? `<div style="font-size:12px;color:#8B6550">📍 ${inst.city}</div>` : ''}
+          ${coverageHtml}
+          <a href="/institutions/${inst.slug}" style="display:inline-block;margin-top:8px;font-size:12px;font-weight:700;color:${color}">
+            Zobrazit profil →
+          </a>
+        </div>
+      `)
+
+      const marker = L.marker([inst.lat, inst.lng], { icon })
+        .addTo(map)
+        .bindPopup(popup)
+
+      marker.on('click', () => setSelected(inst))
+      markersRef.current[inst.id] = marker
+    })
+  }
+
+  function flyTo(inst: MapInstitution) {
+    if (!mapInstance.current || !inst.lat || !inst.lng) return
+    mapInstance.current.flyTo([inst.lat, inst.lng], 13, { duration: 0.8 })
+    markersRef.current[inst.id]?.openPopup()
+    setSelected(inst)
+  }
+
+  const isShelter  = (i: MapInstitution) => i.type === 'shelter'
+  const listItems  = filtered
+
+  return (
+    <>
+      {/* Leaflet CSS */}
+      <style>{`
+        .leaflet-container { background: #F5F0EA; }
+        .zoz-popup .leaflet-popup-content-wrapper { border-radius:12px; border:1px solid #F0EDE8; box-shadow:0 4px 16px rgba(0,0,0,0.10); padding:0; }
+        .zoz-popup .leaflet-popup-content { margin:14px; }
+        .zoz-popup .leaflet-popup-tip-container { display:none; }
+        .leaflet-control-attribution { font-size:10px !important; }
+      `}</style>
+
+      <div className="flex h-[calc(100vh-180px)] min-h-[500px] rounded-lg overflow-hidden border border-[#F0EDE8]">
+
+        {/* Sidebar */}
+        <div className="w-80 flex-shrink-0 bg-white border-r border-[#F0EDE8] flex flex-col">
+
+          {/* Filters */}
+          <div className="p-4 border-b border-[#F0EDE8]">
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Hledat útulek nebo město..."
+              className="w-full px-3 py-2 rounded-lg border border-[#E0DDD8] text-sm focus:outline-none focus:border-[#E8634A] mb-3"
+            />
+            <div className="flex gap-2">
+              {(['all', 'shelter', 'rescue_station'] as const).map(f => (
+                <button key={f} onClick={() => setFilter(f)}
+                  className="flex-1 py-1.5 rounded-lg text-xs font-bold border-none cursor-pointer transition-all"
+                  style={{
+                    background: filter === f ? (f === 'rescue_station' ? '#2E9E8F' : f === 'shelter' ? '#E8634A' : '#1A0F0A') : '#F5F3F0',
+                    color:      filter === f ? 'white' : '#6B4030',
+                  }}>
+                  {f === 'all' ? 'Vše' : f === 'shelter' ? '🏠 Útulky' : '🚑 Stanice'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* List */}
+          <div className="flex-1 overflow-y-auto">
+            {listItems.length === 0 && (
+              <div className="p-6 text-center text-sm" style={{ color: '#8B6550' }}>
+                Žádné výsledky
+              </div>
+            )}
+            {listItems.map(inst => {
+              const color = isShelter(inst) ? '#E8634A' : '#2E9E8F'
+              const bg    = isShelter(inst) ? '#FAECE7' : '#E1F5EE'
+              const isActive = selected?.id === inst.id
+              return (
+                <button key={inst.id} onClick={() => flyTo(inst)}
+                  className="w-full text-left px-4 py-3 border-b border-[#F8F5F2] cursor-pointer transition-all hover:bg-[#FAFAF8] border-none"
+                  style={{ background: isActive ? '#F5F3F0' : 'white' }}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-sm mt-0.5"
+                      style={{ background: bg }}>
+                      {inst.logo_url
+                        ? <Image src={inst.logo_url} alt={inst.name} width={32} height={32} className="rounded-lg object-cover" />
+                        : <span>{isShelter(inst) ? '🏠' : '🚑'}</span>
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-xs text-[#1A0F0A] truncate">{inst.name}</div>
+                      {inst.city && <div className="text-[11px] mt-0.5" style={{ color: '#8B6550' }}>📍 {inst.city}</div>}
+                      {inst.coverage_cities?.length ? (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {inst.coverage_cities.slice(0, 3).map(c => (
+                            <span key={c} className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
+                              style={{ background: bg, color }}>
+                              {c}
+                            </span>
+                          ))}
+                          {inst.coverage_cities.length > 3 && (
+                            <span className="text-[10px]" style={{ color: '#8B6550' }}>
+                              +{inst.coverage_cities.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                    <span className="text-[10px] font-bold flex-shrink-0 px-1.5 py-0.5 rounded-full mt-0.5"
+                      style={{ background: bg, color }}>
+                      {isShelter(inst) ? 'Útulek' : 'Stanice'}
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Count */}
+          <div className="px-4 py-2.5 border-t border-[#F0EDE8] text-xs" style={{ color: '#8B6550' }}>
+            {filtered.length} z {withCoords.length} institucí na mapě
+          </div>
+        </div>
+
+        {/* Map */}
+        <div className="flex-1 relative">
+          <div ref={mapRef} className="w-full h-full" />
+          {selected && (
+            <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg shadow-lg border border-[#F0EDE8] p-3 flex items-center gap-3 z-[1000]">
+              <div className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center text-base"
+                style={{ background: isShelter(selected) ? '#FAECE7' : '#E1F5EE' }}>
+                {selected.logo_url
+                  ? <Image src={selected.logo_url} alt={selected.name} width={36} height={36} className="rounded-lg object-cover" />
+                  : <span>{isShelter(selected) ? '🏠' : '🚑'}</span>
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-sm text-[#1A0F0A] truncate">{selected.name}</div>
+                <div className="text-xs" style={{ color: '#8B6550' }}>
+                  {selected.city}
+                  {selected.coverage_cities?.length ? ` · dosah: ${selected.coverage_cities.length} měst` : ''}
+                </div>
+              </div>
+              <Link href={`/institutions/${selected.slug}`}
+                className="text-xs font-bold no-underline px-3 py-1.5 rounded-lg border flex-shrink-0"
+                style={{ borderColor: '#E0DDD8', color: '#6B4030' }}>
+                Profil →
+              </Link>
+              <button onClick={() => setSelected(null)}
+                className="text-sm border-none bg-transparent cursor-pointer flex-shrink-0"
+                style={{ color: '#8B6550' }}>
+                ✕
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
