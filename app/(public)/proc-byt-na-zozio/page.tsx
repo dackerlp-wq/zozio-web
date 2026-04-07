@@ -169,6 +169,48 @@ const features = [
       { label: 'Aktivní sbírky', value: '3 (47 230 Kč)' },
     ],
   },
+  {
+    tag: 'WIDGET',
+    color: 'rescue',
+    icon: '🔌',
+    title: 'Widget pro váš web — zvířata k adopci automaticky',
+    desc: 'Jeden řádek kódu na váš stávající web a všechna zvířata k adopci se zobrazí automaticky — vždy aktuální, bez ruční aktualizace. Plní zákonnou povinnost provozu webu se seznamem zvířat (§ 25 odst. 4 zák. č. 246/1992 Sb.).',
+    bullets: [
+      'Jeden řádek kódu, funguje na jakémkoli webu',
+      'Automaticky zobrazuje aktuální zvířata z Zozio',
+      'Přizpůsobitelný design — barvy, počet zvířat, druh',
+      'Kliknutí vede přímo na adopční profil zvířete',
+      'Plní zákonnou povinnost § 25 odst. 4 bez vlastního webu',
+    ],
+    mockup: [
+      { label: 'Instalace', value: '1 řádek kódu' },
+      { label: 'Aktualizace', value: '🔄 Automaticky', highlight: true },
+      { label: 'Zobrazuje', value: 'Vždy aktuální zvířata' },
+      { label: 'Téma', value: 'Přizpůsobitelné' },
+      { label: 'Zákon § 25/4', value: '✓ Splněno' },
+    ],
+  },
+  {
+    tag: 'NEWSLETTER',
+    color: 'amber',
+    icon: '✉️',
+    title: 'Automatický newsletter pro příznivce útulku',
+    desc: 'Příznivci a dárci se přihlásí k odběru a automaticky dostávají novinky z vašeho útulku — nová zvířata, výzvy k adopci, úspěšné příběhy a sbírky. Bez ruční práce.',
+    bullets: [
+      'Přihlašovací formulář na profilu útulku na Zozio',
+      'Automatické e-maily při přidání nového zvířete',
+      'Novinky o sbírkách a jejich plnění',
+      'Sdílení příběhů adoptovaných zvířat',
+      'Přehled odběratelů a statistiky otevírání',
+    ],
+    mockup: [
+      { label: 'Odběratelé', value: '247 lidí' },
+      { label: 'Otevřenost', value: '61 %', highlight: true },
+      { label: 'Poslední e-mail', value: 'Bella našla domov 🎉' },
+      { label: 'Nová zvířata', value: '↑ Automaticky' },
+      { label: 'Odesláno', value: 'Bez ruční práce' },
+    ],
+  },
 ]
 
 // ─── Legal obligations ───────────────────────────────────────────────────────
@@ -186,7 +228,7 @@ const legalShelter = [
     obligation: 'Provoz webu se seznamem zvířat a fotkami',
     law: '§ 25 odst. 4 zák. č. 246/1992 Sb. (od 1. 2. 2021)',
     detail: 'Útulek je povinen provozovat webové stránky s aktuálním přehledem všech zvířat včetně fotografií a údajů o původu.',
-    howZozio: 'Každé zvíře přidané do Zozio se okamžitě zobrazí na veřejném profilu útulku. Fotky, popis, původ — splňuje zákonný požadavek ze dne na den.',
+    howZozio: 'Zozio splňuje tuto povinnost dvěma způsoby: (1) Veřejný profil útulku na zozio.cz se aktualizuje automaticky. (2) Widget — jeden řádek kódu vloží seznam zvířat přímo na váš stávající web a udržuje ho vždy aktuální.',
   },
   {
     icon: '🔖',
