@@ -117,7 +117,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
             <div className="lg:hidden mb-6">
               <AnimalNameBlock a={a} age={age} sexLabel={sexLabel} sizeLabel={sizeLabel} species={species} status={status} />
               {institution && (
-                <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-xl border border-[#F0EDE8] bg-white">
+                <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-lg border border-[#F0EDE8] bg-white">
                   <div>
                     <div className="text-[11px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#8B6550' }}>
                       {institution.type === 'shelter' ? 'Útulek' : 'Záchranná stanice'}
@@ -144,7 +144,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
             {/* Popis */}
             {a.description && (
               <section className="mb-7">
-                <SectionTitle>O {a.name}</SectionTitle>
+                <SectionTitle>O „{a.name}"</SectionTitle>
                 <p className="text-base leading-relaxed" style={{ color: '#4A2C1A', lineHeight: 1.85 }}>
                   {a.description}
                 </p>
@@ -174,7 +174,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
             {a.adopter_requirements && (
               <section className="mb-7">
                 <SectionTitle>Požadavky na adopci</SectionTitle>
-                <div className="p-4 rounded-xl border" style={{ background: '#FAFAF8', borderColor: '#E8D9C8' }}>
+                <div className="p-4 rounded-lg border" style={{ background: '#FAFAF8', borderColor: '#E8D9C8' }}>
                   <p className="text-sm leading-relaxed" style={{ color: '#4A2C1A', lineHeight: 1.8 }}>
                     {a.adopter_requirements}
                   </p>
@@ -185,9 +185,9 @@ export default async function AnimalDetailPage({ params }: PageProps) {
             {/* Propojený článek */}
             {article && (
               <section className="mb-7">
-                <SectionTitle>Příběh {a.name}</SectionTitle>
+                <SectionTitle>Příběh „{a.name}"</SectionTitle>
                 <Link href={`/articles/${(article as any).slug}`} className="no-underline group">
-                  <div className="flex items-start gap-4 p-4 rounded-xl border hover:-translate-y-0.5 transition-all"
+                  <div className="flex items-start gap-4 p-4 rounded-lg border hover:-translate-y-0.5 transition-all"
                     style={{ background: '#FAECE7', borderColor: 'rgba(232,99,74,0.20)' }}>
                     <span className="text-3xl flex-shrink-0">📖</span>
                     <div>
@@ -207,8 +207,8 @@ export default async function AnimalDetailPage({ params }: PageProps) {
             {/* Adopční formulář — mobilní verze */}
             <div className="lg:hidden mb-7">
               {isAvailable && (
-                <div className="bg-white rounded-xl border border-[#F0EDE8] p-5">
-                  <h2 className="font-bold text-xl text-[#1A0F0A] mb-1">Chci adoptovat {a.name}</h2>
+                <div className="bg-white rounded-lg border border-[#F0EDE8] p-5">
+                  <h2 className="font-bold text-xl text-[#1A0F0A] mb-1">Chci adoptovat „{a.name}"</h2>
                   <p className="text-sm mb-5" style={{ color: '#8B6550' }}>Vyplň žádost a útulek tě kontaktuje.</p>
                   <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
                 </div>
@@ -277,7 +277,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
               <div className="p-5">
                 {isAvailable && (
                   <>
-                    <h3 className="font-bold text-base text-[#1A0F0A] mb-1">Adoptovat {a.name}</h3>
+                    <h3 className="font-bold text-base text-[#1A0F0A] mb-1">Adoptovat „{a.name}"</h3>
                     <p className="text-xs mb-4" style={{ color: '#8B6550' }}>
                       Vyplň žádost — útulek tě kontaktuje do 3 pracovních dní.
                     </p>
@@ -366,7 +366,7 @@ function AnimalInfoBox({ a, age, sexLabel, sizeLabel, species }: any) {
   return (
     <section className="mb-7">
       <SectionTitle>Základní informace</SectionTitle>
-      <div className="rounded-xl border border-[#F0EDE8] overflow-hidden bg-white">
+      <div className="rounded-lg border border-[#F0EDE8] overflow-hidden bg-white">
         {rows.map((row, i) => (
           <div key={row.label}
             className={`flex items-center gap-3 px-4 py-3 ${i > 0 ? 'border-t border-[#F8F5F2]' : ''}`}>
@@ -407,7 +407,7 @@ function CompatCard({ icon, label, value }: { icon: string; label: string; value
   const isNo  = value === false
 
   return (
-    <div className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-xl border text-center"
+    <div className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-lg border text-center"
       style={{
         borderColor: isYes ? '#BDE8D0' : isNo ? '#F5C4B3' : '#F0EDE8',
         background:  isYes ? '#F0FBF5' : isNo ? '#FFF5F2' : '#FAFAF8',
@@ -449,14 +449,14 @@ function HealthSection({ a }: { a: any }) {
         </div>
       )}
       {a.health_notes && (
-        <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl border mb-2"
+        <div className="flex items-start gap-2.5 px-4 py-3 rounded-lg border mb-2"
           style={{ borderColor: '#E8E0D4', background: '#FAFAF8' }}>
           <span className="text-base flex-shrink-0">📋</span>
           <p className="text-sm leading-relaxed" style={{ color: '#4A2C1A' }}>{a.health_notes}</p>
         </div>
       )}
       {a.special_needs && (
-        <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl border"
+        <div className="flex items-start gap-2.5 px-4 py-3 rounded-lg border"
           style={{ borderColor: '#F5D8A0', background: '#FFFBEF' }}>
           <span className="text-base flex-shrink-0">⚠️</span>
           <p className="text-sm leading-relaxed font-medium" style={{ color: '#7A4F00' }}>{a.special_needs}</p>
@@ -473,7 +473,7 @@ function SimilarAnimalCard({ animal: s }: { animal: any }) {
 
   return (
     <Link href={`/animals/${s.id}`} className="no-underline group">
-      <div className="bg-white rounded-xl overflow-hidden border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-0.5 transition-all">
+      <div className="bg-white rounded-lg overflow-hidden border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-0.5 transition-all">
         <div className="relative aspect-[4/3] bg-[#FAECE7] flex items-center justify-center overflow-hidden">
           {s.primary_photo
             ? <Image src={s.primary_photo} alt={s.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -499,7 +499,7 @@ function SimilarAnimalCard({ animal: s }: { animal: any }) {
 
 function ReservedBanner({ name }: { name: string }) {
   return (
-    <div className="text-center py-5 rounded-xl" style={{ background: '#FAEEDA' }}>
+    <div className="text-center py-5 rounded-lg" style={{ background: '#FAEEDA' }}>
       <div className="text-3xl mb-2">⏳</div>
       <p className="font-bold text-[#1A0F0A] mb-1">{name} je momentálně rezervovaný</p>
       <p className="text-xs mb-3" style={{ color: '#8B6550' }}>Můžeš podat žádost a být na řadě.</p>
@@ -515,7 +515,7 @@ function ReservedBanner({ name }: { name: string }) {
 
 function AdoptedBanner({ name }: { name: string }) {
   return (
-    <div className="text-center py-5 rounded-xl" style={{ background: '#F0FBF5' }}>
+    <div className="text-center py-5 rounded-lg" style={{ background: '#F0FBF5' }}>
       <div className="text-3xl mb-2">🏠</div>
       <p className="font-bold text-[#1A0F0A] mb-1">{name} již našel/la domov!</p>
       <p className="text-xs mb-3" style={{ color: '#8B6550' }}>Podívej se na další zvířata, která hledají rodinu.</p>

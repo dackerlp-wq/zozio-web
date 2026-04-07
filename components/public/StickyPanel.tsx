@@ -22,8 +22,6 @@ export function StickyPanel({ children }: StickyPanelProps) {
       style={{
         position: 'sticky',
         top:      top,
-        maxHeight: `calc(100vh - ${top + 32}px)`,
-        overflowY: 'auto',
       }}
     >
       {children}
