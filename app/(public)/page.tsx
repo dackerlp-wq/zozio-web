@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Suspense } from 'react'
+import { Suspense, cache } from 'react'
 import { createServiceClient } from '@/lib/supabase/service'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -16,18 +16,17 @@ export const metadata: Metadata = {
 }
 
 export default async function HomePage() {
-  const [animals, species] = await Promise.all([
-    getFeaturedAnimals(),
-    getSpecies(),
-  ])
+  const species = await getSpecies()
 
   return (
     <main className="overflow-x-hidden">
-      <HeroSection animals={animals} species={species} />
+      <HeroSection species={species} />
       <Suspense fallback={<StatsStripSkeleton />}>
         <StatsStripAsync />
       </Suspense>
-      <AnimalsSection animals={animals} />
+      <Suspense fallback={<AnimalsSectionSkeleton />}>
+        <AnimalsSectionAsync />
+      </Suspense>
       <Suspense fallback={<RescueSectionSkeleton />}>
         <RescueSectionAsync />
       </Suspense>
@@ -40,6 +39,95 @@ export default async function HomePage() {
 }
 
 /* ── ASYNC WRAPPERS ── */
+async function AnimalsSectionAsync() {
+  const animals = await getFeaturedAnimals()
+  return <AnimalsSection animals={animals} />
+}
+
+async function HeroPhotosDesktopAsync() {
+  const animals = await getFeaturedAnimals()
+  const urgentCount = animals.filter((a: any) => a.urgent).length
+  return (
+    <div className="hidden lg:flex lg:flex-col gap-3" style={{ animation: 'fadeUp .5s ease .1s both' }}>
+      <div className="grid grid-cols-2 gap-3">
+        {animals.slice(0, 4).map((animal: any, i: number) => (
+          <Link key={animal.id} href={`/animals/${animal.id}`}>
+            <div className={`relative rounded-2xl overflow-hidden shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ${i === 0 ? 'aspect-square' : i === 1 ? 'aspect-[4/3]' : i === 2 ? 'aspect-[4/3]' : 'aspect-square'}`}>
+              {animal.primary_photo ? (
+                <Image src={animal.primary_photo} alt={animal.name} fill className="object-cover" sizes="280px" priority={i === 0} />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-sand to-coral-light flex items-center justify-center text-5xl">
+                  {animal.species?.icon ?? '🐾'}
+                </div>
+              )}
+              {animal.urgent && (
+                <div className="absolute top-2 left-2"><Badge variant="urgent" /></div>
+              )}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-espresso/80 to-transparent p-3">
+                <div className="font-display font-bold text-sm text-white">{animal.name}</div>
+                <div className="text-xs text-white/70">{animal.institution?.city}</div>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+      {urgentCount > 0 && (
+        <Link href="/adopt?urgent=true" className="block">
+          <div className="flex items-center justify-center gap-2 bg-coral-light text-coral-dark font-body text-sm font-bold px-4 py-3 rounded-2xl hover:bg-coral hover:text-white transition-all cursor-pointer w-full">
+            🆘 {urgentCount} {urgentCount === 1 ? 'zvíře potřebuje' : urgentCount < 5 ? 'zvířata potřebují' : 'zvířat potřebuje'} urgentní pomoc
+          </div>
+        </Link>
+      )}
+    </div>
+  )
+}
+
+async function HeroMobileStripAsync() {
+  const animals = await getFeaturedAnimals()
+  if (!animals.length) return null
+  const urgentCount = animals.filter((a: any) => a.urgent).length
+  return (
+    <div className="lg:hidden pb-4 pt-2">
+      <div className="flex gap-3 overflow-x-auto px-4 pb-2" style={{ scrollbarWidth: 'none' }}>
+        {animals.slice(0, 6).map((animal: any, i: number) => (
+          <Link key={animal.id} href={`/animals/${animal.id}`} className="no-underline flex-shrink-0">
+            <div className="relative w-32 h-32 rounded-2xl overflow-hidden shadow-sm">
+              {animal.primary_photo ? (
+                <Image src={animal.primary_photo} alt={animal.name} fill className="object-cover" sizes="128px" priority={i === 0} />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-sand to-coral-light flex items-center justify-center text-4xl">
+                  {animal.species?.icon ?? '🐾'}
+                </div>
+              )}
+              {animal.urgent && (
+                <div className="absolute top-1.5 left-1.5">
+                  <span className="bg-coral text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">Volám ZOZ</span>
+                </div>
+              )}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-espresso/75 to-transparent px-2 py-1.5">
+                <div className="font-bold text-[11px] text-white truncate">{animal.name}</div>
+              </div>
+            </div>
+          </Link>
+        ))}
+        <Link href="/adopt" className="no-underline flex-shrink-0">
+          <div className="w-32 h-32 rounded-2xl border-2 border-dashed border-gray-pale flex flex-col items-center justify-center gap-1 hover:border-coral transition-colors">
+            <span className="text-2xl">🐾</span>
+            <span className="text-xs font-bold text-gray text-center leading-tight px-2">Zobrazit vše</span>
+          </div>
+        </Link>
+      </div>
+      {urgentCount > 0 && (
+        <Link href="/adopt?urgent=true" className="block px-4 pb-6">
+          <div className="flex items-center justify-center gap-2 bg-coral-light text-coral-dark font-body text-sm font-bold px-4 py-3 rounded-2xl hover:bg-coral hover:text-white transition-all cursor-pointer">
+            🆘 {urgentCount} {urgentCount === 1 ? 'zvíře potřebuje' : urgentCount < 5 ? 'zvířata potřebují' : 'zvířat potřebuje'} urgentní pomoc
+          </div>
+        </Link>
+      )}
+    </div>
+  )
+}
+
 async function StatsStripAsync() {
   const stats = await getStats()
   return <StatsStrip stats={stats} />
@@ -77,6 +165,38 @@ function StatsStripSkeleton() {
   )
 }
 
+function HeroPhotosSkeleton() {
+  return (
+    <div className="hidden lg:flex lg:flex-col gap-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="aspect-square rounded-2xl bg-sand animate-pulse" />
+        <div className="aspect-[4/3] rounded-2xl bg-sand animate-pulse" />
+        <div className="aspect-[4/3] rounded-2xl bg-sand animate-pulse" />
+        <div className="aspect-square rounded-2xl bg-sand animate-pulse" />
+      </div>
+    </div>
+  )
+}
+
+function HeroMobileStripSkeleton() {
+  return <div className="lg:hidden h-[160px]" />
+}
+
+function AnimalsSectionSkeleton() {
+  return (
+    <section className="py-12 md:py-20 px-4 md:px-12 bg-warm">
+      <div className="max-w-[1200px] mx-auto">
+        <div className="h-8 w-56 bg-sand rounded animate-pulse mb-8" />
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
+          {[0,1,2,3,4,5,6,7].map(i => (
+            <div key={i} className="bg-sand rounded-2xl h-56 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function RescueSectionSkeleton() {
   return (
     <div className="py-12 md:py-20 px-4 md:px-12 min-h-[320px]" style={{ background: '#F5F0EB' }} />
@@ -90,9 +210,7 @@ function StoriesSectionSkeleton() {
 }
 
 /* ── HERO ── */
-function HeroSection({ animals, species }: { animals: any[]; species: any[] }) {
-  const urgentCount = animals.filter(a => a.urgent).length
-
+function HeroSection({ species }: { species: any[] }) {
   return (
     <section className="relative pt-20 pb-0 md:pb-12 bg-warm overflow-hidden">
       {/* Blob pozadí */}
@@ -104,7 +222,7 @@ function HeroSection({ animals, species }: { animals: any[]; species: any[] }) {
       <div className="relative z-10 max-w-[1200px] mx-auto px-4 md:px-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center py-10 md:py-16">
 
-          {/* Text */}
+          {/* Text — renders immediately */}
           <div>
 
             <h1 className="font-display font-extrabold text-[clamp(36px,6vw,72px)] leading-[1.05] text-espresso mb-4"
@@ -167,82 +285,17 @@ function HeroSection({ animals, species }: { animals: any[]; species: any[] }) {
             })()}
           </div>
 
-          {/* Mozaika fotek — desktop */}
-          <div className="hidden lg:flex lg:flex-col gap-3" style={{ animation: 'fadeUp .5s ease .1s both' }}>
-            <div className="grid grid-cols-2 gap-3">
-              {animals.slice(0, 4).map((animal, i) => (
-                <Link key={animal.id} href={`/animals/${animal.id}`}>
-                  <div className={`relative rounded-2xl overflow-hidden shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-300 ${i === 0 ? 'aspect-square' : i === 1 ? 'aspect-[4/3]' : i === 2 ? 'aspect-[4/3]' : 'aspect-square'}`}>
-                    {animal.primary_photo ? (
-                      <Image src={animal.primary_photo} alt={animal.name} fill className="object-cover" sizes="280px" priority={i === 0} />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-sand to-coral-light flex items-center justify-center text-5xl">
-                        {animal.species?.icon ?? '🐾'}
-                      </div>
-                    )}
-                    {animal.urgent && (
-                      <div className="absolute top-2 left-2"><Badge variant="urgent" /></div>
-                    )}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-espresso/80 to-transparent p-3">
-                      <div className="font-display font-bold text-sm text-white">{animal.name}</div>
-                      <div className="text-xs text-white/70">{animal.institution?.city}</div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            {urgentCount > 0 && (
-              <Link href="/adopt?urgent=true" className="block">
-                <div className="flex items-center justify-center gap-2 bg-coral-light text-coral-dark font-body text-sm font-bold px-4 py-3 rounded-2xl hover:bg-coral hover:text-white transition-all cursor-pointer w-full">
-                  🆘 {urgentCount} {urgentCount === 1 ? 'zvíře potřebuje' : urgentCount < 5 ? 'zvířata potřebují' : 'zvířat potřebuje'} urgentní pomoc
-                </div>
-              </Link>
-            )}
-          </div>
+          {/* Mozaika fotek — desktop, streamuje */}
+          <Suspense fallback={<HeroPhotosSkeleton />}>
+            <HeroPhotosDesktopAsync />
+          </Suspense>
         </div>
       </div>
 
-      {/* Mobilní strip fotek — horizontální scroll */}
-      {animals.length > 0 && (
-        <div className="lg:hidden pb-4 pt-2">
-          <div className="flex gap-3 overflow-x-auto px-4 pb-2" style={{ scrollbarWidth: 'none' }}>
-            {animals.slice(0, 6).map((animal, i) => (
-              <Link key={animal.id} href={`/animals/${animal.id}`} className="no-underline flex-shrink-0">
-                <div className="relative w-32 h-32 rounded-2xl overflow-hidden shadow-sm">
-                  {animal.primary_photo ? (
-                    <Image src={animal.primary_photo} alt={animal.name} fill className="object-cover" sizes="128px" priority={i === 0} />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-sand to-coral-light flex items-center justify-center text-4xl">
-                      {animal.species?.icon ?? '🐾'}
-                    </div>
-                  )}
-                  {animal.urgent && (
-                    <div className="absolute top-1.5 left-1.5">
-                      <span className="bg-coral text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">Volám ZOZ</span>
-                    </div>
-                  )}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-espresso/75 to-transparent px-2 py-1.5">
-                    <div className="font-bold text-[11px] text-white truncate">{animal.name}</div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-            <Link href="/adopt" className="no-underline flex-shrink-0">
-              <div className="w-32 h-32 rounded-2xl border-2 border-dashed border-gray-pale flex flex-col items-center justify-center gap-1 hover:border-coral transition-colors">
-                <span className="text-2xl">🐾</span>
-                <span className="text-xs font-bold text-gray text-center leading-tight px-2">Zobrazit vše</span>
-              </div>
-            </Link>
-          </div>
-          {urgentCount > 0 && (
-            <Link href="/adopt?urgent=true" className="block px-4 pb-6">
-              <div className="flex items-center justify-center gap-2 bg-coral-light text-coral-dark font-body text-sm font-bold px-4 py-3 rounded-2xl hover:bg-coral hover:text-white transition-all cursor-pointer">
-                🆘 {urgentCount} {urgentCount === 1 ? 'zvíře potřebuje' : urgentCount < 5 ? 'zvířata potřebují' : 'zvířat potřebuje'} urgentní pomoc
-              </div>
-            </Link>
-          )}
-        </div>
-      )}
+      {/* Mobilní strip fotek — streamuje */}
+      <Suspense fallback={<HeroMobileStripSkeleton />}>
+        <HeroMobileStripAsync />
+      </Suspense>
     </section>
   )
 }
@@ -588,7 +641,9 @@ function InstitutionsCta() {
 }
 
 /* ── DATA ── */
-async function getFeaturedAnimals() {
+// cache() deduplicates calls within one request — HeroPhotosDesktopAsync,
+// HeroMobileStripAsync and AnimalsSectionAsync all call this but trigger only 1 DB query.
+const getFeaturedAnimals = cache(async function getFeaturedAnimals() {
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('animals')
@@ -599,7 +654,7 @@ async function getFeaturedAnimals() {
     .order('created_at', { ascending: false })
     .limit(8)
   return data ?? []
-}
+})
 
 async function getFeaturedRescueCases() {
   const supabase = createServiceClient()
