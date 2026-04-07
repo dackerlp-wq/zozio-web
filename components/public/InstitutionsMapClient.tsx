@@ -282,8 +282,11 @@ export function InstitutionsMapClient({ institutions }: Props) {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Hledat město, okres, útulek..."
-              className="w-full px-3 py-2 rounded-lg border border-[#E0DDD8] text-sm focus:outline-none focus:border-[#E8634A] mb-3"
+              className="w-full px-3 py-2 rounded-lg border border-[#E0DDD8] text-sm focus:outline-none focus:border-[#E8634A] mb-1"
             />
+            <p className="text-[11px] mb-3" style={{ color: '#A08070' }}>
+              Napiš své město — zobrazíme útulky a stanice s dosahem do tvé oblasti
+            </p>
             <div className="flex gap-2">
               {(['all', 'shelter', 'rescue_station'] as const).map(f => (
                 <button key={f} onClick={() => setFilter(f)}
