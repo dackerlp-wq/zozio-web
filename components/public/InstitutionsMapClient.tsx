@@ -1,4 +1,5 @@
 'use client'
+import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -39,8 +40,13 @@ export function InstitutionsMapClient({ institutions }: Props) {
   // Init map
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return
+    // StrictMode double-invoke guard: clear any leftover Leaflet ID on the DOM node
+    if ((mapRef.current as any)._leaflet_id) {
+      delete (mapRef.current as any)._leaflet_id
+    }
 
     import('leaflet').then(L => {
+      if (!mapRef.current || mapInstance.current) return
       const map = L.map(mapRef.current!, {
         center:    [49.8, 15.5],
         zoom:      7,
@@ -53,6 +59,7 @@ export function InstitutionsMapClient({ institutions }: Props) {
       }).addTo(map)
 
       mapInstance.current = map
+      setTimeout(() => map.invalidateSize(), 0)
       buildMarkers(L, map)
     })
 
@@ -236,7 +243,7 @@ export function InstitutionsMapClient({ institutions }: Props) {
 
         {/* Map */}
         <div className="flex-1 relative">
-          <div ref={mapRef} className="w-full h-full" />
+          <div ref={mapRef} className="absolute inset-0" />
           {selected && (
             <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg shadow-lg border border-[#F0EDE8] p-3 flex items-center gap-3 z-[1000]">
               <div className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center text-base"
