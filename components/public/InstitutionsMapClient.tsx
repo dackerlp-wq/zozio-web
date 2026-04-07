@@ -3,7 +3,6 @@ import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { findCzechPlace } from '@/lib/czech-places'
 
 export interface MapInstitution {
   id: string
@@ -27,6 +26,7 @@ export function InstitutionsMapClient({ institutions }: Props) {
   const mapInstance   = useRef<any>(null)
   const markersRef    = useRef<Record<string, any>>({})
   const coverageRef   = useRef<any[]>([])
+  const polygonCache  = useRef<Record<string, any>>({}) // place name → GeoJSON feature or null
   const [selected,  setSelected]  = useState<MapInstitution | null>(null)
   const [filter,    setFilter]    = useState<'all' | 'shelter' | 'rescue_station'>('all')
   const [search,    setSearch]    = useState('')
@@ -147,31 +147,59 @@ export function InstitutionsMapClient({ institutions }: Props) {
     coverageRef.current = []
   }
 
-  function drawCoverage(L: any, map: any, inst: MapInstitution) {
+  async function fetchPolygon(placeName: string): Promise<any | null> {
+    if (placeName in polygonCache.current) return polygonCache.current[placeName]
+    try {
+      const q = encodeURIComponent(placeName)
+      const url = `https://nominatim.openstreetmap.org/search?q=${q}&countrycodes=cz,sk&polygon_geojson=1&format=json&limit=3`
+      const res  = await fetch(url, { headers: { 'Accept-Language': 'cs' } })
+      const data = await res.json()
+      // Prefer result with polygon/multipolygon type
+      const hit = data.find((d: any) =>
+        d.geojson?.type === 'Polygon' || d.geojson?.type === 'MultiPolygon'
+      ) ?? null
+      const geojson = hit?.geojson ?? null
+      polygonCache.current[placeName] = geojson
+      return geojson
+    } catch {
+      polygonCache.current[placeName] = null
+      return null
+    }
+  }
+
+  async function drawCoverage(L: any, map: any, inst: MapInstitution) {
     clearCoverage()
     if (!inst.coverage_cities?.length) return
-    const isShelterInst = inst.type === 'shelter'
-    const color = isShelterInst ? '#E8634A' : '#2E9E8F'
+    const color = inst.type === 'shelter' ? '#E8634A' : '#2E9E8F'
 
-    inst.coverage_cities.forEach(cityName => {
-      const place = findCzechPlace(cityName)
-      if (!place) return
-      const circle = L.circle([place.lat, place.lng], {
-        radius:      place.radius * 1000,
-        color,
-        fillColor:   color,
-        fillOpacity: 0.12,
-        weight:      1.5,
-        opacity:     0.5,
+    await Promise.all(inst.coverage_cities.map(async cityName => {
+      const geojson = await fetchPolygon(cityName)
+      if (!geojson || !mapInstance.current) return
+      const layer = L.geoJSON(geojson, {
+        style: {
+          color,
+          fillColor:   color,
+          fillOpacity: 0.22,
+          weight:      2,
+          opacity:     0.7,
+        },
       }).addTo(map)
-      coverageRef.current.push(circle)
-    })
+      coverageRef.current.push(layer)
+    }))
+
+    // Fit map to all coverage layers
+    if (coverageRef.current.length > 0 && mapInstance.current) {
+      try {
+        const group = L.featureGroup(coverageRef.current)
+        map.fitBounds(group.getBounds().pad(0.1), { duration: 0.8, maxZoom: 11 })
+      } catch {}
+    }
   }
 
   function flyTo(inst: MapInstitution) {
     if (!mapInstance.current || !inst.lat || !inst.lng) return
     import('leaflet').then(L => drawCoverage(L, mapInstance.current, inst))
-    mapInstance.current.flyTo([inst.lat, inst.lng], 11, { duration: 0.8 })
+    mapInstance.current.flyTo([inst.lat, inst.lng], 10, { duration: 0.8 })
     markersRef.current[inst.id]?.openPopup()
     setSelected(inst)
   }
