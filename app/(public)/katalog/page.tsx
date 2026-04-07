@@ -85,7 +85,7 @@ export default async function KatalogPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
                   {sp.breeds.map(breed => (
                     <Link
-                      key={breed.name}
+                      key={`${sp.id}-${breed.slug}`}
                       href={`/katalog/${breed.slug}`}
                       className="group flex items-center justify-between gap-2 px-3.5 py-3 rounded-lg border border-[#F0EDE8] bg-white hover:border-[#E8634A] hover:shadow-sm transition-all no-underline">
                       <span className="text-sm font-semibold text-[#1A0F0A] group-hover:text-[#E8634A] transition-colors leading-snug">
@@ -198,6 +198,8 @@ async function getData(): Promise<{ species: SpeciesWithBreeds[] }> {
   for (const b of (breedsData ?? [])) {
     if (!b.species_id) continue
     if (!breedsBySpecies[b.species_id]) breedsBySpecies[b.species_id] = []
+    // deduplicate by name
+    if (breedsBySpecies[b.species_id].find(x => x.name === b.name_cs)) continue
     const count = breedCount[`${b.species_id}::${b.name_cs}`] ?? 0
     breedsBySpecies[b.species_id].push({ name: b.name_cs, count, slug: breedSlug(b.name_cs) })
   }
