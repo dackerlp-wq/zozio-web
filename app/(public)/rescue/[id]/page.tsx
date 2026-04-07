@@ -271,20 +271,35 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
           {/* ── Pravý sloupec — sticky ── */}
           <div className="hidden lg:block">
             <StickyPanel>
+
+              {/* Mini progress stepper */}
+              {!isDeceased && r.status !== 'transferred' && (
+                <div className="px-5 pt-5 pb-4 border-b border-[#F0EDE8]">
+                  <MiniStepper currentStep={currentStep} isReleased={isReleased} />
+                </div>
+              )}
+
               {/* Název + status */}
               <div className="p-5 border-b border-[#F0EDE8]">
                 <CaseNameBlock r={r} species={species} status={status} caseName={caseName} />
               </div>
 
+              {/* Rychlé info */}
+              <SidebarQuickInfo r={r} intakeDate={intakeDate} releaseDate={releaseDate} />
+
               {/* Záchranná stanice */}
               {institution && (
                 <div className="px-5 py-4 border-b border-[#F0EDE8]">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#8B6550' }}>
-                        Záchranná stanice
-                      </div>
-                      <div className="font-semibold text-sm text-[#1A0F0A]">{institution.name}</div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: '#8B6550' }}>
+                    Záchranná stanice
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center text-xl"
+                      style={{ background: '#E1F5EE' }}>
+                      🚑
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-[#1A0F0A] truncate">{institution.name}</div>
                       {institution.city && <div className="text-xs mt-0.5" style={{ color: '#8B6550' }}>📍 {institution.city}</div>}
                     </div>
                     <Link href={`/institutions/${institution.slug}`}
@@ -296,6 +311,22 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
                 </div>
               )}
 
+              {/* Propuštění — success */}
+              {isReleased && (
+                <div className="p-5 border-b border-[#F0EDE8]">
+                  <div className="rounded-lg p-4 text-center"
+                    style={{ background: 'linear-gradient(135deg, #EAF3DE, #E1F5EE)', border: '1px solid #BDE8D0' }}>
+                    <div className="text-3xl mb-2">🎉</div>
+                    <p className="font-bold text-sm text-[#1A0F0A] mb-1">Úspěšně propuštěno!</p>
+                    {releaseDate && (
+                      <p className="text-xs" style={{ color: '#3B6D11' }}>
+                        {releaseDate}{r.release_location && ` · ${r.release_location}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Donační widget */}
               {fundraiser && !isDeceased && (
                 <div className="p-5 border-b border-[#F0EDE8]">
@@ -303,21 +334,52 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
                 </div>
               )}
 
-              {/* CTA bez sbírky */}
+              {/* CTA — přispět bez sbírky */}
               {!fundraiser && !isReleased && !isDeceased && (
-                <div className="p-5 text-center">
-                  <div className="text-3xl mb-2">💛</div>
-                  <p className="text-sm font-semibold text-[#1A0F0A] mb-1">Chceš pomoci?</p>
-                  <p className="text-xs mb-4" style={{ color: '#8B6550' }}>
-                    Kontaktuj záchrannou stanici přímo.
-                  </p>
-                  {institution?.email && (
-                    <a href={`mailto:${institution.email}`}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm text-white no-underline hover:opacity-90"
-                      style={{ background: '#2E9E8F' }}>
-                      ✉️ Napsat stanici
-                    </a>
-                  )}
+                <div className="p-5">
+                  <div className="rounded-lg p-4 text-center" style={{ background: '#F0FBF9', border: '1px solid #C8EBE7' }}>
+                    <div className="text-2xl mb-2">💛</div>
+                    <p className="text-sm font-bold text-[#1A0F0A] mb-1">Chceš pomoci?</p>
+                    <p className="text-xs mb-3" style={{ color: '#8B6550' }}>
+                      Záchranné stanice fungují na dobrovolnické bázi. Každá pomoc se počítá.
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {institution?.email && (
+                        <a href={`mailto:${institution.email}`}
+                          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm text-white no-underline hover:opacity-90"
+                          style={{ background: '#2E9E8F' }}>
+                          ✉️ Napsat stanici
+                        </a>
+                      )}
+                      {institution?.slug && (
+                        <Link href={`/institutions/${institution.slug}`}
+                          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-bold text-sm no-underline hover:opacity-80 border"
+                          style={{ borderColor: '#C8EBE7', color: '#0F6E56' }}>
+                          Zobrazit profil stanice →
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Deceased */}
+              {isDeceased && (
+                <div className="p-5">
+                  <div className="rounded-lg p-4 text-center" style={{ background: '#F5F3F0', border: '1px solid #E0DDD8' }}>
+                    <div className="text-2xl mb-2">💔</div>
+                    <p className="text-sm font-bold text-[#1A0F0A] mb-1">Toto zvíře bohužel nepřežilo</p>
+                    <p className="text-xs mb-3" style={{ color: '#8B6550' }}>
+                      Záchranáři udělali vše, co bylo v jejich silách.
+                    </p>
+                    {institution?.slug && (
+                      <Link href={`/institutions/${institution.slug}`}
+                        className="inline-flex items-center gap-1 text-xs font-bold no-underline hover:opacity-80"
+                        style={{ color: '#6B4030' }}>
+                        Podpořit záchrannou stanici →
+                      </Link>
+                    )}
+                  </div>
                 </div>
               )}
             </StickyPanel>
@@ -329,6 +391,77 @@ export default async function RescueCaseDetailPage({ params }: PageProps) {
 }
 
 /* ── Komponenty ── */
+
+function MiniStepper({ currentStep, isReleased }: { currentStep: number; isReleased: boolean }) {
+  const steps = [
+    { icon: '🚑', label: 'Příjem' },
+    { icon: '🩺', label: 'Léčba' },
+    { icon: '💪', label: 'Rehab' },
+    { icon: '🌿', label: 'Propuštění' },
+  ]
+  return (
+    <div>
+      <p className="text-[11px] font-bold uppercase tracking-wider mb-3" style={{ color: '#8B6550' }}>
+        Stav léčby
+      </p>
+      <div className="flex items-center">
+        {steps.map((s, i) => {
+          const isDone   = i < currentStep || isReleased
+          const isActive = i === currentStep && !isReleased
+          const isFuture = i > currentStep && !isReleased
+          return (
+            <div key={i} className="flex items-center flex-1 last:flex-none">
+              <div className="flex flex-col items-center gap-1">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 transition-all"
+                  style={isActive
+                    ? { background: '#2E9E8F', borderColor: '#2E9E8F', boxShadow: '0 0 0 3px rgba(46,158,143,0.2)' }
+                    : isDone
+                    ? { background: '#EAF3DE', borderColor: '#BDE8D0' }
+                    : { background: 'white', borderColor: '#E8E4DF' }
+                  }>
+                  <span style={{ opacity: isFuture ? 0.3 : 1, fontSize: '14px' }}>{s.icon}</span>
+                </div>
+                <span className="text-[10px] font-medium text-center leading-tight"
+                  style={{ color: isActive ? '#0F6E56' : isDone ? '#3B6D11' : '#B0A090' }}>
+                  {s.label}
+                </span>
+              </div>
+              {i < steps.length - 1 && (
+                <div className="flex-1 h-0.5 mx-1 mb-4"
+                  style={{ background: isDone ? '#BDE8D0' : '#EDE8E3' }} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function SidebarQuickInfo({ r, intakeDate, releaseDate }: any) {
+  const rows = [
+    intakeDate       && { icon: '📅', label: 'Příjem',         value: intakeDate },
+    r.found_location && { icon: '📍', label: 'Místo nálezu',   value: r.found_location },
+    r.cause_of_injury && { icon: '⚡', label: 'Příčina',        value: r.cause_of_injury },
+    r.weight_g       && { icon: '⚖️', label: 'Váha',           value: `${r.weight_g} g` },
+    releaseDate      && { icon: '🌿', label: 'Propuštění',      value: releaseDate },
+  ].filter(Boolean) as { icon: string; label: string; value: string }[]
+
+  if (!rows.length) return null
+
+  return (
+    <div className="border-b border-[#F0EDE8]">
+      {rows.map((row, i) => (
+        <div key={row.label}
+          className={`flex items-center gap-2.5 px-5 py-2.5 ${i > 0 ? 'border-t border-[#F8F5F2]' : ''}`}>
+          <span className="text-sm w-5 text-center flex-shrink-0">{row.icon}</span>
+          <span className="text-xs flex-1" style={{ color: '#8B6550' }}>{row.label}</span>
+          <span className="text-xs font-semibold text-[#1A0F0A] text-right truncate max-w-[130px]">{row.value}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (

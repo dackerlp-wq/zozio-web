@@ -28,7 +28,7 @@ export function ShareButtons({ url, title, text }: ShareButtonsProps) {
       .catch(() => {})
   }
 
-  const btn = 'inline-flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0 no-underline transition-opacity hover:opacity-80 cursor-pointer border-none'
+  const btn = 'inline-flex items-center justify-center w-9 h-9 rounded-lg flex-shrink-0 no-underline transition-opacity hover:opacity-80 cursor-pointer border-none'
 
   return (
     <div className="flex items-center gap-2">

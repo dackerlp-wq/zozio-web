@@ -11,7 +11,7 @@ export default async function SuperadminBreedsPage() {
 
   const { data: breeds } = await service
     .from('animal_breeds')
-    .select('id, species_id, name_cs, name_sk, origin_country, size_category, energy_level, hypoallergenic, description, is_custom, institution_id, created_at, species:animal_species(name_cs)')
+    .select('id, species_id, name_cs, name_sk, origin_country, size_category, energy_level, hypoallergenic, description, is_custom, institution_id, created_at, profile, species:animal_species(name_cs)')
     .order('name_cs')
 
   return (

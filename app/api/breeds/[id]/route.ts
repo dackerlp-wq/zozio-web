@@ -17,7 +17,7 @@ export async function PUT(
   const { data: membership } = await service.from('institution_members').select('institution_id').eq('user_id', user.id).single()
 
   const body = await request.json()
-  const allowed = ['name_cs','name_sk','origin_country','size_category','energy_level','hypoallergenic','description']
+  const allowed = ['name_cs','name_sk','origin_country','size_category','energy_level','hypoallergenic','description','profile']
   const payload: Record<string,unknown> = {}
   for (const key of allowed) {
     if (key in body) payload[key] = body[key]

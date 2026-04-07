@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PhotoGallery } from '@/components/public/PhotoGallery'
 import { AdoptionForm } from '@/components/public/AdoptionForm'
 import { ShareButtons } from '@/components/public/ShareButtons'
+import { formatBreed } from '@/lib/breed-label'
 import { StickyPanel } from '@/components/public/StickyPanel'
 import { FavoriteButton } from '@/components/public/FavoriteButton'
 
@@ -321,7 +322,7 @@ function AnimalNameBlock({ a, age, sexLabel, sizeLabel, species, status }: any) 
       <p className="text-sm" style={{ color: '#8B6550' }}>
         {[
           species?.name_cs,
-          a.breed,
+          formatBreed(a.breed, a.is_crossbreed, a.breed2),
           age,
           sexLabel,
           a.size ? sizeLabel[a.size] : null,
@@ -367,7 +368,7 @@ function AnimalInfoBox({ a, age, sexLabel, sizeLabel, species }: any) {
 
   const rows: { icon: string; label: string; value: string }[] = [
     species?.name_cs                  && { icon: '🐾', label: 'Druh',          value: species.name_cs },
-    a.breed                           && { icon: '🔖', label: 'Rasa',           value: a.breed },
+    a.breed                           && { icon: '🔖', label: 'Rasa',           value: formatBreed(a.breed, a.is_crossbreed, a.breed2) },
     age                               && { icon: '🎂', label: 'Věk',            value: age },
     sexLabel                          && { icon: '⚥',  label: 'Pohlaví',        value: sexLabel },
     a.size                            && { icon: '📏', label: 'Velikost',        value: sizeLabel[a.size] ?? a.size },
@@ -503,7 +504,7 @@ function SimilarAnimalCard({ animal: s }: { animal: any }) {
           {isSameBreed && s.breed && (
             <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold"
               style={{ background: 'rgba(0,0,0,0.55)', color: '#fff' }}>
-              {s.breed}
+              {formatBreed(s.breed, s.is_crossbreed, s.breed2)}
             </div>
           )}
         </div>

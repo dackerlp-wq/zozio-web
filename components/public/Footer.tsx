@@ -28,6 +28,8 @@ export function Footer() {
                 { href: '/rescue',       label: 'Ohrožená zvířata' },
                 { href: '/institutions', label: 'Adresář útulků' },
                 { href: '/fundraisers',  label: 'Sbírky' },
+                { href: '/map',          label: '🗺️ Mapa útulků' },
+                { href: '/katalog',      label: '📖 Katalog ras' },
               ].map(({ href, label }) => (
                 <li key={label}>
                   <Link href={href} className="text-sm text-gray hover:text-coral transition-colors no-underline">{label}</Link>

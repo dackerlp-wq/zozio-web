@@ -259,6 +259,9 @@ function initFormData(data?: Record<string, unknown>) {
     ageValue, ageUnit,
     breed_id:         String(d.breed_id ?? ''),
     breed:            String(d.breed ?? ''),
+    is_crossbreed:    Boolean(d.is_crossbreed),
+    breed2:           String(d.breed2 ?? ''),
+    breed2_id:        String(d.breed2_id ?? ''),
     color:            String(d.color ?? ''),
     size:             String(d.size ?? ''),
     weight_kg:        d.weight_kg != null ? String(d.weight_kg) : '',
@@ -333,6 +336,10 @@ export function AnimalForm({
   const [breedOpen, setBreedOpen]     = useState(false)
   const [breedsLoading, setBreedsLoading] = useState(false)
   const breedRef = useRef<HTMLDivElement>(null)
+  // Breed2 (kříženec)
+  const [breed2Search, setBreed2Search] = useState(source?.breed2 as string ?? '')
+  const [breed2Open, setBreed2Open]     = useState(false)
+  const breed2Ref = useRef<HTMLDivElement>(null)
 
   // Vaccinations
   const [vaccinations, setVaccinations] = useState<VaccinationRecord[]>(() =>
@@ -372,10 +379,11 @@ export function AnimalForm({
       .finally(() => setBreedsLoading(false))
   }, [form.species_id])
 
-  // Close breed dropdown on outside click
+  // Close breed dropdowns on outside click
   useEffect(() => {
     function handle(e: MouseEvent) {
       if (breedRef.current && !breedRef.current.contains(e.target as Node)) setBreedOpen(false)
+      if (breed2Ref.current && !breed2Ref.current.contains(e.target as Node)) setBreed2Open(false)
     }
     document.addEventListener('mousedown', handle)
     return () => document.removeEventListener('mousedown', handle)
@@ -408,9 +416,18 @@ export function AnimalForm({
   }
 
   // ── Breed handlers ─────────────────────────────────────────────────────────
+  function normBreed(s: string) {
+    return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+  }
+
   const filteredBreeds = breedSearch.trim()
-    ? breeds.filter(b => b.name_cs.toLowerCase().includes(breedSearch.toLowerCase()))
+    ? breeds.filter(b => normBreed(b.name_cs).includes(normBreed(breedSearch)))
     : breeds
+
+  // Exact duplicate — same name after normalization
+  const exactMatch = breedSearch.trim()
+    ? breeds.find(b => normBreed(b.name_cs) === normBreed(breedSearch))
+    : null
 
   function selectBreed(b: Breed) {
     set('breed_id', b.id)
@@ -421,6 +438,8 @@ export function AnimalForm({
 
   async function addCustomBreed() {
     if (!breedSearch.trim() || !form.species_id) return
+    // If exact match exists, select it instead of creating duplicate
+    if (exactMatch) { selectBreed(exactMatch); return }
     try {
       const res = await fetch('/api/breeds', {
         method: 'POST',
@@ -431,10 +450,28 @@ export function AnimalForm({
       if (!res.ok) throw new Error(newBreed.error)
       setBreeds(prev => [...prev, newBreed])
       selectBreed(newBreed)
-      showToast(`Přidáno plemeno: ${newBreed.name_cs}`)
+      showToast(`Přidáno: ${newBreed.name_cs} — superadmin doplní profil`)
     } catch (e) {
       showToast(`Chyba: ${e instanceof Error ? e.message : 'Neznámá'}`, false)
     }
+  }
+
+  // ── Breed2 handlers ────────────────────────────────────────────────────────
+  const filteredBreeds2 = breed2Search.trim()
+    ? breeds.filter(b => normBreed(b.name_cs).includes(normBreed(breed2Search)))
+    : breeds
+
+  function selectBreed2(b: Breed) {
+    set('breed2_id', b.id)
+    set('breed2', b.name_cs)
+    setBreed2Search(b.name_cs)
+    setBreed2Open(false)
+  }
+
+  function clearBreed2() {
+    set('breed2_id', '')
+    set('breed2', '')
+    setBreed2Search('')
   }
 
   // ── Vaccination handlers ───────────────────────────────────────────────────
@@ -523,6 +560,9 @@ export function AnimalForm({
         birth_year, age_months,
         breed_id: form.breed_id || null,
         breed: form.breed || null,
+        is_crossbreed: form.is_crossbreed,
+        breed2: form.is_crossbreed ? (form.breed2 || null) : null,
+        breed2_id: form.is_crossbreed ? (form.breed2_id || null) : null,
         color: form.color || null, size: form.size || null,
         weight_kg: form.weight_kg ? parseFloat(form.weight_kg) : null,
         chip_number: form.chip_number || null, chip_date: form.chip_date || null,
@@ -729,6 +769,7 @@ export function AnimalForm({
 
               {/* Breed search */}
               <Field label="Plemeno / rasa" hint={!form.species_id ? 'Nejprve vyberte druh' : undefined}>
+
                 <div ref={breedRef} className="relative">
                   <input
                     className={inputCls}
@@ -740,26 +781,106 @@ export function AnimalForm({
                   />
                   {breedOpen && form.species_id && (
                     <div className="absolute z-20 w-full mt-1 bg-white border-2 border-[#F0EDE8] rounded-lg shadow-lg max-h-52 overflow-y-auto">
-                      {filteredBreeds.length > 0 ? filteredBreeds.map(b => (
-                        <button key={b.id} type="button" onClick={() => selectBreed(b)}
-                          className="w-full text-left px-3 py-2.5 text-sm font-semibold text-[#2C1810] hover:bg-[#FDEAE6] transition-colors border-b border-[#F0EDE8] last:border-0 touch-manipulation">
-                          {b.name_cs}
-                          {b.is_custom && <span className="ml-2 text-[10px] text-[#8B6550] font-normal">vlastní</span>}
-                        </button>
-                      )) : (
+                      {filteredBreeds.length > 0 ? (
+                        <>
+                          {filteredBreeds.map(b => (
+                            <button key={b.id} type="button" onClick={() => selectBreed(b)}
+                              className="w-full text-left px-3 py-2.5 text-sm font-semibold text-[#2C1810] hover:bg-[#FDEAE6] transition-colors border-b border-[#F0EDE8] last:border-0 touch-manipulation flex items-center justify-between gap-2">
+                              <span>{b.name_cs}</span>
+                              {b.is_custom && <span className="text-[10px] text-[#8B6550] font-normal flex-shrink-0">vlastní</span>}
+                            </button>
+                          ))}
+                          {/* If typed text doesn't exactly match any result, offer to create */}
+                          {breedSearch.trim() && !exactMatch && (
+                            <button type="button" onClick={addCustomBreed}
+                              className="w-full text-left px-3 py-2.5 text-sm font-semibold text-[#E8634A] hover:bg-[#FDEAE6] transition-colors border-t border-[#F0EDE8] touch-manipulation">
+                              ＋ Vytvořit „{breedSearch}"
+                            </button>
+                          )}
+                        </>
+                      ) : (
                         breedSearch.trim() ? (
-                          <button type="button" onClick={addCustomBreed}
-                            className="w-full text-left px-3 py-2.5 text-sm font-semibold text-[#E8634A] hover:bg-[#FDEAE6] touch-manipulation">
-                            ＋ Přidat „{breedSearch}" jako vlastní plemeno
-                          </button>
+                          <div>
+                            <button type="button" onClick={addCustomBreed}
+                              className="w-full text-left px-3 py-2.5 text-sm font-semibold text-[#E8634A] hover:bg-[#FDEAE6] touch-manipulation">
+                              ＋ Vytvořit rasu „{breedSearch}"
+                            </button>
+                            <div className="px-3 py-2 text-[11px] text-[#A09890] border-t border-[#F0EDE8] leading-snug">
+                              Rasa bude uložena bez detailního profilu.<br />Superadmin ji může doplnit v&nbsp;sekci Rasy zvířat.
+                            </div>
+                          </div>
                         ) : (
-                          <div className="px-3 py-2.5 text-sm text-[#A09890]">Žádná plemena — začni psát</div>
+                          <div className="px-3 py-2.5 text-sm text-[#A09890]">Začni psát název rasy...</div>
                         )
                       )}
                     </div>
                   )}
                 </div>
+
+                {/* Crossbreed checkbox */}
+                <label className="flex items-center gap-2 mt-2 cursor-pointer select-none w-fit">
+                  <input
+                    type="checkbox"
+                    checked={form.is_crossbreed}
+                    onChange={e => {
+                      set('is_crossbreed', e.target.checked)
+                      if (!e.target.checked) clearBreed2()
+                    }}
+                    className="w-4 h-4 rounded accent-[#E8634A]"
+                  />
+                  <span className="text-sm font-semibold text-[#2C1810]">Kříženec</span>
+                </label>
+                {form.is_crossbreed && (
+                  <p className="text-[11px] text-[#A09890] mt-1 leading-snug">
+                    💡 První rasa musí být ta, která je na jedinci <strong>nejvíce viditelná</strong>. Druhá rasa je volitelná.
+                  </p>
+                )}
               </Field>
+
+              {/* Breed2 — only when crossbreed */}
+              {form.is_crossbreed && (
+                <Field label="Druhá rasa (křížená)" hint="Volitelné">
+                  <div ref={breed2Ref} className="relative">
+                    <input
+                      className={inputCls}
+                      value={breed2Search}
+                      onChange={e => { setBreed2Search(e.target.value); set('breed2', e.target.value); set('breed2_id', ''); setBreed2Open(true) }}
+                      onFocus={() => form.species_id && setBreed2Open(true)}
+                      placeholder="Hledat druhou rasu..."
+                      disabled={!form.species_id}
+                    />
+                    {breed2Search && (
+                      <button type="button" onClick={clearBreed2}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A09890] hover:text-[#2C1810] text-xs font-bold">
+                        ✕
+                      </button>
+                    )}
+                    {breed2Open && form.species_id && (
+                      <div className="absolute z-20 w-full mt-1 bg-white border-2 border-[#F0EDE8] rounded-lg shadow-lg max-h-44 overflow-y-auto">
+                        {filteredBreeds2.length > 0 ? filteredBreeds2.map(b => (
+                          <button key={b.id} type="button" onClick={() => selectBreed2(b)}
+                            className="w-full text-left px-3 py-2.5 text-sm font-semibold text-[#2C1810] hover:bg-[#FDEAE6] transition-colors border-b border-[#F0EDE8] last:border-0 touch-manipulation flex items-center justify-between gap-2">
+                            <span>{b.name_cs}</span>
+                            {b.is_custom && <span className="text-[10px] text-[#8B6550] font-normal flex-shrink-0">vlastní</span>}
+                          </button>
+                        )) : (
+                          <div className="px-3 py-2.5 text-sm text-[#A09890]">
+                            {breed2Search.trim() ? 'Rasa nenalezena' : 'Začni psát název rasy...'}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {/* Live preview */}
+                  {(form.breed || breed2Search) && (
+                    <p className="text-[11px] mt-1.5 font-semibold" style={{ color: '#6B4030' }}>
+                      Zobrazí se jako: <span style={{ color: '#E8634A' }}>
+                        {form.breed}{breed2Search ? ` × ${breed2Search}` : '/kříženec'}
+                      </span>
+                    </p>
+                  )}
+                </Field>
+              )}
 
               <Field label="Přibližný věk">
                 <div className="flex gap-2">

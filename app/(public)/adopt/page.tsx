@@ -6,6 +6,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { AnimalFilter } from '@/components/public/AnimalFilter'
 import { FavoriteButtonWrapper } from '@/components/public/FavoriteButtonWrapper'
 import { CITIES_SORTED } from '@/lib/cities-cz-sk'
+import { formatBreed } from '@/lib/breed-label'
 
 export const revalidate = 300 // 5 minut — fallback, primárně invaliduje revalidatePath v API
 
@@ -274,7 +275,7 @@ function AnimalCard({ animal }: { animal: any }) {
           <div className="p-3 flex flex-col flex-1">
             <div className="font-bold text-[#1A0F0A] text-sm sm:text-base mb-0.5 truncate">{animal.name}</div>
             <div className="text-xs mb-0.5 truncate" style={{ color: '#6B4030' }}>
-              {[species?.name_cs, animal.breed, age].filter(Boolean).join(' · ')}
+              {[species?.name_cs, formatBreed(animal.breed, animal.is_crossbreed, animal.breed2), age].filter(Boolean).join(' · ')}
             </div>
             {institution?.name && (
               <div className="text-[11px] mb-2 truncate font-medium" style={{ color: '#8B6550' }}>
@@ -423,7 +424,7 @@ async function getAnimals(params: any, page: number) {
     // Step 2: fetch all matching animals from those institutions (no artificial 500 limit)
     let query = supabase
       .from('animals')
-      .select('id, name, sex, breed, birth_year, primary_photo, urgent, adoption_status, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, suitable_for_flat, suitable_for_house, activity_level, care_difficulty, institution_id, species:animal_species(name_cs,icon), institution:institutions(name,city,type,lat,lng)', { count: 'exact' })
+      .select('id, name, sex, breed, is_crossbreed, breed2, birth_year, primary_photo, urgent, adoption_status, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, suitable_for_flat, suitable_for_house, activity_level, care_difficulty, institution_id, species:animal_species(name_cs,icon), institution:institutions(name,city,type,lat,lng)', { count: 'exact' })
       .eq('published', true)
       .eq('adoption_status', 'available')
       .or('in_quarantine.is.null,in_quarantine.eq.false')
