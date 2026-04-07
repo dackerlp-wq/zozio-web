@@ -67,6 +67,9 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
   const [profileOpen, setProfileOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importJson, setImportJson] = useState('')
+  const [importError, setImportError] = useState('')
 
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok })
@@ -97,6 +100,111 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
     setForm({ ...EMPTY_BREED, species_id: filterSpecies })
     setProfile({ ...EMPTY_PROFILE })
     setProfileOpen(false)
+  }
+
+  function handleImport() {
+    setImportError('')
+    let data: Record<string, unknown>
+    try {
+      data = JSON.parse(importJson)
+    } catch {
+      setImportError('Neplatný JSON — zkontroluj formát.')
+      return
+    }
+
+    // Map category → species_id
+    const cat = String(data.category ?? '').toLowerCase()
+    const matchedSpecies = species.find(s => {
+      const n = s.name_cs.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      if (cat.includes('pes') || cat.includes('pu')) return n.includes('pes') || n.includes('psi')
+      if (cat.includes('ko')) return n.includes('ko')
+      return false
+    })
+
+    // Map size text → size_category
+    const sizeText = String(data.size ?? '').toLowerCase()
+    const size_category =
+      sizeText.includes('obr') ? 'xlarge' :
+      sizeText.includes('velk') ? 'large' :
+      sizeText.includes('st') ? 'medium' :
+      sizeText.includes('mal') ? 'small' : ''
+
+    // Map activity_level → energy_level
+    const actText = String(data.activity_level ?? '').toLowerCase()
+    const energy_level =
+      actText.includes('velmi') ? 'very_high' :
+      actText.includes('vysok') ? 'high' :
+      actText.includes('st') ? 'medium' :
+      actText.includes('n') ? 'low' : ''
+
+    // Map breeding_difficulty → difficulty_rating
+    const diffText = String(data.breeding_difficulty ?? '').toLowerCase()
+    const difficulty_rating =
+      diffText.includes('velmi') ? 5 :
+      diffText.includes('vysok') ? 5 :
+      diffText.includes('vy') ? 4 :
+      diffText.includes('st') ? 3 :
+      diffText.includes('m') ? 2 :
+      diffText.includes('n') ? 1 : 0
+
+    // Range helpers
+    function range(obj: unknown, unit: string) {
+      if (!obj || typeof obj !== 'object') return ''
+      const r = obj as { min?: number; max?: number }
+      if (r.min != null && r.max != null) return `${r.min}–${r.max} ${unit}`
+      if (r.min != null) return `${r.min}+ ${unit}`
+      return ''
+    }
+
+    // Combine not_suitable_for into warnings together with health_risks
+    const warnings: string[] = [
+      ...((data.health_risks as string[]) ?? []),
+      ...((data.not_suitable_for as string[]) ?? []).map(v => `Nevhodné pro: ${v}`),
+    ]
+
+    const newForm = {
+      species_id: matchedSpecies?.id ?? filterSpecies,
+      name_cs: String(data.name ?? ''),
+      name_sk: '',
+      origin_country: String(data.origin_country ?? ''),
+      size_category,
+      energy_level,
+      hypoallergenic: false,
+      description: String(data.personality_description ?? ''),
+    }
+
+    const newProfile: BreedProfile = {
+      name_en: String(data.alternative_name ?? ''),
+      height_cm: range(data.height_cm, 'cm'),
+      weight_kg: range(data.weight_kg, 'kg'),
+      lifespan: range(data.life_expectancy_years, 'let'),
+      fci_group: '',
+      use_cases: (data.suitable_for as string[]) ?? [],
+      character_intro: String(data.personality_description ?? ''),
+      character_traits: (data.temperament as string[]) ?? [],
+      character_warning: '',
+      activity_needs: [],
+      activity_suitable: (data.suitable_for as string[]) ?? [],
+      activity_note: String(data.activity_description ?? ''),
+      difficulty_rating,
+      difficulty_needs: data.breeding_description
+        ? [String(data.breeding_description)]
+        : [],
+      warnings,
+      history: String(data.history ?? ''),
+      history_facts: [],
+      fun_facts: (data.interesting_facts as string[]) ?? [],
+      summary: '',
+    }
+
+    setForm(newForm)
+    setProfile(newProfile)
+    setAdding(true)
+    setEditId(null)
+    setProfileOpen(true)
+    setImportOpen(false)
+    setImportJson('')
+    showToast(`Načteno: ${newForm.name_cs} — zkontroluj a ulož`)
   }
 
   function pf<K extends keyof BreedProfile>(key: K, value: BreedProfile[K]) {
@@ -155,6 +263,43 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
         </div>
       )}
 
+      {/* Import modal */}
+      {importOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-[#F0EDE8] flex items-center justify-between">
+              <h3 className="font-bold text-[#2C1810]">Import plemene z JSON</h3>
+              <button type="button" onClick={() => { setImportOpen(false); setImportJson(''); setImportError('') }}
+                className="text-[#A09890] hover:text-[#2C1810] text-xl font-bold transition-colors">✕</button>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-xs text-[#8B6550] mb-3">
+                Vlož JSON s daty plemene — automaticky se namapuje na formulář. Poté zkontroluj a ulož.
+              </p>
+              <textarea
+                className={textareaCls + ' min-h-[280px] font-mono text-xs'}
+                value={importJson}
+                onChange={e => { setImportJson(e.target.value); setImportError('') }}
+                placeholder={'{\n  "name": "Německý ovčák",\n  "category": "pes",\n  ...\n}'}
+              />
+              {importError && (
+                <p className="mt-2 text-sm font-semibold" style={{ color: '#D83030' }}>{importError}</p>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-[#F0EDE8] flex gap-2 justify-end">
+              <button type="button" onClick={() => { setImportOpen(false); setImportJson(''); setImportError('') }}
+                className="px-4 py-2 rounded-lg border-2 border-[#F0EDE8] text-[#8B6550] font-bold text-sm hover:bg-[#F0EDE8] transition-colors">
+                Zrušit
+              </button>
+              <button type="button" onClick={handleImport} disabled={!importJson.trim()}
+                className="px-5 py-2 rounded-lg bg-[#E8634A] text-white font-bold text-sm disabled:opacity-50 hover:bg-[#d4553e] transition-colors">
+                Načíst do formuláře →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters + add */}
       <div className="flex flex-wrap gap-3 mb-5">
         <select className={selectCls + ' flex-1 min-w-[160px]'} value={filterSpecies} onChange={e => setFilterSpecies(e.target.value)}>
@@ -162,6 +307,10 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
           {species.map(s => <option key={s.id} value={s.id}>{s.name_cs}</option>)}
         </select>
         <input className={inputCls + ' flex-1 min-w-[160px]'} placeholder="Hledat plemeno..." value={filterQ} onChange={e => setFilterQ(e.target.value)} />
+        <button type="button" onClick={() => setImportOpen(true)}
+          className="px-4 py-2 rounded-lg border-2 border-[#E8634A] text-[#E8634A] font-bold text-sm hover:bg-[#FBF0EC] transition-colors whitespace-nowrap">
+          ↓ Import JSON
+        </button>
         <button type="button" onClick={startAdd}
           className="px-4 py-2 rounded-lg bg-[#E8634A] text-white font-bold text-sm hover:bg-[#d4553e] transition-colors whitespace-nowrap">
           + Přidat plemeno
