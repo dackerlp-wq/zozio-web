@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
@@ -49,12 +50,20 @@ export async function PUT(
     if (body.lat !== undefined) payload.lat = body.lat ? parseFloat(body.lat) : null
     if (body.lng !== undefined) payload.lng = body.lng ? parseFloat(body.lng) : null
 
+    // Sociální sítě + provozní hodiny
+    if (body.facebook_url   !== undefined) payload.facebook_url   = body.facebook_url   || null
+    if (body.instagram_url  !== undefined) payload.instagram_url  = body.instagram_url  || null
+    if (body.opening_hours  !== undefined) payload.opening_hours  = body.opening_hours  || null
+
     const { error } = await service
       .from('institutions')
       .update(payload)
       .eq('id', id)
 
     if (error) throw error
+
+    revalidatePath('/institutions', 'layout')
+
     return NextResponse.json({ success: true })
 
   } catch (error) {

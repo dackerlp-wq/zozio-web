@@ -6,17 +6,20 @@ import { ZozLogo } from '@/components/ui/ZozLogo'
 export default async function SuperadminPage() {
   const service = createServiceClient()
 
-  const [institutionsData, usersData, animalsData, applicationsData] = await Promise.all([
+  const [institutionsData, usersData, animalsData, applicationsData, articlesData] = await Promise.all([
     service.from('institutions').select('approval_status, type, plan'),
     service.from('profiles').select('role', { count: 'exact' }),
     service.from('animals').select('id', { count: 'exact' }),
     service.from('adoption_applications').select('status', { count: 'exact' }),
+    service.from('articles').select('id, pinned', { count: 'exact' }).eq('published', true),
   ])
 
   const institutions  = institutionsData.data  ?? []
   const totalUsers    = usersData.count         ?? 0
   const totalAnimals  = animalsData.count        ?? 0
   const totalApps     = applicationsData.count   ?? 0
+  const totalArticles = articlesData.count       ?? 0
+  const pinnedArticle = (articlesData.data ?? []).find(a => a.pinned)
 
   const pending  = institutions.filter(i => i.approval_status === 'pending').length
   const approved = institutions.filter(i => i.approval_status === 'approved').length
@@ -69,7 +72,7 @@ export default async function SuperadminPage() {
         </div>
 
         {/* Rychlé akce */}
-        <div className="grid grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
           <SuperAction
             href="/superadmin/institutions?filter=pending"
             icon="🔍"
@@ -94,6 +97,12 @@ export default async function SuperadminPage() {
             icon="📬"
             title="Newsletter"
             desc="Globální odběratelé a odesílání"
+          />
+          <SuperAction
+            href="/superadmin/articles"
+            icon="📖"
+            title="Články"
+            desc={pinnedArticle ? `📌 Hero připnut · ${totalArticles} článků` : `${totalArticles} článků · žádný hero`}
           />
         </div>
       </div>

@@ -21,7 +21,7 @@ export function Badge({ variant, className = '', size = 'md' }: BadgeProps) {
   if (variant === 'urgent') {
     return (
       <span className={`inline-flex items-center gap-1 font-body font-bold rounded-pill bg-coral text-white ${sizeClass} ${className}`}>
-        🆘 Urgentní
+        🆘 Volám ZOZ
       </span>
     )
   }
