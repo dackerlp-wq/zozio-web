@@ -34,8 +34,13 @@ export function InstitutionsMapClient({ institutions }: Props) {
   const withCoords = institutions.filter(i => i.lat && i.lng)
   const filtered   = withCoords.filter(i => {
     if (filter !== 'all' && i.type !== filter) return false
-    if (search && !i.name.toLowerCase().includes(search.toLowerCase()) &&
-        !i.city?.toLowerCase().includes(search.toLowerCase())) return false
+    if (search) {
+      const q = search.toLowerCase()
+      const matchesName     = i.name.toLowerCase().includes(q)
+      const matchesCity     = i.city?.toLowerCase().includes(q)
+      const matchesCoverage = i.coverage_cities?.some(c => c.toLowerCase().includes(q))
+      if (!matchesName && !matchesCity && !matchesCoverage) return false
+    }
     return true
   })
 
@@ -228,7 +233,7 @@ export function InstitutionsMapClient({ institutions }: Props) {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Hledat útulek nebo město..."
+              placeholder="Hledat město, okres, útulek..."
               className="w-full px-3 py-2 rounded-lg border border-[#E0DDD8] text-sm focus:outline-none focus:border-[#E8634A] mb-3"
             />
             <div className="flex gap-2">
@@ -249,7 +254,7 @@ export function InstitutionsMapClient({ institutions }: Props) {
           <div className="flex-1 overflow-y-auto">
             {listItems.length === 0 && (
               <div className="p-6 text-center text-sm" style={{ color: '#8B6550' }}>
-                Žádné výsledky
+                {search ? `Žádná instituce s dosahem do „${search}"` : 'Žádné výsledky'}
               </div>
             )}
             {listItems.map(inst => {
