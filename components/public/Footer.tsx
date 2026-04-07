@@ -25,7 +25,7 @@ export function Footer() {
             <ul className="list-none space-y-2">
               {[
                 { href: '/adopt',        label: 'Adoptovat zvíře' },
-                { href: '/rescue',       label: 'Záchranné stanice' },
+                { href: '/rescue',       label: 'Ohrožená zvířata' },
                 { href: '/institutions', label: 'Adresář útulků' },
                 { href: '/fundraisers',  label: 'Sbírky' },
               ].map(({ href, label }) => (
@@ -40,7 +40,7 @@ export function Footer() {
             <h4 className="font-display font-extrabold text-xs text-white mb-3 md:mb-4 uppercase tracking-widest">Pro instituce</h4>
             <ul className="list-none space-y-2">
               {[
-                { href: '/auth/register?type=shelter',        label: 'Registrovat útulok' },
+                { href: '/auth/register?type=shelter',        label: 'Registrovat útulek' },
                 { href: '/auth/register?type=rescue_station', label: 'Záchranná stanice' },
                 { href: '/pricing',    label: 'Ceník' },
                 { href: '/auth/login', label: 'Přihlásit se' },

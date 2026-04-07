@@ -4,6 +4,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 
+export const revalidate = 3600 // 1 hodina — fallback, primárně invaliduje revalidatePath v API
+
 interface PageProps {
   params: Promise<{ slug: string }>
 }

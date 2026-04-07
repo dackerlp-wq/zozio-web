@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
@@ -32,6 +33,10 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) throw error
+
+    revalidatePath('/adopt')
+    revalidatePath('/rescue')
+
     return NextResponse.json({ success: true, id: data.id })
 
   } catch (error) {

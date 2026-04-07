@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import {
@@ -128,6 +129,12 @@ export async function PUT(
       } catch (emailError) {
         console.error('Email send error:', emailError)
       }
+    }
+
+    // Při změně stavu zvířete (adoptováno) invaliduj veřejné stránky
+    if (status === 'adopted' && app.animal_id) {
+      revalidatePath('/adopt')
+      revalidatePath(`/animals/${app.animal_id}`)
     }
 
     return NextResponse.json({ success: true })

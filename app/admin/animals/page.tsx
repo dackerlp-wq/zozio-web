@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { AdminAnimalSearch } from '@/components/admin/AdminAnimalSearch'
@@ -41,21 +42,14 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
 
   if (!membership) redirect('/auth/register')
 
-  const { data: institution } = await service
-    .from('institutions')
-    .select('id, name, type')
-    .eq('id', membership.institution_id)
-    .single()
+  const [{ data: institution }, { data: speciesList }] = await Promise.all([
+    service.from('institutions').select('id, name, type').eq('id', membership.institution_id).single(),
+    service.from('animal_species').select('id, name_cs, icon').order('name_cs'),
+  ])
 
   if (!institution) redirect('/admin/dashboard')
 
   const isShelter = institution.type === 'shelter'
-
-  // Species list for filter dropdown
-  const { data: speciesList } = await service
-    .from('animal_species')
-    .select('id, name_cs, icon')
-    .order('name_cs')
 
   const statusField = isShelter ? 'adoption_status' : 'status'
   const table       = isShelter ? 'animals' : 'rescue_cases'
@@ -228,9 +222,9 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                 <div key={item.id} className="bg-white rounded-lg border border-[#F0EDE8] shadow-sm overflow-hidden">
                   <div className="flex items-center gap-3 p-4">
                     {/* Foto nebo ikona */}
-                    <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-[#F5E6D3] flex items-center justify-center text-xl">
+                    <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-[#F5E6D3] flex items-center justify-center text-xl">
                       {primaryPhoto
-                        ? <img src={primaryPhoto} alt={item.name ?? ''} className="w-full h-full object-cover" />
+                        ? <Image src={primaryPhoto} alt={item.name ?? ''} fill sizes="48px" className="object-cover" />
                         : (item.species?.icon ?? (isShelter ? '🐾' : '🦉'))
                       }
                     </div>
@@ -310,9 +304,9 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                       {/* ZVÍŘE */}
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-[#F5E6D3] flex items-center justify-center text-lg">
+                          <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-[#F5E6D3] flex items-center justify-center text-lg">
                             {primaryPhotoDesk
-                              ? <img src={primaryPhotoDesk} alt={item.name ?? ''} className="w-full h-full object-cover" />
+                              ? <Image src={primaryPhotoDesk} alt={item.name ?? ''} fill sizes="40px" className="object-cover" />
                               : (item.species?.icon ?? (isShelter ? '🐾' : '🦉'))
                             }
                           </div>

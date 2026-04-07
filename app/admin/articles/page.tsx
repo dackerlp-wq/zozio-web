@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/Button'
 
 const categoryLabel: Record<string, string> = {
@@ -76,9 +77,9 @@ export default async function AdminArticlesPage() {
               <div className="flex items-center gap-4 p-4 md:p-5">
 
                 {/* Cover mini */}
-                <div className="w-14 h-14 md:w-16 md:h-16 rounded-md overflow-hidden bg-sand flex-shrink-0 flex items-center justify-center text-2xl">
+                <div className="relative w-14 h-14 md:w-16 md:h-16 rounded-md overflow-hidden bg-sand flex-shrink-0 flex items-center justify-center text-2xl">
                   {article.cover_url
-                    ? <img src={article.cover_url} alt="" className="w-full h-full object-cover" />
+                    ? <Image src={article.cover_url} alt="" fill sizes="64px" className="object-cover" />
                     : <span>{categoryLabel[article.category ?? 'story']?.slice(0, 2)}</span>
                   }
                 </div>

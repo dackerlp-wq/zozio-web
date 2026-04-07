@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
@@ -92,6 +93,10 @@ export async function PUT(
       throw error
     }
 
+    revalidatePath('/adopt')
+    revalidatePath('/rescue')
+    revalidatePath(`/animals/${id}`)
+
     // Zaeviduj do historie pokud je zadána poznámka (neblokující)
     if (change_note) {
       service.from('animal_status_history').insert({
@@ -128,6 +133,10 @@ export async function DELETE(
 
     const { error } = await service.from('animals').delete().eq('id', id)
     if (error) throw error
+
+    revalidatePath('/adopt')
+    revalidatePath('/rescue')
+
     return NextResponse.json({ success: true })
 
   } catch (error) {

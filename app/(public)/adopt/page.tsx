@@ -5,6 +5,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { AnimalFilter } from '@/components/public/AnimalFilter'
 import { FavoriteButtonWrapper } from '@/components/public/FavoriteButtonWrapper'
+import { CITIES_SORTED } from '@/lib/cities-cz-sk'
+
+export const revalidate = 300 // 5 minut — fallback, primárně invaliduje revalidatePath v API
 
 export const metadata: Metadata = {
   title: 'Zvířata k adopci | Zozio',
@@ -37,9 +40,8 @@ export default async function AdoptPage({ searchParams }: PageProps) {
   const params = await searchParams
   const page   = Math.max(1, parseInt(params.page ?? '1'))
 
-  const [animals, total, species, breeds] = await Promise.all([
+  const [{ animals, total }, species, breeds] = await Promise.all([
     getAnimals(params, page),
-    getTotal(params),
     getActiveSpecies(),
     getBreeds(params.species),
   ])
@@ -62,21 +64,16 @@ export default async function AdoptPage({ searchParams }: PageProps) {
               {total === 0 ? 'Žádné výsledky' : `${total} zvířat čeká na domov`}
             </p>
           </div>
-          <Link href="/adopt/archiv"
-            className="text-xs font-semibold px-3 py-2 rounded-lg border no-underline transition-all hover:opacity-80"
-            style={{ borderColor: '#E0DDD8', color: '#8B6550', background: 'white' }}>
-            Archiv adoptovaných →
-          </Link>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
-          {/* Filtry */}
-          <aside className="w-full lg:w-64 flex-shrink-0">
+          {/* Filtry — desktop sidebar + mobilní floating button/sheet */}
+          <aside className="lg:w-64 flex-shrink-0">
             <AnimalFilter
               species={species}
               breeds={breeds}
-              cityList={[]}
+              cityList={CITIES_SORTED}
               params={params}
               total={total}
             />
@@ -141,6 +138,15 @@ export default async function AdoptPage({ searchParams }: PageProps) {
             {totalPages > 1 && (
               <Pagination current={page} total={totalPages} params={params} />
             )}
+
+            {/* Archiv */}
+            <div className="mt-8 text-center">
+              <Link href="/adopt/archiv"
+                className="text-xs font-semibold px-3 py-2 rounded-lg border no-underline transition-all hover:opacity-80 inline-block"
+                style={{ borderColor: '#E0DDD8', color: '#8B6550', background: 'white' }}>
+                Archiv adoptovaných →
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -195,17 +201,52 @@ function SortSelect({ current, params }: { current?: string; params: any }) {
 function AnimalCard({ animal }: { animal: any }) {
   const species     = animal.species     as any
   const institution = animal.institution as any
+  const isFemale    = animal.sex === 'female'
   const age         = animal.birth_year
     ? `${new Date().getFullYear() - animal.birth_year} let`
     : null
 
-  const activityLabel: Record<string, { label: string; color: string; bg: string }> = {
-    low:       { label: '😴 Nízká',       color: '#3B6D11', bg: '#EAF3DE' },
-    medium:    { label: '🚶 Střední',      color: '#854F0B', bg: '#FAEEDA' },
-    high:      { label: '🏃 Vysoká',       color: '#993C1D', bg: '#FAECE7' },
-    very_high: { label: '⚡ Velmi vysoká', color: '#993C1D', bg: '#FAECE7' },
+  // Aktivita — inflektováno podle pohlaví
+  const activityTag: Record<string, { label: string; bg: string; color: string }> = {
+    low:       { label: isFemale ? '😴 Klidná'         : '😴 Klidný',         bg: '#EAF3DE', color: '#3B6D11' },
+    medium:    { label: '🚶 Středně aktivní',                                   bg: '#FAEEDA', color: '#854F0B' },
+    high:      { label: isFemale ? '🏃 Aktivní'        : '🏃 Aktivní',         bg: '#FAECE7', color: '#993C1D' },
+    very_high: { label: '⚡ Velmi aktivní',                                     bg: '#FAECE7', color: '#993C1D' },
   }
-  const activity = animal.activity_level ? activityLabel[animal.activity_level] : null
+
+  // Náročnost — inflektováno podle pohlaví
+  const difficultyTag: Record<string, { label: string; bg: string; color: string }> = {
+    easy:      { label: isFemale ? '⭐ Nenáročná'      : '⭐ Nenáročný',       bg: '#EAF3DE', color: '#3B6D11' },
+    medium:    { label: isFemale ? '⭐⭐ Středně náročná' : '⭐⭐ Středně náročný', bg: '#FAEEDA', color: '#854F0B' },
+    demanding: { label: isFemale ? '⭐⭐⭐ Náročná'     : '⭐⭐⭐ Náročný',     bg: '#FFF5E6', color: '#7A4F00' },
+    expert:    { label: '⭐⭐⭐⭐ Pro odborníky',                               bg: '#FFF0E6', color: '#993C1D' },
+  }
+
+  const tags: { label: string; bg: string; color: string }[] = []
+
+  // 1. Děti
+  if (animal.good_with_kids === true)
+    tags.push({ label: isFemale ? '👶 Vhodná k dětem' : '👶 Vhodný k dětem', bg: '#EAF3DE', color: '#1D6A42' })
+  else if (animal.good_with_kids === false)
+    tags.push({ label: isFemale ? '👶 Nevhodná k dětem' : '👶 Nevhodný k dětem', bg: '#FFF5F2', color: '#993C1D' })
+
+  // 2. Aktivita
+  if (animal.activity_level && activityTag[animal.activity_level])
+    tags.push(activityTag[animal.activity_level])
+
+  // 3. Náročnost
+  if (animal.care_difficulty && difficultyTag[animal.care_difficulty])
+    tags.push(difficultyTag[animal.care_difficulty])
+
+  // 4. Jiná zvířata
+  if (animal.good_with_dogs || animal.good_with_cats || animal.good_with_other_animals)
+    tags.push({ label: '🐾 Vychází se zvířaty', bg: '#E8F4FD', color: '#1A5C8A' })
+
+  // 5. Typ bydlení
+  if (animal.suitable_for_flat && !animal.suitable_for_house)
+    tags.push({ label: '🏢 Do bytu', bg: '#F0EDE8', color: '#6B4030' })
+  else if (animal.suitable_for_house && !animal.suitable_for_flat)
+    tags.push({ label: '🏡 Do domu', bg: '#F0EDE8', color: '#6B4030' })
 
   return (
     <div className="relative group">
@@ -221,11 +262,6 @@ function AnimalCard({ animal }: { animal: any }) {
                 Urgentní
               </div>
             )}
-            {animal.suitable_for_flat && !animal.suitable_for_house && (
-              <div className="absolute top-2.5 right-2.5 bg-white/90 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ color: '#1A0F0A' }}>
-                🏢 Byt
-              </div>
-            )}
             {institution?.city && (
               <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm rounded-full px-2 py-0.5">
                 <span className="text-[10px] font-bold text-[#1A0F0A]">
@@ -237,14 +273,18 @@ function AnimalCard({ animal }: { animal: any }) {
           </div>
           <div className="p-3 flex flex-col flex-1">
             <div className="font-bold text-[#1A0F0A] text-sm sm:text-base mb-0.5 truncate">{animal.name}</div>
-            <div className="text-xs mb-2 truncate" style={{ color: '#6B4030' }}>
+            <div className="text-xs mb-0.5 truncate" style={{ color: '#6B4030' }}>
               {[species?.name_cs, animal.breed, age].filter(Boolean).join(' · ')}
             </div>
+            {institution?.name && (
+              <div className="text-[11px] mb-2 truncate font-medium" style={{ color: '#8B6550' }}>
+                📍 {institution.name}
+              </div>
+            )}
             <div className="flex flex-wrap gap-1 mt-auto">
-              {animal.vaccinated     && <Pill label="Očkovaný"   bg="#EAF3DE" color="#3B6D11" />}
-              {animal.neutered       && <Pill label="Kastrovaný" bg="#EAF3DE" color="#3B6D11" />}
-              {animal.good_with_kids && <Pill label="S dětmi"    bg="#FAEEDA" color="#854F0B" />}
-              {activity              && <Pill label={activity.label} bg={activity.bg} color={activity.color} />}
+              {tags.slice(0, 4).map(t => (
+                <Pill key={t.label} label={t.label} bg={t.bg} color={t.color} />
+              ))}
             </div>
           </div>
         </div>
@@ -344,12 +384,89 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 async function getAnimals(params: any, page: number) {
   const supabase = createServiceClient()
   const hasLoc   = !!(params.lat && params.lng)
-  const offset   = hasLoc ? 0 : (page - 1) * PAGE_SIZE
-  const limit    = hasLoc ? 500 : PAGE_SIZE
+
+  // GPS mode: pre-filter institutions by bounding box, then fetch only nearby animals
+  if (hasLoc) {
+    const uLat = parseFloat(params.lat)
+    const uLng = parseFloat(params.lng)
+
+    // Bounding box: ~220 km lat, ~280 km lng (at CZ/SK latitudes)
+    const LAT_DELTA = 2.0
+    const LNG_DELTA = 3.0
+
+    // Step 1: get institutions within bounding box (only id, lat, lng)
+    const { data: nearbyInstitutions } = await supabase
+      .from('institutions')
+      .select('id, lat, lng')
+      .gte('lat', uLat - LAT_DELTA)
+      .lte('lat', uLat + LAT_DELTA)
+      .gte('lng', uLng - LNG_DELTA)
+      .lte('lng', uLng + LNG_DELTA)
+      .not('lat', 'is', null)
+      .not('lng', 'is', null)
+
+    if (!nearbyInstitutions || nearbyInstitutions.length === 0) {
+      return { animals: [], total: 0 }
+    }
+
+    // Sort institutions by distance so animals can be ordered accordingly
+    const institutionsByDistance = nearbyInstitutions
+      .map(inst => ({
+        id: inst.id,
+        distance: Math.round(haversineKm(uLat, uLng, Number(inst.lat), Number(inst.lng))),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+
+    const institutionIds = institutionsByDistance.map(i => i.id)
+    const distanceMap    = new Map(institutionsByDistance.map(i => [i.id, i.distance]))
+
+    // Step 2: fetch all matching animals from those institutions (no artificial 500 limit)
+    let query = supabase
+      .from('animals')
+      .select('id, name, sex, breed, birth_year, primary_photo, urgent, adoption_status, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, suitable_for_flat, suitable_for_house, activity_level, care_difficulty, institution_id, species:animal_species(name_cs,icon), institution:institutions(name,city,type,lat,lng)', { count: 'exact' })
+      .eq('published', true)
+      .eq('adoption_status', 'available')
+      .or('in_quarantine.is.null,in_quarantine.eq.false')
+      .in('institution_id', institutionIds)
+
+    if (params.species)  query = query.eq('species_id', params.species)
+    if (params.breed)    query = query.eq('breed', params.breed)
+    if (params.size)     query = query.eq('size', params.size)
+    if (params.urgent === 'true') query = query.eq('urgent', true)
+    if (params.q)        query = query.or(`name.ilike.%${params.q}%,breed.ilike.%${params.q}%,description.ilike.%${params.q}%`)
+    if (params.housing === 'flat')  query = query.eq('suitable_for_flat', true)
+    if (params.housing === 'house') query = query.eq('suitable_for_house', true)
+    if (params.kids === 'yes')      query = query.eq('good_with_kids', true)
+    if (params.kids === 'no')       query = query.eq('good_with_kids', false)
+    if (params.other_animals === 'yes') query = query.or('good_with_dogs.eq.true,good_with_cats.eq.true,good_with_other_animals.eq.true')
+    if (params.other_animals === 'no')  query = query.eq('good_with_dogs', false).eq('good_with_cats', false)
+    if (params.activity)    query = query.eq('activity_level', params.activity)
+    if (params.difficulty)  query = query.eq('care_difficulty', params.difficulty)
+
+    const { data, count } = await query
+    let animals = (data ?? []) as any[]
+
+    // Attach distance and sort by it
+    animals = animals
+      .map(a => ({ ...a, _distance: distanceMap.get(a.institution_id) ?? null }))
+      .sort((a, b) => {
+        if (a._distance === null && b._distance === null) return 0
+        if (a._distance === null) return 1
+        if (b._distance === null) return -1
+        return a._distance - b._distance
+      })
+
+    const total = count ?? animals.length
+    const start = (page - 1) * PAGE_SIZE
+    return { animals: animals.slice(start, start + PAGE_SIZE), total }
+  }
+
+  // Normal (non-GPS) mode
+  const offset = (page - 1) * PAGE_SIZE
 
   let query = supabase
     .from('animals')
-    .select('id, name, breed, birth_year, primary_photo, urgent, adoption_status, vaccinated, neutered, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, suitable_for_flat, suitable_for_house, activity_level, care_difficulty, species:animal_species(name_cs,icon), institution:institutions(name,city,type,lat,lng)')
+    .select('id, name, sex, breed, birth_year, primary_photo, urgent, adoption_status, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, suitable_for_flat, suitable_for_house, activity_level, care_difficulty, species:animal_species(name_cs,icon), institution:institutions(name,city,type,lat,lng)', { count: 'exact' })
     .eq('published', true)
     .eq('adoption_status', 'available')
     .or('in_quarantine.is.null,in_quarantine.eq.false')
@@ -368,64 +485,14 @@ async function getAnimals(params: any, page: number) {
   if (params.activity)    query = query.eq('activity_level', params.activity)
   if (params.difficulty)  query = query.eq('care_difficulty', params.difficulty)
 
-  if (!hasLoc) {
-    query = params.sort === 'name'
-      ? query.order('name', { ascending: true })
-      : query.order('urgent', { ascending: false }).order('created_at', { ascending: false })
-  }
+  query = params.sort === 'name'
+    ? query.order('name', { ascending: true })
+    : query.order('urgent', { ascending: false }).order('created_at', { ascending: false })
 
-  query = query.range(offset, offset + limit - 1)
+  query = query.range(offset, offset + PAGE_SIZE - 1)
 
-  const { data } = await query
-  let animals = (data ?? []) as any[]
-
-  if (hasLoc) {
-    const uLat = parseFloat(params.lat)
-    const uLng = parseFloat(params.lng)
-    animals = animals
-      .map(a => {
-        const inst = a.institution as any
-        const dist = (inst?.lat && inst?.lng)
-          ? Math.round(haversineKm(uLat, uLng, Number(inst.lat), Number(inst.lng)))
-          : null
-        return { ...a, _distance: dist }
-      })
-      .sort((a, b) => {
-        if (a._distance === null && b._distance === null) return 0
-        if (a._distance === null) return 1
-        if (b._distance === null) return -1
-        return a._distance - b._distance
-      })
-    const start = (page - 1) * PAGE_SIZE
-    animals = animals.slice(start, start + PAGE_SIZE)
-  }
-
-  return animals
-}
-
-async function getTotal(params: any) {
-  const supabase = createServiceClient()
-  let query = supabase
-    .from('animals')
-    .select('id', { count: 'exact', head: true })
-    .eq('published', true)
-    .eq('adoption_status', 'available')
-    .or('in_quarantine.is.null,in_quarantine.eq.false')
-
-  if (params.species)  query = query.eq('species_id', params.species)
-  if (params.breed)    query = query.eq('breed', params.breed)
-  if (params.size)     query = query.eq('size', params.size)
-  if (params.urgent === 'true') query = query.eq('urgent', true)
-  if (params.q)        query = query.or(`name.ilike.%${params.q}%,breed.ilike.%${params.q}%,description.ilike.%${params.q}%`)
-  if (params.housing === 'flat')  query = query.eq('suitable_for_flat', true)
-  if (params.housing === 'house') query = query.eq('suitable_for_house', true)
-  if (params.kids === 'yes') query = query.eq('good_with_kids', true)
-  if (params.kids === 'no')  query = query.eq('good_with_kids', false)
-  if (params.activity)   query = query.eq('activity_level', params.activity)
-  if (params.difficulty) query = query.eq('care_difficulty', params.difficulty)
-
-  const { count } = await query
-  return count ?? 0
+  const { data, count } = await query
+  return { animals: (data ?? []) as any[], total: count ?? 0 }
 }
 
 async function getActiveSpecies() {

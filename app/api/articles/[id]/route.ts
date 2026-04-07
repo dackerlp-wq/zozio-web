@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
@@ -31,6 +32,9 @@ export async function PUT(
       .eq('id', id)
 
     if (error) throw error
+
+    revalidatePath('/articles', 'layout')
+
     return NextResponse.json({ success: true })
 
   } catch (error) {
@@ -56,6 +60,9 @@ export async function DELETE(
 
     const { error } = await service.from('articles').delete().eq('id', id)
     if (error) throw error
+
+    revalidatePath('/articles', 'layout')
+
     return NextResponse.json({ success: true })
 
   } catch (error) {

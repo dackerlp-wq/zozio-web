@@ -10,7 +10,7 @@
     {
       "name": "React Email Preview",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["email", "dev"],
+      "runtimeArgs": ["@react-email/preview-server"],
       "port": 3001
     }
   ]

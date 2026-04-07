@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
@@ -36,11 +37,13 @@ export async function POST(request: NextRequest) {
         body.slug = body.slug + '-' + Date.now().toString(36)
         const { data: d2, error: e2 } = await service.from('articles').insert(body).select('id').single()
         if (e2) throw e2
-        return NextResponse.json({ success: true, id: d2.id })
+        revalidatePath('/articles')
+      return NextResponse.json({ success: true, id: d2.id })
       }
       throw error
     }
 
+    revalidatePath('/articles')
     return NextResponse.json({ success: true, id: data.id })
 
   } catch (error) {

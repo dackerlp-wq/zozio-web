@@ -39,22 +39,19 @@ export default async function AnimalDetailPage({ params }: PageProps) {
   const a           = animal as any
   const institution = a.institution as any
   const species     = a.species     as any
-  const similar     = await getSimilarAnimals(id, a.species_id, a.institution_id)
-  const article     = await getLinkedArticle(id)
-
-  // Zjisti jestli je zvíře v oblíbených přihlášeného uživatele
+  // Paralelní dotazy — spustíme vše najednou
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  let initialFav = false
-  if (user) {
-    const { data } = await supabase
-      .from('animal_favorites')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('animal_id', id)
-      .maybeSingle()
-    initialFav = !!data
-  }
+
+  const [similar, article, favData] = await Promise.all([
+    getSimilarAnimals(id, a.species_id, a.institution_id),
+    getLinkedArticle(id),
+    user
+      ? supabase.from('animal_favorites').select('id').eq('user_id', user.id).eq('animal_id', id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+
+  const initialFav = !!favData.data
 
   const isAvailable = a.adoption_status === 'available'
   const isReserved  = a.adoption_status === 'reserved'
@@ -219,7 +216,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
               {isAvailable && (
                 <div className="bg-white rounded-lg border border-[#F0EDE8] p-5">
                   <h2 className="font-bold text-xl text-[#1A0F0A] mb-1">Chci adoptovat {a.name}</h2>
-                  <p className="text-sm mb-5" style={{ color: '#8B6550' }}>Vyplň žádost a útulok tě kontaktuje.</p>
+                  <p className="text-sm mb-5" style={{ color: '#8B6550' }}>Vyplň žádost a útulek tě kontaktuje.</p>
                   <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
                 </div>
               )}
@@ -235,12 +232,12 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                 <AnimalHeader animal={a} age={age} sexLabel={sexLabel} sizeLabel={sizeLabel} species={species} institution={institution} />
               </div>
 
-              {/* Útulok */}
+              {/* Útulek */}
               {institution && (
                 <div className="px-5 py-4 border-b border-[#F0EDE8]">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#8B6550' }}>Útulok</div>
+                      <div className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#8B6550' }}>Útulek</div>
                       <div className="font-semibold text-sm text-[#1A0F0A]">{institution.name}</div>
                       <div className="text-xs mt-0.5" style={{ color: '#8B6550' }}>📍 {institution.city}</div>
                     </div>
@@ -267,7 +264,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                   <>
                     <h3 className="font-bold text-base text-[#1A0F0A] mb-1">Adoptovat {a.name}</h3>
                     <p className="text-xs mb-4" style={{ color: '#8B6550' }}>
-                      Vyplň žádost — útulok tě kontaktuje do 3 pracovních dní.
+                      Vyplň žádost — útulek tě kontaktuje do 3 pracovních dní.
                     </p>
                     <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
                   </>
