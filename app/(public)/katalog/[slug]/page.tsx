@@ -7,23 +7,35 @@ import { breedSlug } from '@/lib/breed-slug'
 export const revalidate = 3600
 
 export interface BreedProfile {
+  // Identity
   name_en?: string
-  height_cm?: string
-  weight_kg?: string
-  lifespan?: string
-  fci_group?: string
+  // FCI
+  fci_group_number?: number
+  fci_group_name?: string
+  // Physical
+  height_cm?: string        // "55–65 cm"
+  weight_kg?: string        // "22–40 kg"
+  lifespan?: string         // "9–13 let"
+  // Usage
   use_cases?: string[]
+  // Character
   character_intro?: string
   character_traits?: string[]
-  character_warning?: string
+  character_warning?: string  // warning_note
+  // Activity
   activity_needs?: string[]
   activity_suitable?: string[]
   activity_note?: string
-  difficulty_rating?: number
+  // Difficulty
+  difficulty_rating?: number  // 1–5
   difficulty_needs?: string[]
-  warnings?: string[]
+  not_suitable_for?: string[]
+  // Health
+  warnings_health?: string[]
+  // History
   history?: string
-  history_facts?: string[]
+  history_facts?: string[]    // historical_facts
+  // Extra
   fun_facts?: string[]
   summary?: string
 }
@@ -159,7 +171,9 @@ export default async function BreedProfilePage({ params }: Props) {
                 p.height_cm ? ['Výška', p.height_cm] : null,
                 p.weight_kg ? ['Hmotnost', p.weight_kg] : null,
                 p.lifespan ? ['Délka života', p.lifespan] : null,
-                p.fci_group ? ['Skupina (FCI)', p.fci_group] : null,
+                (p.fci_group_number || p.fci_group_name)
+                  ? ['Skupina FCI', [p.fci_group_number ? `${p.fci_group_number}.` : '', p.fci_group_name].filter(Boolean).join(' ')]
+                  : null,
                 breed.energy_level ? ['Aktivita', ENERGY_LABELS[breed.energy_level] ?? breed.energy_level] : null,
                 breed.hypoallergenic ? ['Hypoalergenní', 'Ano'] : null,
               ].filter(Boolean) as [string, string][]} />
@@ -221,7 +235,7 @@ export default async function BreedProfilePage({ params }: Props) {
             )}
 
             {/* Difficulty */}
-            {(p.difficulty_rating || p.difficulty_needs?.length || p.warnings?.length) && (
+            {(p.difficulty_rating || p.difficulty_needs?.length || p.warnings_health?.length || p.not_suitable_for?.length) && (
               <Section icon="🏡" title="Náročnost chovu" accent="#D97706">
                 {p.difficulty_rating && (
                   <div className="flex items-center gap-2 mb-3">
@@ -234,10 +248,16 @@ export default async function BreedProfilePage({ params }: Props) {
                 {p.difficulty_needs && p.difficulty_needs.length > 0 && (
                   <BulletList items={p.difficulty_needs} />
                 )}
-                {p.warnings && p.warnings.length > 0 && (
+                {p.not_suitable_for && p.not_suitable_for.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: '#A08070' }}>Nevhodné pro</p>
+                    <BulletList items={p.not_suitable_for} />
+                  </div>
+                )}
+                {p.warnings_health && p.warnings_health.length > 0 && (
                   <Callout type="warning" className="mt-3">
-                    <p className="text-xs font-bold mb-1.5">⚠️ Časté problémy</p>
-                    <BulletList items={p.warnings} small />
+                    <p className="text-xs font-bold mb-1.5">⚠️ Zdravotní rizika</p>
+                    <BulletList items={p.warnings_health} small />
                   </Callout>
                 )}
               </Section>

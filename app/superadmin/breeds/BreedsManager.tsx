@@ -49,10 +49,11 @@ const EMPTY_BREED = {
 }
 
 const EMPTY_PROFILE: BreedProfile = {
-  name_en: '', height_cm: '', weight_kg: '', lifespan: '', fci_group: '',
+  name_en: '', fci_group_number: undefined, fci_group_name: '',
+  height_cm: '', weight_kg: '', lifespan: '',
   use_cases: [], character_intro: '', character_traits: [], character_warning: '',
   activity_needs: [], activity_suitable: [], activity_note: '',
-  difficulty_rating: 0, difficulty_needs: [], warnings: [],
+  difficulty_rating: 0, difficulty_needs: [], not_suitable_for: [], warnings_health: [],
   history: '', history_facts: [], fun_facts: [], summary: '',
 }
 
@@ -166,11 +167,6 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
       return ''
     }
 
-    // Combine not_suitable_for into warnings together with health_risks
-    const warnings: string[] = [
-      ...((data.health_risks as string[]) ?? []),
-      ...((data.not_suitable_for as string[]) ?? []).map(v => `Nevhodné pro: ${v}`),
-    ]
 
     const newForm = {
       species_id: matchedSpecies?.id ?? filterSpecies,
@@ -189,26 +185,36 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
       return String(text).split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean)
     }
 
+    // fci_group — object {number, name} or plain string
+    const fciRaw = data.fci_group as { number?: number; name?: string } | string | undefined
+    const fci_group_number = typeof fciRaw === 'object' ? (fciRaw?.number ?? undefined) : undefined
+    const fci_group_name   = typeof fciRaw === 'object' ? (fciRaw?.name ?? '') : String(fciRaw ?? '')
+
     const newProfile: BreedProfile = {
       name_en: String(data.alternative_name ?? ''),
+      fci_group_number,
+      fci_group_name,
       height_cm: range(data.height_cm, 'cm'),
       weight_kg: range(data.weight_kg, 'kg'),
       lifespan: range(data.life_expectancy_years, 'let'),
-      fci_group: '',
       use_cases: (data.suitable_for as string[]) ?? [],
       character_intro: String(data.personality_description ?? ''),
       character_traits: (data.temperament as string[]) ?? [],
-      character_warning: String(data.breeding_description ?? ''),
+      character_warning: String(data.warning_note ?? data.breeding_description ?? ''),
       activity_needs: sentences(data.activity_description),
       activity_suitable: (data.suitable_for as string[]) ?? [],
       activity_note: String(data.activity_description ?? ''),
       difficulty_rating,
       difficulty_needs: sentences(data.breeding_description),
-      warnings,
+      not_suitable_for: (data.not_suitable_for as string[]) ?? [],
+      warnings_health: (data.health_risks as string[]) ?? [],
       history: String(data.history ?? ''),
-      history_facts: sentences(data.history),
+      // support both historical_facts and history_facts key names
+      history_facts: (data.historical_facts as string[] | undefined)
+        ?? (data.history_facts as string[] | undefined)
+        ?? sentences(data.history),
       fun_facts: (data.interesting_facts as string[]) ?? [],
-      summary: [data.personality_description, data.breeding_description]
+      summary: String(data.summary ?? '') || [data.personality_description, data.breeding_description]
         .filter(Boolean).map(String).join(' '),
     }
 
@@ -438,8 +444,14 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
                   <Field label="Délka života">
                     <input className={inputCls} value={profile.lifespan ?? ''} onChange={e => pf('lifespan', e.target.value)} placeholder="9–13 let" />
                   </Field>
-                  <Field label="Skupina FCI">
-                    <input className={inputCls} value={profile.fci_group ?? ''} onChange={e => pf('fci_group', e.target.value)} placeholder="ovčácká a pastevecká plemena" />
+                  <Field label="FCI číslo skupiny">
+                    <input className={inputCls} type="number" min={1} max={10}
+                      value={profile.fci_group_number ?? ''}
+                      onChange={e => pf('fci_group_number', e.target.value ? Number(e.target.value) : undefined)}
+                      placeholder="1" />
+                  </Field>
+                  <Field label="FCI název skupiny">
+                    <input className={inputCls} value={profile.fci_group_name ?? ''} onChange={e => pf('fci_group_name', e.target.value)} placeholder="Ovčáčtí a pastevečtí psi" />
                   </Field>
                 </div>
 
@@ -480,7 +492,8 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
                   </Field>
                 </div>
                 <ListField label="Co plemeno potřebuje" value={profile.difficulty_needs ?? []} onChange={v => pf('difficulty_needs', v)} placeholder="důslednou výchovu od štěněte&#10;socializaci&#10;mentální stimulaci" />
-                <ListField label="⚠️ Časté problémy / zdravotní rizika" value={profile.warnings ?? []} onChange={v => pf('warnings', v)} placeholder="separační úzkost (silná vazba na pána)&#10;dysplazie kyčlí" />
+                <ListField label="Nevhodné pro" value={profile.not_suitable_for ?? []} onChange={v => pf('not_suitable_for', v)} placeholder="začátečníci&#10;pasivní majitel&#10;malý byt bez pohybu" />
+                <ListField label="⚠️ Zdravotní rizika" value={profile.warnings_health ?? []} onChange={v => pf('warnings_health', v)} placeholder="dysplazie kyčlí&#10;dysplazie loktů&#10;degenerativní myelopatie" />
 
                 {/* History */}
                 <ProfileDivider title="📜 Historie" />
@@ -586,7 +599,8 @@ function cleanProfile(p: BreedProfile): BreedProfile {
   if (clean.activity_needs) clean.activity_needs = clean.activity_needs.filter(Boolean)
   if (clean.activity_suitable) clean.activity_suitable = clean.activity_suitable.filter(Boolean)
   if (clean.difficulty_needs) clean.difficulty_needs = clean.difficulty_needs.filter(Boolean)
-  if (clean.warnings) clean.warnings = clean.warnings.filter(Boolean)
+  if (clean.warnings_health) clean.warnings_health = clean.warnings_health.filter(Boolean)
+  if (clean.not_suitable_for) clean.not_suitable_for = clean.not_suitable_for.filter(Boolean)
   if (clean.history_facts) clean.history_facts = clean.history_facts.filter(Boolean)
   if (clean.fun_facts) clean.fun_facts = clean.fun_facts.filter(Boolean)
   if (!clean.difficulty_rating) clean.difficulty_rating = undefined
