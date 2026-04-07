@@ -173,6 +173,12 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
       description: String(data.personality_description ?? ''),
     }
 
+    // Split text into sentence bullet points
+    function sentences(text: unknown): string[] {
+      if (!text) return []
+      return String(text).split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean)
+    }
+
     const newProfile: BreedProfile = {
       name_en: String(data.alternative_name ?? ''),
       height_cm: range(data.height_cm, 'cm'),
@@ -182,19 +188,18 @@ export function BreedsManager({ species, initialBreeds }: { species: Species[]; 
       use_cases: (data.suitable_for as string[]) ?? [],
       character_intro: String(data.personality_description ?? ''),
       character_traits: (data.temperament as string[]) ?? [],
-      character_warning: '',
-      activity_needs: [],
+      character_warning: String(data.breeding_description ?? ''),
+      activity_needs: sentences(data.activity_description),
       activity_suitable: (data.suitable_for as string[]) ?? [],
       activity_note: String(data.activity_description ?? ''),
       difficulty_rating,
-      difficulty_needs: data.breeding_description
-        ? [String(data.breeding_description)]
-        : [],
+      difficulty_needs: sentences(data.breeding_description),
       warnings,
       history: String(data.history ?? ''),
-      history_facts: [],
+      history_facts: sentences(data.history),
       fun_facts: (data.interesting_facts as string[]) ?? [],
-      summary: '',
+      summary: [data.personality_description, data.breeding_description]
+        .filter(Boolean).map(String).join(' '),
     }
 
     setForm(newForm)
