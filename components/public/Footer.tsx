@@ -42,6 +42,7 @@ export function Footer() {
             <h4 className="font-display font-extrabold text-xs text-white mb-3 md:mb-4 uppercase tracking-widest">Pro instituce</h4>
             <ul className="list-none space-y-2">
               {[
+                { href: '/proc-byt-na-zozio',                 label: 'Proč být na Zozio?' },
                 { href: '/auth/register?type=shelter',        label: 'Registrovat útulek' },
                 { href: '/auth/register?type=rescue_station', label: 'Záchranná stanice' },
                 { href: '/pricing',    label: 'Ceník' },
