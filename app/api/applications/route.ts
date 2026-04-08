@@ -119,10 +119,18 @@ export async function POST(request: NextRequest) {
         status:              'pending',
         user_id:             authUser?.id ?? null,
       })
-      .select('id, cancel_token')
+      .select('id')
       .single()
 
     if (error) throw error
+
+    // cancel_token načti zvlášť — odolné vůči chybějící migraci
+    const { data: tokenRow } = await supabase
+      .from('adoption_applications')
+      .select('cancel_token')
+      .eq('id', data.id)
+      .single()
+    const cancelToken: string | undefined = (tokenRow as any)?.cancel_token ?? undefined
 
     // E-maily
     try {
@@ -162,7 +170,7 @@ export async function POST(request: NextRequest) {
         animalSpecies,
         applicationId:   data.id,
         animalPhotoUrl,
-        cancelToken:     (data as any).cancel_token ?? undefined,
+        cancelToken:     cancelToken,
       })
     } catch (emailError) {
       console.error('Email error:', emailError)
