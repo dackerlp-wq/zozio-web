@@ -11,6 +11,7 @@ import {
   ApplicationApprovedEmail,
   ApplicationRejectedEmail,
   MeetingScheduledEmail,
+  MeetingConfirmedEmail,
   AdoptionRequestConfirmedEmail,
   AnimalAdoptedEmail,
   NewAnimalEmail,
@@ -146,6 +147,36 @@ export async function sendAdoptionRequestConfirmedEmail(props: {
       trackUrl:       props.trackUrl ?? 'https://zozio.cz/profil?tab=applications',
       animalPhotoUrl: props.animalPhotoUrl,
       cancelUrl,
+    })),
+  })
+}
+
+// ─── 5D. TERMÍN POTVRZEN — pro útulek ────────────────────────────────────────
+export async function sendMeetingConfirmedEmail(props: {
+  to: string
+  institutionContactName: string
+  applicantName: string
+  applicantEmail: string
+  applicantPhone?: string
+  animalName: string
+  animalEmoji?: string
+  confirmedDate: string
+  applicationId: string
+}) {
+  return resend.emails.send({
+    from: FROM,
+    to: props.to,
+    subject: `✅ Termín schůzky potvrzen — ${props.applicantName} / ${props.animalName}`,
+    html: await render(React.createElement(MeetingConfirmedEmail, {
+      institutionContactName: props.institutionContactName,
+      applicantName:          props.applicantName,
+      applicantEmail:         props.applicantEmail,
+      applicantPhone:         props.applicantPhone,
+      animalName:             props.animalName,
+      animalEmoji:            props.animalEmoji ?? '🐾',
+      confirmedDate:          props.confirmedDate,
+      applicationId:          props.applicationId,
+      adminUrl:               `https://zozio.cz/admin/applications/${props.applicationId}`,
     })),
   })
 }

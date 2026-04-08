@@ -8,6 +8,8 @@ interface ApplicationActionsProps {
   currentStatus: string
   applicantEmail: string
   applicantName: string
+  institutionId?: string
+  confirmedMeetingAt?: string
 }
 
 const statusLabel: Record<string, string> = {
@@ -37,6 +39,8 @@ export function ApplicationActions({
   currentStatus,
   applicantEmail,
   applicantName,
+  institutionId,
+  confirmedMeetingAt,
 }: ApplicationActionsProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -47,6 +51,7 @@ export function ApplicationActions({
   // Meeting date picker modal
   const [showMeetingModal, setShowMeetingModal] = useState(false)
   const [meetingDates, setMeetingDates] = useState<string[]>(['', '', ''])
+  const [overlapWarnings, setOverlapWarnings] = useState<string[]>([])
 
   // Reject modal
   const [showRejectModal, setShowRejectModal] = useState(false)
@@ -78,6 +83,31 @@ export function ApplicationActions({
     }
   }
 
+  const checkOverlaps = async (dates: string[]) => {
+    if (!institutionId) return
+    try {
+      const res = await fetch(`/api/institutions/${institutionId}/meetings`)
+      if (!res.ok) return
+      const { meetings } = await res.json() as { meetings: { meeting_at: string; applicant_name: string; animal: { name: string } | null }[] }
+      const warnings: string[] = []
+      const WINDOW_MS = 2 * 60 * 60 * 1000 // 2 hodiny buffer
+
+      for (const proposed of dates) {
+        if (!proposed) continue
+        const propTime = new Date(proposed).getTime()
+        for (const m of meetings) {
+          if (!m.meeting_at) continue
+          const diff = Math.abs(new Date(m.meeting_at).getTime() - propTime)
+          if (diff < WINDOW_MS) {
+            const formattedDate = new Date(m.meeting_at).toLocaleString('cs-CZ', { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
+            warnings.push(`${new Date(proposed).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })} se kryje s ${m.applicant_name} / ${m.animal?.name ?? '?'} (${formattedDate})`)
+          }
+        }
+      }
+      setOverlapWarnings(warnings)
+    } catch { /* ignoruj */ }
+  }
+
   const scheduleMeeting = async () => {
     const validDates = meetingDates.filter(Boolean)
     if (!validDates.length) {
@@ -86,6 +116,7 @@ export function ApplicationActions({
     }
     await updateStatus('meeting_scheduled', { meeting_options: validDates })
     setShowMeetingModal(false)
+    setOverlapWarnings([])
   }
 
   const handleReject = async () => {
@@ -273,6 +304,7 @@ export function ApplicationActions({
                       const next = [...meetingDates]
                       next[i] = e.target.value
                       setMeetingDates(next)
+                      checkOverlaps(next)
                     }}
                     className="px-3 py-2.5 border-2 border-gray-pale rounded-sm font-body text-sm outline-none focus:border-coral transition-colors"
                   />
@@ -286,8 +318,17 @@ export function ApplicationActions({
               </div>
             )}
 
+            {overlapWarnings.length > 0 && (
+              <div className="bg-[#FFF8E6] border border-[#F0A500]/40 rounded-sm px-3 py-2 mb-3">
+                <div className="text-[11px] font-bold text-[#854F0B] mb-1">⚠️ Možné překryvy s jinými schůzkami:</div>
+                {overlapWarnings.map((w, i) => (
+                  <div key={i} className="text-[11px] text-[#854F0B]">• {w}</div>
+                ))}
+              </div>
+            )}
+
             <div className="flex gap-2">
-              <Button variant="sand" size="sm" className="flex-1 justify-center" onClick={() => setShowMeetingModal(false)}>
+              <Button variant="sand" size="sm" className="flex-1 justify-center" onClick={() => { setShowMeetingModal(false); setOverlapWarnings([]) }}>
                 Zrušit
               </Button>
               <Button variant="primary" size="sm" className="flex-1 justify-center" loading={loading} onClick={scheduleMeeting}>

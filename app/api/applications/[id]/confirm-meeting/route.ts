@@ -14,7 +14,7 @@ export async function POST(
 
     const { data: app } = await service
       .from('adoption_applications')
-      .select('id, status, cancel_token, meeting_options, applicant_email, user_id, institution_id')
+      .select('id, status, cancel_token, meeting_options, applicant_name, applicant_email, applicant_phone, user_id, institution_id')
       .eq('id', id)
       .single()
 
@@ -58,6 +58,39 @@ export async function POST(
       .eq('id', id)
 
     if (error) throw error
+
+    // Informovat útulek e-mailem
+    try {
+      const { data: institution } = await service
+        .from('institutions')
+        .select('email, name')
+        .eq('id', app.institution_id)
+        .single()
+
+      if (institution?.email) {
+        const animalRes = await service
+          .from('animals')
+          .select('name, species:animal_species(icon)')
+          .eq('institution_id', app.institution_id)
+          .single()
+        const animal = animalRes.data
+
+        const { sendMeetingConfirmedEmail } = await import('@/lib/email/send')
+        await sendMeetingConfirmedEmail({
+          to:                     institution.email,
+          institutionContactName: institution.name,
+          applicantName:          app.applicant_name,
+          applicantEmail:         app.applicant_email,
+          applicantPhone:         app.applicant_phone ?? undefined,
+          animalName:             (animal as any)?.name  ?? 'zvíře',
+          animalEmoji:            (animal as any)?.species?.icon ?? '🐾',
+          confirmedDate,
+          applicationId:          id,
+        })
+      }
+    } catch (emailError) {
+      console.error('Meeting confirmed email error:', emailError)
+    }
 
     return NextResponse.json({ success: true, confirmedDate })
 

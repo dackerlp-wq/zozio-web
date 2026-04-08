@@ -582,6 +582,72 @@ export function AdoptionRequestConfirmedEmail({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 5D. TERMÍN SCHŮZKY POTVRZEN ŽADATELEM (PRO ÚTULEK)
+// ─────────────────────────────────────────────────────────────────────────────
+interface MeetingConfirmedEmailProps {
+  institutionContactName: string
+  applicantName: string
+  applicantEmail: string
+  applicantPhone?: string
+  animalName: string
+  animalEmoji: string
+  confirmedDate: string
+  applicationId: string
+  adminUrl: string
+}
+
+export function MeetingConfirmedEmail({
+  institutionContactName,
+  applicantName,
+  applicantEmail,
+  applicantPhone,
+  animalName,
+  animalEmoji,
+  confirmedDate,
+  applicationId,
+  adminUrl,
+}: MeetingConfirmedEmailProps) {
+  const formatDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString('cs-CZ', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      })
+    } catch { return iso }
+  }
+
+  return (
+    <BaseLayout previewText={`${applicantName} potvrdil/a termín schůzky ohledně adopce ${animalName}.`}>
+      <EmailShell>
+        <EmailHeader color="green" emoji="✅" title={'Termín schůzky\nbyl potvrzen!'} subtitle={`${applicantName} potvrdil/a termín`} />
+        <EmailBody>
+          <Greeting>Dobrý den, {institutionContactName}!</Greeting>
+          <BodyText>
+            Žadatel/ka <strong>{applicantName}</strong> potvrdil/a termín schůzky ohledně adopce <strong>{animalEmoji} {animalName}</strong>.
+          </BodyText>
+          <div style={{ backgroundColor: colors.greenBg, borderRadius: 16, padding: '20px 24px', margin: '20px 0' }}>
+            <div style={{ fontFamily: "'Baloo 2', sans-serif", fontSize: 13, fontWeight: 800, color: colors.green, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              ✅ Potvrzený termín
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: colors.dark }}>
+              {formatDate(confirmedDate)}
+            </div>
+          </div>
+          <InfoCard title="Žadatel" rows={[
+            { label: 'Jméno', value: applicantName },
+            { label: 'E-mail', value: applicantEmail },
+            ...(applicantPhone ? [{ label: 'Telefon', value: applicantPhone }] : []),
+            { label: 'Č. žádosti', value: applicationId },
+          ]} />
+          <CtaButton href={adminUrl} color="green">Zobrazit žádost v panelu</CtaButton>
+        </EmailBody>
+        <EmailFooter note="Zozio.cz — platforma pro útulky a záchranné stanice" />
+      </EmailShell>
+    </BaseLayout>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 7. ZVÍŘE BYLO ADOPTOVÁNO
 // ─────────────────────────────────────────────────────────────────────────────
 interface AnimalAdoptedEmailProps {

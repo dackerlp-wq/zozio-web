@@ -43,6 +43,7 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
   const animal  = (app.animal as unknown) as { id: string; name: string; primary_photo?: string; species: { name_cs: string; icon: string } | null } | null
   const st      = statusLabel[app.status] ?? statusLabel['pending']
   const meetingOptions: string[] = Array.isArray(app.meeting_options) ? app.meeting_options : []
+  const meetingAt: string | null = app.meeting_at ?? null
 
   const formatDateTime = (iso: string) => new Date(iso).toLocaleString('cs-CZ', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -117,18 +118,45 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
             </div>
           )}
 
-          {/* Schůzka */}
+          {/* Schůzka — potvrzený termín */}
+          {meetingAt && (
+            <div className="bg-white rounded-lg p-4 md:p-6 border-2 shadow-sm" style={{ borderColor: '#3B6D11' }}>
+              <h2 className="font-display font-extrabold text-base md:text-lg text-espresso mb-3">✅ Potvrzený termín schůzky</h2>
+              <div className="flex items-center gap-3 px-4 py-3.5 rounded-lg" style={{ background: '#EAF3DE' }}>
+                <span className="text-2xl">📅</span>
+                <span className="text-base font-extrabold" style={{ color: '#3B6D11' }}>{formatDateTime(meetingAt)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Schůzka — navrhované termíny (jen pokud ještě není potvrzen) */}
           {meetingOptions.length > 0 && (
             <div className="bg-white rounded-lg p-4 md:p-6 border border-gray-pale shadow-sm">
-              <h2 className="font-display font-extrabold text-base md:text-lg text-espresso mb-3">📅 Navrhované termíny schůzky</h2>
+              <h2 className="font-display font-extrabold text-base md:text-lg text-espresso mb-3">
+                {meetingAt ? '📋 Původní návrhy termínů' : '📅 Navrhované termíny schůzky'}
+              </h2>
               <div className="space-y-2">
-                {meetingOptions.filter(Boolean).map((opt, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm font-semibold px-3 py-2.5 rounded-md" style={{ background: '#FAECE7', color: '#993C1D' }}>
-                    <span className="w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold text-white flex-shrink-0" style={{ background: '#E8634A' }}>{i + 1}</span>
-                    {formatDateTime(opt)}
-                  </div>
-                ))}
+                {meetingOptions.filter(Boolean).map((opt, i) => {
+                  const isConfirmed = opt === meetingAt
+                  return (
+                    <div key={i}
+                      className="flex items-center gap-2 text-sm font-semibold px-3 py-2.5 rounded-md"
+                      style={{ background: isConfirmed ? '#EAF3DE' : '#FAECE7', color: isConfirmed ? '#3B6D11' : '#993C1D' }}>
+                      <span className="w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold text-white flex-shrink-0"
+                        style={{ background: isConfirmed ? '#3B6D11' : '#E8634A' }}>
+                        {isConfirmed ? '✓' : i + 1}
+                      </span>
+                      {formatDateTime(opt)}
+                      {isConfirmed && <span className="ml-auto text-xs font-bold">✅ Potvrzeno žadatelem</span>}
+                    </div>
+                  )
+                })}
               </div>
+              {!meetingAt && (
+                <p className="text-xs mt-2 font-semibold" style={{ color: '#8B6550' }}>
+                  Čeká na potvrzení termínu žadatelem.
+                </p>
+              )}
             </div>
           )}
 
@@ -186,6 +214,8 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
             currentStatus={app.status}
             applicantEmail={app.applicant_email}
             applicantName={app.applicant_name}
+            institutionId={app.institution_id}
+            confirmedMeetingAt={meetingAt ?? undefined}
           />
         </div>
       </div>

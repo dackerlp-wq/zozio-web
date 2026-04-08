@@ -146,6 +146,23 @@ export default async function DashboardPage() {
     } catch { recentApplications = [] }
   }
 
+  // Nadcházející potvrzené schůzky
+  let upcomingMeetings: any[] = []
+  if (isShelter) {
+    try {
+      const { data } = await service
+        .from('adoption_applications')
+        .select('id, applicant_name, applicant_phone, meeting_at, animal:animals(name, species:animal_species(icon, name_cs))')
+        .eq('institution_id', institution.id)
+        .eq('status', 'meeting_scheduled')
+        .not('meeting_at', 'is', null)
+        .gte('meeting_at', now.toISOString())
+        .order('meeting_at', { ascending: true })
+        .limit(5)
+      upcomingMeetings = data ?? []
+    } catch { upcomingMeetings = [] }
+  }
+
   // Aktivita
   let activity: any[] = []
   try {
@@ -321,6 +338,46 @@ export default async function DashboardPage() {
                           </div>
                         </div>
                         <div className="text-[11px] text-[#A09890] shrink-0">{relativeTime(app.created_at)}</div>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Nadcházející schůzky */}
+          {isShelter && upcomingMeetings.length > 0 && (
+            <div className="bg-white rounded-lg border border-[#F0EDE8] overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[#F0EDE8]">
+                <h2 className="font-display font-extrabold text-sm text-[#2C1810]">📅 Nadcházející schůzky</h2>
+                <Link href="/admin/calendar" className="text-xs font-bold text-[#E8634A] no-underline">
+                  Kalendář →
+                </Link>
+              </div>
+              <div>
+                {upcomingMeetings.map((app: any) => {
+                  const meetingDate = new Date(app.meeting_at)
+                  const isToday = meetingDate.toDateString() === now.toDateString()
+                  const isTomorrow = meetingDate.toDateString() === new Date(now.getTime() + 86400000).toDateString()
+                  const dayLabel = isToday ? 'Dnes' : isTomorrow ? 'Zítra'
+                    : meetingDate.toLocaleDateString('cs-CZ', { weekday: 'short', day: 'numeric', month: 'numeric' })
+                  const timeLabel = meetingDate.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
+                  return (
+                    <Link key={app.id} href={`/admin/applications/${app.id}`} className="no-underline">
+                      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#F0EDE8] last:border-0 hover:bg-[#FFFCF8] transition-colors">
+                        <div className="w-10 text-center shrink-0">
+                          <div className="text-[10px] font-bold uppercase" style={{ color: isToday ? '#E8634A' : '#8B6550' }}>{dayLabel}</div>
+                          <div className="text-sm font-extrabold" style={{ color: isToday ? '#E8634A' : '#2C1810' }}>{timeLabel}</div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-sm text-[#2C1810] truncate">{app.applicant_name}</div>
+                          <div className="text-xs text-[#8B6550] truncate">
+                            {app.animal?.species?.icon} {app.animal?.name ?? '—'}
+                            {app.applicant_phone ? ` · ${app.applicant_phone}` : ''}
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: '#EAF3DE', color: '#3B6D11' }}>✅</span>
                       </div>
                     </Link>
                   )

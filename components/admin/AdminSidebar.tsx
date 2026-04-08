@@ -5,6 +5,37 @@ import { useState } from 'react'
 import { ZozLogo } from '@/components/ui/ZozLogo'
 import { cn } from '@/lib/utils'
 
+interface NavGroupProps {
+  icon: string
+  label: string
+  isActive: boolean
+  children: React.ReactNode
+  onClose: () => void
+}
+
+function NavGroup({ icon, label, isActive, children, onClose }: NavGroupProps) {
+  const [expanded, setExpanded] = useState(isActive)
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded(v => !v)}
+        className={cn(
+          'w-full flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all bg-transparent border-none cursor-pointer',
+          isActive ? 'text-white' : 'text-gray-light hover:bg-white/8 hover:text-white'
+        )}>
+        <span className="text-base w-5 text-center shrink-0">{icon}</span>
+        <span className="flex-1 text-left">{label}</span>
+        <span className={cn('text-[10px] transition-transform', expanded ? 'rotate-90' : '')}>▶</span>
+      </button>
+      {expanded && (
+        <div className="pl-8 mt-0.5 space-y-0.5">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface AdminSidebarProps {
   institution: {
     id: string
@@ -22,12 +53,14 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
   const isShelter = institution?.type === 'shelter'
   const [open, setOpen] = useState(false)
 
+  const isAdoptionActive = pathname.startsWith('/admin/applications') || pathname.startsWith('/admin/calendar')
+
   const navItems = [
     { href: '/admin/dashboard',   icon: '📊', label: 'Dashboard' },
     { href: '/admin/animals',     icon: isShelter ? '🐾' : '🦉', label: isShelter ? 'Zvířata' : 'Pacienti' },
-    ...(isShelter
-      ? [{ href: '/admin/applications', icon: '📋', label: 'Žádosti o adopci' }]
-      : [{ href: '/admin/cases',        icon: '🩺', label: 'Záznamy léčby' }]
+    ...(!isShelter
+      ? [{ href: '/admin/cases', icon: '🩺', label: 'Záznamy léčby' }]
+      : []
     ),
     { href: '/admin/fundraisers', icon: '💛', label: 'Sbírky' },
     { href: '/admin/volunteers',  icon: '🙋', label: 'Dobrovolníci' },
@@ -37,6 +70,11 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
     { href: '/admin/widget',     icon: '🔗', label: 'Widget' },
     { href: '/admin/settings',   icon: '⚙️', label: 'Nastavení' },
     { href: '/admin/billing',    icon: '💳', label: 'Předplatné' },
+  ]
+
+  const adoptionSubItems = [
+    { href: '/admin/applications', label: '📋 Žádosti o adopci' },
+    { href: '/admin/calendar',     label: '📅 Kalendář schůzek' },
   ]
 
   const superadminItems = [
@@ -71,7 +109,53 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
       {/* Navigace */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <div className="space-y-1">
-          {navItems.map(({ href, icon, label }) => (
+          {/* Dashboard + Zvířata */}
+          {navItems.slice(0, 2).map(({ href, icon, label }) => (
+            <Link key={href} href={href} onClick={() => setOpen(false)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all no-underline',
+                pathname === href || pathname.startsWith(href + '/')
+                  ? 'bg-white/15 text-white'
+                  : 'text-gray-light hover:bg-white/8 hover:text-white'
+              )}>
+              <span className="text-base w-5 text-center">{icon}</span>
+              {label}
+            </Link>
+          ))}
+
+          {/* Adopce skupina (jen pro útulky) */}
+          {isShelter && (
+            <NavGroup icon="🏠" label="Adopce" isActive={isAdoptionActive} onClose={() => setOpen(false)}>
+              {adoptionSubItems.map(({ href, label }) => (
+                <Link key={href} href={href} onClick={() => setOpen(false)}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-md font-body text-sm font-semibold transition-all no-underline',
+                    pathname === href || pathname.startsWith(href + '/')
+                      ? 'bg-white/15 text-white'
+                      : 'text-gray-light hover:bg-white/8 hover:text-white'
+                  )}>
+                  {label}
+                </Link>
+              ))}
+            </NavGroup>
+          )}
+
+          {/* Záznamy léčby (jen pro záchranné stanice) */}
+          {!isShelter && navItems.slice(2, 3).map(({ href, icon, label }) => (
+            <Link key={href} href={href} onClick={() => setOpen(false)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all no-underline',
+                pathname === href || pathname.startsWith(href + '/')
+                  ? 'bg-white/15 text-white'
+                  : 'text-gray-light hover:bg-white/8 hover:text-white'
+              )}>
+              <span className="text-base w-5 text-center">{icon}</span>
+              {label}
+            </Link>
+          ))}
+
+          {/* Zbytek navigace */}
+          {(isShelter ? navItems.slice(2) : navItems.slice(3)).map(({ href, icon, label }) => (
             <Link key={href} href={href} onClick={() => setOpen(false)}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all no-underline',
