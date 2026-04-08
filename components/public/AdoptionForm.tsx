@@ -1,30 +1,34 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 
 interface AdoptionFormProps {
   animalId: string
   animalName: string
   institutionId: string
+  initialName?: string
+  initialEmail?: string
 }
 
-export function AdoptionForm({ animalId, animalName, institutionId }: AdoptionFormProps) {
+export function AdoptionForm({ animalId, animalName, institutionId, initialName = '', initialEmail = '' }: AdoptionFormProps) {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [form, setForm] = useState({
-    applicant_name:  '',
-    applicant_email: '',
-    applicant_phone: '',
-    housing_type:    '',
-    has_garden:      '',
-    other_pets:      '',
-    has_children:    '',
-    children_ages:   '',
-    experience:      '',
-    motivation:      '',
+    applicant_name:      initialName,
+    applicant_email:     initialEmail,
+    applicant_phone:     '',
+    housing_type:        '',
+    has_garden:          '',
+    other_pets:          '',
+    has_children:        '',
+    children_ages:       '',
+    experience:          '',
+    motivation:          '',
+    application_message: '',
   })
 
   const update = (key: string, value: string) =>
@@ -62,9 +66,16 @@ export function AdoptionForm({ animalId, animalName, institutionId }: AdoptionFo
         <h3 className="font-display font-extrabold text-xl text-espresso mb-2">
           Žádost odeslána!
         </h3>
-        <p className="text-sm text-gray">
+        <p className="text-sm text-gray mb-4">
           Útulek tě brzy kontaktuje na <strong>{form.applicant_email}</strong>.
         </p>
+        <Link
+          href="/profil"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[100px] text-sm font-bold text-white no-underline"
+          style={{ background: '#E8634A' }}
+        >
+          📋 Sledovat stav žádosti
+        </Link>
       </div>
     )
   }
@@ -239,6 +250,17 @@ export function AdoptionForm({ animalId, animalName, institutionId }: AdoptionFo
               onChange={e => update('motivation', e.target.value)}
               placeholder={`Proč chceš adoptovat právě ${animalName}? Co mu/jí můžeš nabídnout?`}
               rows={4}
+              className="px-4 py-3 border-2 border-gray-pale rounded-sm font-body text-sm outline-none focus:border-coral transition-colors resize-none"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-brown uppercase tracking-wider">Zpráva pro útulek</label>
+            <textarea
+              value={form.application_message}
+              onChange={e => update('application_message', e.target.value)}
+              placeholder="Chcete něco sdělit útulku? Dotazy, doplňující info..."
+              rows={3}
               className="px-4 py-3 border-2 border-gray-pale rounded-sm font-body text-sm outline-none focus:border-coral transition-colors resize-none"
             />
           </div>

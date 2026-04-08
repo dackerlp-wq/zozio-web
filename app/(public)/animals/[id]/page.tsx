@@ -211,7 +211,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                 <div className="bg-white rounded-lg border border-[#F0EDE8] p-5">
                   <h2 className="font-bold text-xl text-[#1A0F0A] mb-1">Chci adoptovat „{a.name}"</h2>
                   <p className="text-sm mb-5" style={{ color: '#8B6550' }}>Vyplň žádost a útulek tě kontaktuje.</p>
-                  <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
+                  <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} initialName={user?.user_metadata?.full_name ?? ''} initialEmail={user?.email ?? ''} />
                 </div>
               )}
               {isReserved && <ReservedBanner name={a.name} />}
@@ -282,7 +282,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                     <p className="text-xs mb-4" style={{ color: '#8B6550' }}>
                       Vyplň žádost — útulek tě kontaktuje do 3 pracovních dní.
                     </p>
-                    <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
+                    <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} initialName={user?.user_metadata?.full_name ?? ''} initialEmail={user?.email ?? ''} />
                   </>
                 )}
                 {isReserved && <ReservedBanner name={a.name} />}

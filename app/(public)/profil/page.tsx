@@ -15,6 +15,7 @@ export default async function ProfilPage() {
     { data: favInstitutions },
     { data: volunteers },
     { data: newsletterRow },
+    { data: myApplications },
   ] = await Promise.all([
     supabase
       .from('animal_favorites')
@@ -40,6 +41,12 @@ export default async function ProfilPage() {
       .eq('email', user.email!)
       .is('institution_id', null)
       .maybeSingle(),
+
+    service
+      .from('adoption_applications')
+      .select('id, status, created_at, meeting_options, institution_note, animal:animals(id, name, primary_photo, species:animal_species(name_cs, icon)), institution:institutions(id, name, slug)')
+      .or(`user_id.eq.${user.id},applicant_email.eq.${user.email}`)
+      .order('created_at', { ascending: false }),
   ])
 
   const favInstIds     = (favInstitutions ?? []).map((f: any) => f.institution_id)
@@ -92,6 +99,7 @@ export default async function ProfilPage() {
           newRescueCases={newRescueCases ?? []}
           newArticles={newArticles ?? []}
           newsletterSubscribed={!!newsletterRow}
+          myApplications={myApplications ?? []}
         />
       </div>
     </main>

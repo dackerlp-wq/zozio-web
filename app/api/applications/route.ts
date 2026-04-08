@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { sendNewApplicationEmail, sendApplicationConfirmationEmail } from '@/lib/email'
 
@@ -25,6 +26,10 @@ function checkRateLimit(ip: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    // Volitelná autentizace — ulož user_id pokud je přihlášen
+    const supabaseAuth = await createClient()
+    const { data: { user: authUser } } = await supabaseAuth.auth.getUser()
+
     // ── FIX 4: Rate limiting ──────────────────────────────────────────────
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
       ?? request.headers.get('x-real-ip')
@@ -47,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     const { data: animal } = await supabase
       .from('animals')
-      .select('id, institution_id, adoption_status, name')
+      .select('id, institution_id, adoption_status, name, primary_photo, species:animal_species(name_cs, icon)')
       .eq('id', body.animal_id)
       .single()
 
@@ -111,6 +116,7 @@ export async function POST(request: NextRequest) {
         experience:      body.experience      ?? null,
         motivation:      body.motivation,
         status:          'pending',
+        user_id:         authUser?.id ?? null,
       })
       .select('id')
       .single()
@@ -125,14 +131,24 @@ export async function POST(request: NextRequest) {
         .eq('id', animal.institution_id)
         .single()
 
+      const animalEmoji    = (animal as any).species?.icon ?? '🐾'
+      const animalSpecies  = (animal as any).species?.name_cs ?? 'zvíře'
+      const animalPhotoUrl = (animal as any).primary_photo ?? undefined
+
       if (institution?.email) {
         await sendNewApplicationEmail({
-          institutionEmail: institution.email,
-          institutionName:  institution.name,
-          animalName:       animal.name,
-          applicantName:    body.applicant_name,
-          applicantEmail:   body.applicant_email,
-          applicationId:    data.id,
+          institutionEmail:  institution.email,
+          institutionName:   institution.name,
+          animalName:        animal.name,
+          applicantName:     body.applicant_name,
+          applicantEmail:    body.applicant_email,
+          applicationId:     data.id,
+          applicantPhone:    body.applicant_phone  ?? undefined,
+          applicantCity:     body.applicant_city   ?? undefined,
+          applicantHasOtherAnimals: body.other_pets ? true : undefined,
+          animalEmoji,
+          animalSpecies,
+          applicationMessage: body.application_message ?? '',
         })
       }
 
@@ -141,6 +157,10 @@ export async function POST(request: NextRequest) {
         applicantName:   body.applicant_name,
         animalName:      animal.name,
         institutionName: institution?.name ?? '',
+        animalEmoji,
+        animalSpecies,
+        applicationId:   data.id,
+        animalPhotoUrl,
       })
     } catch (emailError) {
       console.error('Email error:', emailError)

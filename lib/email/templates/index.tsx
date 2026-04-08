@@ -203,6 +203,52 @@ export function NewApplicationEmail({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 5X. ŽÁDOST SE POSUZUJE (PRO UŽIVATELE)
+// ─────────────────────────────────────────────────────────────────────────────
+interface ApplicationReviewingEmailProps {
+  applicantName: string
+  animalName: string
+  animalEmoji: string
+  institutionName: string
+  applicationId: string
+  detailUrl: string
+}
+
+export function ApplicationReviewingEmail({
+  applicantName,
+  animalName,
+  animalEmoji,
+  institutionName,
+  applicationId,
+  detailUrl,
+}: ApplicationReviewingEmailProps) {
+  return (
+    <BaseLayout previewText={`${institutionName} začal posuzovat vaší žádost o adopci ${animalName}.`}>
+      <EmailShell>
+        <EmailHeader color="rescue" emoji="🔍" title={'Vaše žádost\nse posuzuje'} subtitle={`${institutionName} ji právě prochází`} />
+        <EmailBody>
+          <Greeting>Ahoj, {applicantName}!</Greeting>
+          <BodyText>
+            Dobrá zpráva — {institutionName} začal posuzovat vaší žádost o adopci <strong>{animalEmoji} {animalName}</strong>. Pečlivě ji procházíme a brzy se vám ozveme.
+          </BodyText>
+          <HighlightBox color="rescue">
+            ⏳ Posuzování obvykle trvá <strong>1–3 pracovní dny</strong>. Nemusíte nic dělat — ozveme se e-mailem.
+          </HighlightBox>
+          <InfoCard title="Detail žádosti" rows={[
+            { label: 'Zvíře', value: `${animalEmoji} ${animalName}` },
+            { label: 'Útulek', value: institutionName },
+            { label: 'Č. žádosti', value: applicationId },
+            { label: 'Stav', value: <span style={{ color: colors.rescue }}>🔍 Posuzuje se</span> },
+          ]} />
+          <CtaButton href={detailUrl} color="rescue">Sledovat stav žádosti</CtaButton>
+        </EmailBody>
+        <EmailFooter note="Zozio.cz — propojujeme zvířata s domovy" />
+      </EmailShell>
+    </BaseLayout>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 5A. ŽÁDOST SCHVÁLENA (PRO UŽIVATELE)
 // ─────────────────────────────────────────────────────────────────────────────
 interface ApplicationApprovedEmailProps {
@@ -318,6 +364,112 @@ export function ApplicationRejectedEmail({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 5C. SCHŮZKA NAPLÁNOVÁNA (PRO UŽIVATELE)
+// ─────────────────────────────────────────────────────────────────────────────
+interface MeetingScheduledEmailProps {
+  applicantName: string
+  animalName: string
+  animalEmoji: string
+  institutionName: string
+  institutionPhone: string
+  institutionEmail: string
+  meetingOptions: string[]
+  meetingAt?: string
+  applicationId: string
+  institutionNote?: string
+  detailUrl: string
+}
+
+export function MeetingScheduledEmail({
+  applicantName,
+  animalName,
+  animalEmoji,
+  institutionName,
+  institutionPhone,
+  institutionEmail,
+  meetingOptions,
+  meetingAt,
+  applicationId,
+  institutionNote,
+  detailUrl,
+}: MeetingScheduledEmailProps) {
+  const formatDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString('cs-CZ', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      })
+    } catch {
+      return iso
+    }
+  }
+
+  return (
+    <BaseLayout previewText={`${institutionName} chce domluvit termín setkání ohledně adopce ${animalName}.`}>
+      <EmailShell>
+        <EmailHeader color="rescue" emoji="📅" title={'Chceme se s vámi\nsekat!'} subtitle={`${institutionName} posoudil vaši žádost`} />
+        <EmailBody>
+          <Greeting>Ahoj, {applicantName}!</Greeting>
+          <BodyText>
+            Skvělá zpráva — {institutionName} posoudil vaší žádost o adopci <strong>{animalEmoji} {animalName}</strong> a chce domluvit termín osobního setkání. Pokud vše projde, z největší pravděpodobností je {animalName} váš!
+          </BodyText>
+          {institutionNote && (
+            <HighlightBox color="rescue">
+              💬 <strong>Zpráva od útulku:</strong> „{institutionNote}"
+            </HighlightBox>
+          )}
+          {meetingAt && (
+            <div style={{ margin: '24px 0' }}>
+              <div style={{ fontFamily: "'Baloo 2', sans-serif", fontSize: 15, fontWeight: 800, color: colors.dark, marginBottom: 10 }}>
+                📅 Potvrzený termín schůzky
+              </div>
+              <div style={{ backgroundColor: colors.rescueBg, borderRadius: 12, padding: '16px 20px', fontSize: 16, fontWeight: 700, color: colors.dark }}>
+                {formatDate(meetingAt)}
+              </div>
+            </div>
+          )}
+          {!meetingAt && meetingOptions.length > 0 && (
+            <div style={{ margin: '24px 0' }}>
+              <div style={{ fontFamily: "'Baloo 2', sans-serif", fontSize: 15, fontWeight: 800, color: colors.dark, marginBottom: 12 }}>
+                📅 Navrhované termíny
+              </div>
+              {meetingOptions.map((opt, i) => (
+                <div key={i} style={{ backgroundColor: colors.rescueBg ?? '#E1F5EE', borderRadius: 12, padding: '12px 16px', marginBottom: 8, fontSize: 14, fontWeight: 600, color: colors.dark }}>
+                  {i + 1}. {formatDate(opt)}
+                </div>
+              ))}
+              <div style={{ fontSize: 13, color: colors.muted, marginTop: 8 }}>
+                Kontaktujte útulek a potvrďte termín, který vám vyhovuje.
+              </div>
+            </div>
+          )}
+          <div style={{ backgroundColor: colors.shelterBg, borderRadius: 20, padding: '28px 32px', textAlign: 'center', margin: '24px 0' }}>
+            <div style={{ fontSize: 40, marginBottom: 10 }}>📞</div>
+            <div style={{ fontFamily: "'Baloo 2', sans-serif", fontSize: 18, fontWeight: 800, color: colors.dark, marginBottom: 6 }}>
+              Zavolejte nebo napište útulku
+            </div>
+            <div style={{ fontSize: 13, color: colors.muted, fontWeight: 600, marginBottom: 16, lineHeight: 1.5 }}>
+              {institutionName}<br />
+              {institutionPhone && <>{institutionPhone} · </>}{institutionEmail}
+            </div>
+            <a href={detailUrl} style={{ display: 'inline-block', backgroundColor: colors.rescue, color: '#fff', fontWeight: 700, fontSize: 14, textDecoration: 'none', padding: '12px 28px', borderRadius: 100 }}>
+              Zobrazit detail žádosti
+            </a>
+          </div>
+          <InfoCard title="Detail adopce" rows={[
+            { label: 'Zvíře', value: `${animalEmoji} ${animalName}` },
+            { label: 'Útulek', value: institutionName },
+            { label: 'Č. žádosti', value: applicationId },
+            { label: 'Stav', value: <span style={{ color: colors.rescue }}>📅 Schůzka se plánuje</span> },
+          ]} />
+        </EmailBody>
+        <EmailFooter note="Zozio.cz — propojujeme zvířata s domovy" />
+      </EmailShell>
+    </BaseLayout>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 6. ADOPČNÍ ŽÁDOST POTVRZENA (PRO ZÁJEMCE)
 // ─────────────────────────────────────────────────────────────────────────────
 interface AdoptionRequestConfirmedEmailProps {
@@ -329,6 +481,7 @@ interface AdoptionRequestConfirmedEmailProps {
   institutionName: string
   applicationId: string
   trackUrl: string
+  animalPhotoUrl?: string
 }
 
 export function AdoptionRequestConfirmedEmail({
@@ -340,6 +493,7 @@ export function AdoptionRequestConfirmedEmail({
   institutionName,
   applicationId,
   trackUrl,
+  animalPhotoUrl,
 }: AdoptionRequestConfirmedEmailProps) {
   return (
     <BaseLayout previewText={`Vaše žádost o adopci ${animalName} byla přijata — ${institutionName} vás brzy zkontaktuje.`}>
@@ -351,8 +505,11 @@ export function AdoptionRequestConfirmedEmail({
             Skvělá zpráva — vaše žádost o adopci byla úspěšně odeslána do útulku. Máme prsty za vás! 🤞
           </BodyText>
           <div style={{ backgroundColor: '#fff', border: `1.5px solid ${colors.border}`, borderRadius: 20, overflow: 'hidden', margin: '24px 0' }}>
-            <div style={{ backgroundColor: colors.shelterBg, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, textAlign: 'center', padding: '20px 0' }}>
-              {animalEmoji}
+            <div style={{ backgroundColor: colors.shelterBg, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, textAlign: 'center', padding: '20px 0', position: 'relative' }}>
+              {animalPhotoUrl
+                ? <img src={animalPhotoUrl} alt={animalName} style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
+                : animalEmoji
+              }
             </div>
             <div style={{ padding: '20px 24px' }}>
               <div style={{ fontFamily: "'Baloo 2', sans-serif", fontSize: 22, fontWeight: 800, color: colors.dark }}>{animalName}</div>

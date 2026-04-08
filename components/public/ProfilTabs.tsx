@@ -32,7 +32,17 @@ const adoptionLabel: Record<string, string> = {
   not_for_adoption: 'Není k adopci',
 }
 
-type Tab = 'feed' | 'animals' | 'institutions' | 'volunteering' | 'settings'
+type Tab = 'feed' | 'animals' | 'institutions' | 'volunteering' | 'applications' | 'settings'
+
+const appStatusConfig: Record<string, { label: string; bg: string; color: string }> = {
+  pending:           { label: '⏳ Čeká',          bg: '#FAEEDA', color: '#854F0B' },
+  reviewing:         { label: '🔍 Posuzuje se',   bg: '#E1F5EE', color: '#1A6B5A' },
+  approved:          { label: '✓ Schválena',       bg: '#EAF3DE', color: '#3B6D11' },
+  rejected:          { label: '✗ Zamítnuta',       bg: '#F5F5F5', color: '#6B6B6B' },
+  meeting_scheduled: { label: '📅 Schůzka',        bg: '#FAECE7', color: '#993C1D' },
+  adopted:           { label: '🏠 Adoptováno',     bg: '#EAF3DE', color: '#3B6D11' },
+  cancelled:         { label: '🚫 Stornováno',     bg: '#F5F5F5', color: '#6B6B6B' },
+}
 
 interface Props {
   user: { email: string; user_metadata?: { full_name?: string; phone?: string } }
@@ -43,9 +53,10 @@ interface Props {
   newRescueCases: any[]
   newArticles: any[]
   newsletterSubscribed: boolean
+  myApplications: any[]
 }
 
-export function ProfilTabs({ user, favAnimals, favInstitutions, volunteers, newAnimals, newRescueCases, newArticles, newsletterSubscribed }: Props) {
+export function ProfilTabs({ user, favAnimals, favInstitutions, volunteers, newAnimals, newRescueCases, newArticles, newsletterSubscribed, myApplications }: Props) {
   const [tab, setTab] = useState<Tab>('feed')
   const [showVolunteerModal, setShowVolunteerModal] = useState(false)
 
@@ -54,11 +65,14 @@ export function ProfilTabs({ user, favAnimals, favInstitutions, volunteers, newA
   const hasFeed = newAnimals.length + newRescueCases.length + newArticles.length > 0
   const pendingVolunteers = volunteers.filter((v: any) => v.status === 'pending').length
 
+  const activeApplications = myApplications.filter((a: any) => !['rejected', 'adopted', 'cancelled'].includes(a.status)).length
+
   const tabs: { id: Tab; label: string; icon: string; count?: number }[] = [
     { id: 'feed',         icon: '🔔', label: 'Aktuality',      count: hasFeed ? newAnimals.length + newRescueCases.length + newArticles.length : 0 },
     { id: 'animals',      icon: '🐾', label: 'Zvířata',        count: favAnimals.length },
     { id: 'institutions', icon: '🏛',  label: 'Instituce',     count: favInstitutions.length },
     { id: 'volunteering', icon: '🙋', label: 'Dobrovolnictví', count: volunteers.length },
+    { id: 'applications', icon: '📋', label: 'Žádosti',        count: activeApplications },
     { id: 'settings',     icon: '⚙️', label: 'Nastavení' },
   ]
 
@@ -418,6 +432,95 @@ export function ProfilTabs({ user, favAnimals, favInstitutions, volunteers, newA
                             className="inline-flex items-center gap-1.5 text-xs font-bold no-underline hover:opacity-70"
                             style={{ color: '#E8634A' }}>
                             Zobrazit profil instituce →
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ── Moje žádosti ── */}
+        {tab === 'applications' && (
+          <section>
+            {!myApplications.length ? (
+              <div className="text-center py-14">
+                <div className="text-4xl mb-3">📋</div>
+                <p className="font-bold text-[#1A0F0A] mb-1">Zatím žádné žádosti</p>
+                <p className="text-sm mb-5" style={{ color: '#8B6550' }}>
+                  Najdi zvíře a podej žádost o adopci.
+                </p>
+                <Link href="/adopt"
+                  className="inline-flex px-5 py-2.5 rounded-[100px] text-sm font-bold text-white no-underline"
+                  style={{ background: '#E8634A' }}>
+                  Hledat zvíře →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {myApplications.map((app: any) => {
+                  const animal = app.animal
+                  const inst   = app.institution
+                  const st = appStatusConfig[app.status] ?? appStatusConfig['pending']
+                  const formatDate = (iso: string) => new Date(iso).toLocaleString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' })
+                  const formatDateTime = (iso: string) => new Date(iso).toLocaleString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+
+                  return (
+                    <div key={app.id} className="bg-white rounded-xl border border-[#F0EDE8] overflow-hidden">
+                      <div className="flex items-center gap-3 p-4">
+                        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 relative flex items-center justify-center"
+                          style={{ background: '#FAECE7' }}>
+                          {animal?.primary_photo
+                            ? <Image src={animal.primary_photo} alt={animal.name} fill className="object-cover" />
+                            : <span className="text-2xl">{animal?.species?.icon ?? '🐾'}</span>
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-sm text-[#1A0F0A] truncate">
+                            {animal?.name ?? 'Zvíře'}
+                          </div>
+                          <div className="text-xs truncate mt-0.5" style={{ color: '#8B6550' }}>
+                            {inst?.name} · {formatDate(app.created_at)}
+                          </div>
+                        </div>
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-[100px] flex-shrink-0 whitespace-nowrap"
+                          style={{ background: st.bg, color: st.color }}>
+                          {st.label}
+                        </span>
+                      </div>
+
+                      {/* Zpráva od útulku */}
+                      {app.institution_note && (
+                        <div className="mx-4 mb-3 px-3 py-2 rounded-lg text-xs" style={{ background: '#FFF8F0', color: '#6B4030', borderLeft: '3px solid #E8634A' }}>
+                          💬 <strong>Zpráva od útulku:</strong> {app.institution_note}
+                        </div>
+                      )}
+
+                      {/* Navrhované termíny schůzky */}
+                      {app.status === 'meeting_scheduled' && app.meeting_options?.length > 0 && (
+                        <div className="mx-4 mb-3">
+                          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: '#8B6550' }}>Navrhované termíny</div>
+                          <div className="space-y-1">
+                            {(app.meeting_options as string[]).filter(Boolean).map((opt, i) => (
+                              <div key={i} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: '#FAECE7', color: '#993C1D' }}>
+                                📅 {formatDateTime(opt)}
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-[10px] mt-1.5" style={{ color: '#8B6550' }}>Potvrď termín přímo s útulkem telefonicky nebo e-mailem.</p>
+                        </div>
+                      )}
+
+                      {/* Link na profil instituce */}
+                      {inst?.slug && (
+                        <div className="px-4 pb-3">
+                          <Link href={`/institutions/${inst.slug}`}
+                            className="text-xs font-bold no-underline hover:opacity-70"
+                            style={{ color: '#E8634A' }}>
+                            Zobrazit profil útulku →
                           </Link>
                         </div>
                       )}
