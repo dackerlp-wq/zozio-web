@@ -103,22 +103,23 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('adoption_applications')
       .insert({
-        animal_id:       body.animal_id,
-        institution_id:  animal.institution_id,
-        applicant_name:  body.applicant_name,
-        applicant_email: body.applicant_email,
-        applicant_phone: body.applicant_phone ?? null,
-        housing_type:    body.housing_type    ?? null,
-        has_garden:      body.has_garden      ?? null,
-        has_children:    body.has_children    ?? null,
-        children_ages:   body.children_ages   ?? null,
-        other_pets:      body.other_pets      ?? null,
-        experience:      body.experience      ?? null,
-        motivation:      body.motivation,
-        status:          'pending',
-        user_id:         authUser?.id ?? null,
+        animal_id:           body.animal_id,
+        institution_id:      animal.institution_id,
+        applicant_name:      body.applicant_name,
+        applicant_email:     body.applicant_email,
+        applicant_phone:     body.applicant_phone     ?? null,
+        housing_type:        body.housing_type        ?? null,
+        has_garden:          body.has_garden          ?? null,
+        has_children:        body.has_children        ?? null,
+        children_ages:       body.children_ages       ?? null,
+        other_pets:          body.other_pets          ?? null,
+        experience:          body.experience          ?? null,
+        motivation:          body.motivation,
+        application_message: body.application_message ?? null,
+        status:              'pending',
+        user_id:             authUser?.id ?? null,
       })
-      .select('id')
+      .select('id, cancel_token')
       .single()
 
     if (error) throw error
@@ -161,6 +162,7 @@ export async function POST(request: NextRequest) {
         animalSpecies,
         applicationId:   data.id,
         animalPhotoUrl,
+        cancelToken:     (data as any).cancel_token ?? undefined,
       })
     } catch (emailError) {
       console.error('Email error:', emailError)

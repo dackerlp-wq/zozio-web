@@ -12,7 +12,7 @@ interface ApplicationActionsProps {
 
 const statusLabel: Record<string, string> = {
   pending:           '⏳ Nová',
-  reviewing:         '🔍 Prochází',
+  reviewing:         '🔍 Posuzuje se',
   approved:          '✓ Schválena',
   rejected:          '✗ Zamítnuta',
   meeting_scheduled: '📅 Schůzka naplánována',
@@ -30,7 +30,7 @@ const statusColor: Record<string, string> = {
   cancelled:         'bg-gray-pale text-gray',
 }
 
-const ACTIVE_STATUSES = ['pending', 'reviewing', 'approved', 'meeting_scheduled']
+const ACTIVE_STATUSES = ['pending', 'reviewing', 'meeting_scheduled']
 
 export function ApplicationActions({
   applicationId,
@@ -44,9 +44,13 @@ export function ApplicationActions({
   const [institutionNote, setInstitutionNote] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  // Meeting date picker state
+  // Meeting date picker modal
   const [showMeetingModal, setShowMeetingModal] = useState(false)
   const [meetingDates, setMeetingDates] = useState<string[]>(['', '', ''])
+
+  // Reject modal
+  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState('')
 
   const updateStatus = async (status: string, extraBody?: object) => {
     setLoading(true)
@@ -82,6 +86,16 @@ export function ApplicationActions({
     }
     await updateStatus('meeting_scheduled', { meeting_options: validDates })
     setShowMeetingModal(false)
+  }
+
+  const handleReject = async () => {
+    if (!rejectionReason.trim()) {
+      setError('Zadejte důvod zamítnutí')
+      return
+    }
+    await updateStatus('rejected', { institution_note: rejectionReason.trim() })
+    setShowRejectModal(false)
+    setRejectionReason('')
   }
 
   const isClosed = ['rejected', 'adopted', 'cancelled'].includes(currentStatus)
@@ -140,58 +154,27 @@ export function ApplicationActions({
         {/* Akce */}
         <div className="space-y-2">
           {currentStatus === 'pending' && (
-            <>
-              <Button
-                variant="primary"
-                size="sm"
-                className="w-full justify-center"
-                loading={loading}
-                onClick={() => updateStatus('reviewing')}
-              >
-                🔍 Zahájit posuzování
-              </Button>
-              <Button
-                variant="sand"
-                size="sm"
-                className="w-full justify-center"
-                loading={loading}
-                onClick={() => updateStatus('rejected')}
-              >
-                ✗ Zamítnout
-              </Button>
-            </>
+            <Button
+              variant="primary"
+              size="sm"
+              className="w-full justify-center"
+              loading={loading}
+              onClick={() => updateStatus('reviewing')}
+            >
+              🔍 Zahájit posuzování
+            </Button>
           )}
 
           {currentStatus === 'reviewing' && (
-            <>
-              <Button
-                variant="primary"
-                size="sm"
-                className="w-full justify-center"
-                loading={loading}
-                onClick={() => setShowMeetingModal(true)}
-              >
-                📅 Naplánovat schůzku
-              </Button>
-              <Button
-                variant="rescue"
-                size="sm"
-                className="w-full justify-center"
-                loading={loading}
-                onClick={() => updateStatus('approved')}
-              >
-                ✓ Schválit žádost
-              </Button>
-              <Button
-                variant="sand"
-                size="sm"
-                className="w-full justify-center"
-                loading={loading}
-                onClick={() => updateStatus('rejected')}
-              >
-                ✗ Zamítnout
-              </Button>
-            </>
+            <Button
+              variant="primary"
+              size="sm"
+              className="w-full justify-center"
+              loading={loading}
+              onClick={() => setShowMeetingModal(true)}
+            >
+              📅 Naplánovat schůzku
+            </Button>
           )}
 
           {currentStatus === 'meeting_scheduled' && (
@@ -210,32 +193,11 @@ export function ApplicationActions({
                 size="sm"
                 className="w-full justify-center"
                 loading={loading}
-                onClick={() => updateStatus('approved')}
-              >
-                ✓ Schválit adopci
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                className="w-full justify-center"
-                loading={loading}
                 onClick={() => updateStatus('adopted')}
               >
                 🏠 Označit jako adoptováno
               </Button>
             </>
-          )}
-
-          {currentStatus === 'approved' && (
-            <Button
-              variant="primary"
-              size="sm"
-              className="w-full justify-center"
-              loading={loading}
-              onClick={() => updateStatus('adopted')}
-            >
-              🏠 Označit jako adoptováno
-            </Button>
           )}
 
           {isClosed && (
@@ -244,12 +206,25 @@ export function ApplicationActions({
             </div>
           )}
 
+          {/* Zamítnout — pro všechny aktivní stavy */}
+          {ACTIVE_STATUSES.includes(currentStatus) && (
+            <Button
+              variant="sand"
+              size="sm"
+              className="w-full justify-center"
+              loading={loading}
+              onClick={() => { setError(null); setShowRejectModal(true) }}
+            >
+              ✗ Zamítnout žádost
+            </Button>
+          )}
+
           {/* Storno — pro všechny aktivní stavy */}
           {ACTIVE_STATUSES.includes(currentStatus) && (
             <Button
               variant="sand"
               size="sm"
-              className="w-full justify-center mt-1"
+              className="w-full justify-center mt-1 opacity-60 hover:opacity-100"
               loading={loading}
               onClick={() => {
                 if (confirm('Opravdu chcete zrušit tuto žádost o adopci?')) {
@@ -312,22 +287,68 @@ export function ApplicationActions({
             )}
 
             <div className="flex gap-2">
+              <Button variant="sand" size="sm" className="flex-1 justify-center" onClick={() => setShowMeetingModal(false)}>
+                Zrušit
+              </Button>
+              <Button variant="primary" size="sm" className="flex-1 justify-center" loading={loading} onClick={scheduleMeeting}>
+                📅 Odeslat termíny
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reject modal ── */}
+      {showRejectModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(26,15,10,0.6)', backdropFilter: 'blur(4px)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShowRejectModal(false) }}
+        >
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+            <h3 className="font-display font-extrabold text-lg text-espresso mb-1">Zamítnout žádost</h3>
+            <p className="text-xs text-gray mb-4">
+              Napište žadateli důvod zamítnutí — obdrží ho e-mailem.
+            </p>
+
+            <div className="mb-4">
+              <label className="text-xs font-bold text-gray uppercase tracking-wider block mb-1.5">
+                Důvod zamítnutí *
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={e => { setRejectionReason(e.target.value); setError(null) }}
+                placeholder="Např. Hledáme rodinu s větší zahradou, protože pes vyžaduje volný pohyb..."
+                rows={4}
+                className="w-full px-3 py-2.5 border-2 border-gray-pale rounded-sm font-body text-sm outline-none focus:border-coral transition-colors resize-none"
+                autoFocus
+              />
+            </div>
+
+            {error && (
+              <div className="bg-coral-light text-coral-dark text-xs font-semibold px-3 py-2 rounded-sm mb-3">
+                ⚠️ {error}
+              </div>
+            )}
+
+            <div className="flex gap-2">
               <Button
                 variant="sand"
                 size="sm"
                 className="flex-1 justify-center"
-                onClick={() => setShowMeetingModal(false)}
+                onClick={() => { setShowRejectModal(false); setRejectionReason(''); setError(null) }}
               >
-                Zrušit
+                Zpět
               </Button>
               <Button
-                variant="primary"
+                variant="sand"
                 size="sm"
                 className="flex-1 justify-center"
                 loading={loading}
-                onClick={scheduleMeeting}
+                onClick={handleReject}
+                style={{ background: '#993C1D', color: 'white' }}
               >
-                📅 Odeslat termíny
+                ✗ Zamítnout
               </Button>
             </div>
           </div>

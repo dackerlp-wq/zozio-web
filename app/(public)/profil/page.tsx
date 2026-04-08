@@ -44,7 +44,7 @@ export default async function ProfilPage() {
 
     service
       .from('adoption_applications')
-      .select('id, status, created_at, meeting_options, institution_note, animal:animals(id, name, primary_photo, species:animal_species(name_cs, icon)), institution:institutions(id, name, slug)')
+      .select('id, status, created_at, updated_at, meeting_options, meeting_at, institution_note, animal:animals(id, name, primary_photo, species:animal_species(name_cs, icon)), institution:institutions(id, name, slug)')
       .or(`user_id.eq.${user.id},applicant_email.eq.${user.email}`)
       .order('created_at', { ascending: false }),
   ])

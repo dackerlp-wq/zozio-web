@@ -29,7 +29,7 @@ export async function PUT(
 
     const { data: app } = await service
       .from('adoption_applications')
-      .select('institution_id, applicant_email, applicant_name, animal_id')
+      .select('institution_id, applicant_email, applicant_name, animal_id, cancel_token')
       .eq('id', id)
       .single()
 
@@ -138,10 +138,11 @@ export async function PUT(
           institutionEmail: institution?.email ?? '',
           adoptionFee:      animalFee,
           applicationId:    id,
-          detailUrl:        `https://zozio.cz/admin/applications/${id}`,
+          detailUrl:        `https://zozio.cz/profil?tab=applications`,
           institutionNote:  institution_note ?? undefined,
           meetingOptions:   meeting_options ?? undefined,
           meetingAt:        meeting_at ?? undefined,
+          cancelToken:      (app as any).cancel_token ?? undefined,
         })
 
         // Při adopci — pošli adoptorovi gratulační email

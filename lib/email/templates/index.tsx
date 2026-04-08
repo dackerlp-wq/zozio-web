@@ -212,6 +212,8 @@ interface ApplicationReviewingEmailProps {
   institutionName: string
   applicationId: string
   detailUrl: string
+  institutionNote?: string
+  cancelUrl?: string
 }
 
 export function ApplicationReviewingEmail({
@@ -221,6 +223,8 @@ export function ApplicationReviewingEmail({
   institutionName,
   applicationId,
   detailUrl,
+  institutionNote,
+  cancelUrl,
 }: ApplicationReviewingEmailProps) {
   return (
     <BaseLayout previewText={`${institutionName} začal posuzovat vaší žádost o adopci ${animalName}.`}>
@@ -231,6 +235,11 @@ export function ApplicationReviewingEmail({
           <BodyText>
             Dobrá zpráva — {institutionName} začal posuzovat vaší žádost o adopci <strong>{animalEmoji} {animalName}</strong>. Pečlivě ji procházíme a brzy se vám ozveme.
           </BodyText>
+          {institutionNote && (
+            <HighlightBox color="rescue">
+              💬 <strong>Zpráva od útulku:</strong> „{institutionNote}"
+            </HighlightBox>
+          )}
           <HighlightBox color="rescue">
             ⏳ Posuzování obvykle trvá <strong>1–3 pracovní dny</strong>. Nemusíte nic dělat — ozveme se e-mailem.
           </HighlightBox>
@@ -241,6 +250,13 @@ export function ApplicationReviewingEmail({
             { label: 'Stav', value: <span style={{ color: colors.rescue }}>🔍 Posuzuje se</span> },
           ]} />
           <CtaButton href={detailUrl} color="rescue">Sledovat stav žádosti</CtaButton>
+          {cancelUrl && (
+            <div style={{ textAlign: 'center', marginTop: 20 }}>
+              <a href={cancelUrl} style={{ fontSize: 12, color: colors.muted, textDecoration: 'underline' }}>
+                Zrušit žádost o adopci
+              </a>
+            </div>
+          )}
         </EmailBody>
         <EmailFooter note="Zozio.cz — propojujeme zvířata s domovy" />
       </EmailShell>
@@ -378,6 +394,8 @@ interface MeetingScheduledEmailProps {
   applicationId: string
   institutionNote?: string
   detailUrl: string
+  confirmBaseUrl?: string
+  cancelUrl?: string
 }
 
 export function MeetingScheduledEmail({
@@ -392,6 +410,8 @@ export function MeetingScheduledEmail({
   applicationId,
   institutionNote,
   detailUrl,
+  confirmBaseUrl,
+  cancelUrl,
 }: MeetingScheduledEmailProps) {
   const formatDate = (iso: string) => {
     try {
@@ -407,7 +427,7 @@ export function MeetingScheduledEmail({
   return (
     <BaseLayout previewText={`${institutionName} chce domluvit termín setkání ohledně adopce ${animalName}.`}>
       <EmailShell>
-        <EmailHeader color="rescue" emoji="📅" title={'Chceme se s vámi\nsekat!'} subtitle={`${institutionName} posoudil vaši žádost`} />
+        <EmailHeader color="rescue" emoji="📅" title={'Chceme se s vámi\nsetkat!'} subtitle={`${institutionName} posoudil vaši žádost`} />
         <EmailBody>
           <Greeting>Ahoj, {applicantName}!</Greeting>
           <BodyText>
@@ -431,16 +451,26 @@ export function MeetingScheduledEmail({
           {!meetingAt && meetingOptions.length > 0 && (
             <div style={{ margin: '24px 0' }}>
               <div style={{ fontFamily: "'Baloo 2', sans-serif", fontSize: 15, fontWeight: 800, color: colors.dark, marginBottom: 12 }}>
-                📅 Navrhované termíny
+                📅 Navrhované termíny — vyberte jeden
               </div>
               {meetingOptions.map((opt, i) => (
-                <div key={i} style={{ backgroundColor: colors.rescueBg ?? '#E1F5EE', borderRadius: 12, padding: '12px 16px', marginBottom: 8, fontSize: 14, fontWeight: 600, color: colors.dark }}>
-                  {i + 1}. {formatDate(opt)}
+                <div key={i} style={{ backgroundColor: colors.rescueBg ?? '#E1F5EE', borderRadius: 12, padding: '12px 16px', marginBottom: 8 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: confirmBaseUrl ? 10 : 0 }}>
+                    {i + 1}. {formatDate(opt)}
+                  </div>
+                  {confirmBaseUrl && (
+                    <a href={`${confirmBaseUrl}${i}`}
+                      style={{ display: 'inline-block', backgroundColor: colors.rescue, color: '#fff', fontWeight: 700, fontSize: 12, textDecoration: 'none', padding: '7px 18px', borderRadius: 100 }}>
+                      ✅ Potvrdit tento termín
+                    </a>
+                  )}
                 </div>
               ))}
-              <div style={{ fontSize: 13, color: colors.muted, marginTop: 8 }}>
-                Kontaktujte útulek a potvrďte termín, který vám vyhovuje.
-              </div>
+              {!confirmBaseUrl && (
+                <div style={{ fontSize: 13, color: colors.muted, marginTop: 8 }}>
+                  Kontaktujte útulek a potvrďte termín, který vám vyhovuje.
+                </div>
+              )}
             </div>
           )}
           <div style={{ backgroundColor: colors.shelterBg, borderRadius: 20, padding: '28px 32px', textAlign: 'center', margin: '24px 0' }}>
@@ -462,6 +492,13 @@ export function MeetingScheduledEmail({
             { label: 'Č. žádosti', value: applicationId },
             { label: 'Stav', value: <span style={{ color: colors.rescue }}>📅 Schůzka se plánuje</span> },
           ]} />
+          {cancelUrl && (
+            <div style={{ textAlign: 'center', marginTop: 20 }}>
+              <a href={cancelUrl} style={{ fontSize: 12, color: colors.muted, textDecoration: 'underline' }}>
+                Zrušit žádost o adopci
+              </a>
+            </div>
+          )}
         </EmailBody>
         <EmailFooter note="Zozio.cz — propojujeme zvířata s domovy" />
       </EmailShell>
@@ -482,6 +519,7 @@ interface AdoptionRequestConfirmedEmailProps {
   applicationId: string
   trackUrl: string
   animalPhotoUrl?: string
+  cancelUrl?: string
 }
 
 export function AdoptionRequestConfirmedEmail({
@@ -494,6 +532,7 @@ export function AdoptionRequestConfirmedEmail({
   applicationId,
   trackUrl,
   animalPhotoUrl,
+  cancelUrl,
 }: AdoptionRequestConfirmedEmailProps) {
   return (
     <BaseLayout previewText={`Vaše žádost o adopci ${animalName} byla přijata — ${institutionName} vás brzy zkontaktuje.`}>
@@ -502,7 +541,7 @@ export function AdoptionRequestConfirmedEmail({
         <EmailBody>
           <Greeting>Ahoj, {applicantName}!</Greeting>
           <BodyText>
-            Skvělá zpráva — vaše žádost o adopci byla úspěšně odeslána do útulku. Máme prsty za vás! 🤞
+            Skvělá zpráva — vaše žádost o adopci byla úspěšně odeslána do útulku. Držíme vám tlapky! 🐾
           </BodyText>
           <div style={{ backgroundColor: '#fff', border: `1.5px solid ${colors.border}`, borderRadius: 20, overflow: 'hidden', margin: '24px 0' }}>
             <div style={{ backgroundColor: colors.shelterBg, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64, textAlign: 'center', padding: '20px 0', position: 'relative' }}>
@@ -528,6 +567,13 @@ export function AdoptionRequestConfirmedEmail({
             📞 Útulek vás <strong>zkontaktuje do 3 pracovních dnů</strong> telefonicky nebo e-mailem.
           </HighlightBox>
           <CtaButton href={trackUrl} color="rescue">Sledovat stav žádosti</CtaButton>
+          {cancelUrl && (
+            <div style={{ textAlign: 'center', marginTop: 20 }}>
+              <a href={cancelUrl} style={{ fontSize: 12, color: colors.muted, textDecoration: 'underline' }}>
+                Zrušit žádost o adopci
+              </a>
+            </div>
+          )}
         </EmailBody>
         <EmailFooter note="Zozio.cz — propojujeme zvířata s domovy" />
       </EmailShell>

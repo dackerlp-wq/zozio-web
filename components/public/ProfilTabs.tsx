@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { FavoriteButton } from '@/components/public/FavoriteButton'
@@ -57,8 +58,36 @@ interface Props {
 }
 
 export function ProfilTabs({ user, favAnimals, favInstitutions, volunteers, newAnimals, newRescueCases, newArticles, newsletterSubscribed, myApplications }: Props) {
+  const router = useRouter()
   const [tab, setTab] = useState<Tab>('feed')
   const [showVolunteerModal, setShowVolunteerModal] = useState(false)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+
+  const cancelApplication = async (appId: string) => {
+    if (!confirm('Opravdu chcete zrušit žádost o adopci?')) return
+    setCancellingId(appId)
+    try {
+      const res = await fetch(`/api/applications/${appId}/cancel`, { method: 'POST' })
+      if (res.ok) router.refresh()
+    } finally {
+      setCancellingId(null)
+    }
+  }
+
+  const confirmMeeting = async (appId: string, optionIndex: number) => {
+    setConfirmingId(`${appId}-${optionIndex}`)
+    try {
+      const res = await fetch(`/api/applications/${appId}/confirm-meeting`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ optionIndex }),
+      })
+      if (res.ok) router.refresh()
+    } finally {
+      setConfirmingId(null)
+    }
+  }
 
   const name = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'příteli'
   const initials = name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
@@ -141,6 +170,53 @@ export function ProfilTabs({ user, favAnimals, favInstitutions, volunteers, newA
         {/* ── Feed ── */}
         {tab === 'feed' && (
           <section>
+            {/* Aktivity z adopčních žádostí */}
+            {(() => {
+              const recentApps = myApplications.filter((a: any) => {
+                const daysSince = (Date.now() - new Date(a.updated_at ?? a.created_at).getTime()) / (1000 * 60 * 60 * 24)
+                return daysSince < 14 && !['cancelled'].includes(a.status) &&
+                  !(a.status === 'pending' && daysSince > 1)
+              })
+              if (!recentApps.length) return null
+              return (
+                <div className="mb-5">
+                  <p className="text-xs font-bold uppercase tracking-wider mb-3 px-0.5" style={{ color: '#8B6550' }}>📋 Vaše adopční žádosti</p>
+                  <div className="space-y-2">
+                    {recentApps.slice(0, 3).map((app: any) => {
+                      const animal = app.animal
+                      const st = appStatusConfig[app.status] ?? appStatusConfig['pending']
+                      return (
+                        <div key={app.id} className="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-[#F0EDE8]">
+                          <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 relative flex items-center justify-center"
+                            style={{ background: '#FAECE7' }}>
+                            {animal?.primary_photo
+                              ? <Image src={animal.primary_photo} alt={animal.name} fill className="object-cover" />
+                              : <span className="text-lg">{animal?.species?.icon ?? '🐾'}</span>
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-sm text-[#1A0F0A] truncate">{animal?.name ?? 'Zvíře'}</div>
+                            <div className="text-xs truncate" style={{ color: '#8B6550' }}>{app.institution?.name}</div>
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-1 rounded-[100px] flex-shrink-0 whitespace-nowrap"
+                            style={{ background: st.bg, color: st.color }}>
+                            {st.label}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {recentApps.length > 3 && (
+                    <button onClick={() => setTab('applications')}
+                      className="w-full mt-2 py-2 text-xs font-bold rounded-xl border border-[#F0EDE8] bg-white hover:opacity-80 transition-all"
+                      style={{ color: '#E8634A' }}>
+                      Zobrazit všechny žádosti →
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
+
             {!hasFeed ? (
               <div className="text-center py-14">
                 <div className="text-4xl mb-3">🔔</div>
@@ -499,31 +575,59 @@ export function ProfilTabs({ user, favAnimals, favInstitutions, volunteers, newA
                         </div>
                       )}
 
-                      {/* Navrhované termíny schůzky */}
+                      {/* Navrhované termíny schůzky + potvrzení */}
                       {app.status === 'meeting_scheduled' && app.meeting_options?.length > 0 && (
                         <div className="mx-4 mb-3">
-                          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: '#8B6550' }}>Navrhované termíny</div>
-                          <div className="space-y-1">
-                            {(app.meeting_options as string[]).filter(Boolean).map((opt, i) => (
-                              <div key={i} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: '#FAECE7', color: '#993C1D' }}>
-                                📅 {formatDateTime(opt)}
-                              </div>
-                            ))}
+                          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: '#8B6550' }}>
+                            Navrhované termíny — vyberte jeden
                           </div>
-                          <p className="text-[10px] mt-1.5" style={{ color: '#8B6550' }}>Potvrď termín přímo s útulkem telefonicky nebo e-mailem.</p>
+                          <div className="space-y-1.5">
+                            {(app.meeting_options as string[]).filter(Boolean).map((opt, i) => {
+                              const isConfirming = confirmingId === `${app.id}-${i}`
+                              const isConfirmed  = app.meeting_at === opt
+                              return (
+                                <div key={i} className="rounded-lg overflow-hidden" style={{ border: isConfirmed ? '2px solid #E8634A' : '2px solid #FAECE7' }}>
+                                  <div className="text-xs font-semibold px-3 py-1.5" style={{ background: '#FAECE7', color: '#993C1D' }}>
+                                    📅 {formatDateTime(opt)}
+                                    {isConfirmed && <span className="ml-2 font-bold">✅ Potvrzeno</span>}
+                                  </div>
+                                  {!isConfirmed && !app.meeting_at && (
+                                    <button
+                                      onClick={() => confirmMeeting(app.id, i)}
+                                      disabled={isConfirming || !!confirmingId}
+                                      className="w-full text-xs font-bold py-1.5 text-white disabled:opacity-60 cursor-pointer border-none transition-opacity"
+                                      style={{ background: '#E8634A' }}
+                                    >
+                                      {isConfirming ? 'Potvrzuji…' : 'Potvrdit tento termín →'}
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
                         </div>
                       )}
 
-                      {/* Link na profil instituce */}
-                      {inst?.slug && (
-                        <div className="px-4 pb-3">
+                      {/* Akce */}
+                      <div className="px-4 pb-3 flex items-center gap-2 flex-wrap">
+                        {inst?.slug && (
                           <Link href={`/institutions/${inst.slug}`}
-                            className="text-xs font-bold no-underline hover:opacity-70"
+                            className="text-xs font-bold no-underline hover:opacity-70 flex-1"
                             style={{ color: '#E8634A' }}>
                             Zobrazit profil útulku →
                           </Link>
-                        </div>
-                      )}
+                        )}
+                        {['pending', 'reviewing', 'meeting_scheduled'].includes(app.status) && (
+                          <button
+                            onClick={() => cancelApplication(app.id)}
+                            disabled={cancellingId === app.id}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer border-none transition-opacity disabled:opacity-60"
+                            style={{ background: '#F5F0EC', color: '#6B4030' }}
+                          >
+                            {cancellingId === app.id ? 'Ruší se…' : '🚫 Zrušit žádost'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )
                 })}

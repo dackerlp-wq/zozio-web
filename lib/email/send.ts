@@ -125,7 +125,12 @@ export async function sendAdoptionRequestConfirmedEmail(props: {
   applicationId?: string
   trackUrl?: string
   animalPhotoUrl?: string
+  cancelToken?: string
 }) {
+  const cancelUrl = props.cancelToken && props.applicationId
+    ? `https://zozio.cz/adopce/zrusit?id=${props.applicationId}&token=${props.cancelToken}`
+    : undefined
+
   return resend.emails.send({
     from: FROM,
     to: props.applicantEmail,
@@ -138,8 +143,9 @@ export async function sendAdoptionRequestConfirmedEmail(props: {
       animalAge:      props.animalAge ?? '',
       institutionName: props.institutionName,
       applicationId:  props.applicationId ?? '',
-      trackUrl:       props.trackUrl ?? 'https://zozio.cz/moje-zadosti',
+      trackUrl:       props.trackUrl ?? 'https://zozio.cz/profil?tab=applications',
       animalPhotoUrl: props.animalPhotoUrl,
+      cancelUrl,
     })),
   })
 }
@@ -336,7 +342,13 @@ export async function sendApplicationReviewingEmail(props: {
   institutionName: string
   applicationId: string
   detailUrl?: string
+  institutionNote?: string
+  cancelToken?: string
 }) {
+  const cancelUrl = props.cancelToken && props.applicationId
+    ? `https://zozio.cz/adopce/zrusit?id=${props.applicationId}&token=${props.cancelToken}`
+    : undefined
+
   return resend.emails.send({
     from: FROM,
     to: props.to,
@@ -347,7 +359,9 @@ export async function sendApplicationReviewingEmail(props: {
       animalEmoji:     props.animalEmoji ?? '🐾',
       institutionName: props.institutionName,
       applicationId:   props.applicationId,
-      detailUrl:       props.detailUrl ?? 'https://zozio.cz/profil',
+      detailUrl:       props.detailUrl ?? 'https://zozio.cz/profil?tab=applications',
+      institutionNote: props.institutionNote,
+      cancelUrl,
     })),
   })
 }
@@ -371,7 +385,15 @@ export async function sendApplicationStatusEmail(props: {
   institutionNote?: string
   meetingOptions?: string[]
   meetingAt?: string
+  cancelToken?: string
 }) {
+  const cancelUrl = props.cancelToken && props.applicationId
+    ? `https://zozio.cz/adopce/zrusit?id=${props.applicationId}&token=${props.cancelToken}`
+    : undefined
+  const confirmBaseUrl = props.cancelToken && props.applicationId
+    ? `https://zozio.cz/adopce/potvrdit-schuezku?id=${props.applicationId}&token=${props.cancelToken}&option=`
+    : undefined
+
   if (props.status === 'reviewing') {
     return resend.emails.send({
       from: FROM,
@@ -383,7 +405,9 @@ export async function sendApplicationStatusEmail(props: {
         animalEmoji:     props.animalEmoji ?? '🐾',
         institutionName: props.institutionName ?? '',
         applicationId:   props.applicationId ?? '',
-        detailUrl:       props.detailUrl ?? 'https://zozio.cz/profil',
+        detailUrl:       props.detailUrl ?? 'https://zozio.cz/profil?tab=applications',
+        institutionNote: props.institutionNote,
+        cancelUrl,
       })),
     })
   }
@@ -404,7 +428,9 @@ export async function sendApplicationStatusEmail(props: {
         meetingAt:        props.meetingAt,
         applicationId:    props.applicationId ?? '',
         institutionNote:  props.institutionNote,
-        detailUrl:        props.detailUrl ?? 'https://zozio.cz/profil',
+        detailUrl:        props.detailUrl ?? 'https://zozio.cz/profil?tab=applications',
+        confirmBaseUrl,
+        cancelUrl,
       })),
     })
   }
@@ -424,7 +450,7 @@ export async function sendApplicationStatusEmail(props: {
         institutionEmail:       props.institutionEmail ?? '',
         adoptionFee:            props.adoptionFee ?? '',
         applicationId:          props.applicationId ?? '',
-        detailUrl:              props.detailUrl ?? 'https://zozio.cz/moje-zadosti',
+        detailUrl:              props.detailUrl ?? 'https://zozio.cz/profil?tab=applications',
       })),
     })
   }
@@ -435,11 +461,11 @@ export async function sendApplicationStatusEmail(props: {
       to: props.applicantEmail,
       subject: `Zpráva ohledně vaší žádosti o adopci — Zozio`,
       html: await render(React.createElement(ApplicationRejectedEmail, {
-        applicantName:    props.applicantName,
-        animalName:       props.animalName,
-        institutionName:  props.institutionName ?? '',
+        applicantName:      props.applicantName,
+        animalName:         props.animalName,
+        institutionName:    props.institutionName ?? '',
         institutionMessage: props.institutionNote,
-        browseUrl:        'https://zozio.cz/adopt',
+        browseUrl:          'https://zozio.cz/adopt',
       })),
     })
   }
