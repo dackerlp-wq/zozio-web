@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Next.js Dev Server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "React Email Preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["@react-email/preview-server"],
+      "port": 3001
+    }
+  ]
+}

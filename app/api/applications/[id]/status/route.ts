@@ -1,0 +1,146 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
+import {
+  sendApplicationStatusEmail,
+  sendAnimalAdoptedEmail,
+} from '@/lib/email'
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Nepřihlášen' }, { status: 401 })
+
+    const body = await request.json()
+    const { status, staff_notes, meeting_at } = body
+
+    const validStatuses = ['pending', 'reviewing', 'approved', 'rejected', 'meeting_scheduled', 'adopted']
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json({ error: 'Neplatný stav' }, { status: 400 })
+    }
+
+    const service = createServiceClient()
+
+    const { data: app } = await service
+      .from('adoption_applications')
+      .select('institution_id, applicant_email, applicant_name, animal_id')
+      .eq('id', id)
+      .single()
+
+    if (!app) return NextResponse.json({ error: 'Žádost nenalezena' }, { status: 404 })
+
+    // Ověř přístup
+    const { data: membership } = await service
+      .from('institution_members')
+      .select('role')
+      .eq('institution_id', app.institution_id)
+      .eq('user_id', user.id)
+      .single()
+
+    if (!membership) return NextResponse.json({ error: 'Nemáš přístup' }, { status: 403 })
+
+    // Načti data instituce a zvířete pro emaily
+    const [{ data: institution }, { data: animalData }] = await Promise.all([
+      service.from('institutions').select('name, email, phone').eq('id', app.institution_id).single(),
+      app.animal_id
+        ? service.from('animals').select('name, adoption_fee, species:animal_species(name_cs, icon)').eq('id', app.animal_id).single()
+        : Promise.resolve({ data: null }),
+    ])
+    const animalEmoji = (animalData as any)?.species?.icon ?? '🐾'
+    const animalName  = (animalData as any)?.name ?? 'zvíře'
+    const animalFee   = (animalData as any)?.adoption_fee ? `${(animalData as any).adoption_fee} Kč` : 'neuvedeno'
+
+    // Aktualizuj žádost
+    const { error } = await service
+      .from('adoption_applications')
+      .update({
+        status,
+        staff_notes: staff_notes ?? null,
+        meeting_at:  meeting_at  ?? null,
+        updated_at:  new Date().toISOString(),
+      })
+      .eq('id', id)
+
+    if (error) throw error
+
+    // ── FIX 1: Při adoptování automaticky změň stav zvířete ──────────────
+    if (status === 'adopted' && app.animal_id) {
+      await service
+        .from('animals')
+        .update({
+          adoption_status: 'adopted',
+          updated_at:      new Date().toISOString(),
+        })
+        .eq('id', app.animal_id)
+
+      // Zaznamenej do historie
+      await service.from('animal_status_history').insert({
+        animal_id:  app.animal_id,
+        old_status: 'available',
+        new_status: 'adopted',
+        note:       `Automaticky po schválení žádosti ${id}`,
+        action:     'status_change',
+        changed_by: user.id,
+      })
+
+      // Zamítni ostatní pending žádosti o toto zvíře
+      await service
+        .from('adoption_applications')
+        .update({ status: 'rejected', updated_at: new Date().toISOString() })
+        .eq('animal_id', app.animal_id)
+        .in('status', ['pending', 'reviewing', 'meeting_scheduled'])
+        .neq('id', id)
+    }
+
+    // Emaily dle stavu
+    if (['approved', 'rejected', 'meeting_scheduled', 'adopted'].includes(status)) {
+      try {
+        await sendApplicationStatusEmail({
+          applicantEmail:        app.applicant_email,
+          applicantName:         app.applicant_name,
+          animalName,
+          animalEmoji,
+          status,
+          institutionName:        institution?.name ?? '',
+          institutionPhone:       institution?.phone ?? '',
+          institutionEmail:       institution?.email ?? '',
+          adoptionFee:            animalFee,
+          applicationId:          id,
+          detailUrl:              `https://zozio.cz/admin/applications/${id}`,
+        })
+
+        // Při adopci — pošli adoptorovi gratulační email
+        if (status === 'adopted') {
+          await sendAnimalAdoptedEmail({
+            to:              app.applicant_email,
+            adoptorName:     app.applicant_name,
+            animalName,
+            animalEmoji,
+            institutionName: institution?.name ?? '',
+            shareUrl:        `https://zozio.cz/articles`,
+          })
+        }
+      } catch (emailError) {
+        console.error('Email send error:', emailError)
+      }
+    }
+
+    // Při změně stavu zvířete (adoptováno) invaliduj veřejné stránky
+    if (status === 'adopted' && app.animal_id) {
+      revalidatePath('/adopt')
+      revalidatePath(`/animals/${app.animal_id}`)
+    }
+
+    return NextResponse.json({ success: true })
+
+  } catch (error) {
+    console.error('PUT /api/applications/[id]/status error:', error)
+    return NextResponse.json({ error: 'Interní chyba serveru' }, { status: 500 })
+  }
+}

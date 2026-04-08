@@ -2,6 +2,15 @@
   "name": "zozio-web",
   "version": "0.1.0",
   "private": true,
+  "browserslist": [
+    "chrome >= 87",
+    "edge >= 88",
+    "firefox >= 78",
+    "safari >= 14",
+    "ios_saf >= 14",
+    "samsung >= 14",
+    "not dead"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,11 +18,24 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@react-email/render": "^2.0.4",
+    "@supabase/ssr": "^0.9.0",
+    "@supabase/supabase-js": "^2.100.0",
+    "@types/leaflet": "^1.9.21",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
+    "clsx": "^2.1.1",
+    "leaflet": "^1.9.4",
+    "lightningcss": "^1.32.0",
     "next": "16.2.1",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "resend": "^6.9.4",
+    "server-only": "^0.0.1",
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
+    "@react-email/preview-server": "^5.2.10",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

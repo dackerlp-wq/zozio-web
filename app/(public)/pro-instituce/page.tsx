@@ -1,0 +1,251 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { Button } from '@/components/ui/Button'
+import { ZozLogo } from '@/components/ui/ZozLogo'
+
+export const metadata: Metadata = {
+  title: 'Pro útulky a záchranné stanice | Zozio',
+  description: 'Zozio je platforma pro správu útulků a záchranných stanic. Adopce, záchranné případy, sbírky a dobrovolníci na jednom místě.',
+}
+
+const shelterFeatures = [
+  { icon: '🐾', title: 'Adopční katalog', desc: 'Veřejné profily každého zvířete s fotkami, zdravotním stavem a povahou. Filtrovatelný katalog pro návštěvníky.' },
+  { icon: '📋', title: 'Online žádosti', desc: 'Zájemci vyplní žádost přímo z webu. Vy ji schválíte nebo zamítnete z telefonu. Automatické e-maily.' },
+  { icon: '💛', title: 'Sbírky', desc: 'Cílené sbírky pro konkrétní zvíře nebo projekt. Progress bar, sdílení na sítě, přehled dárců.' },
+  { icon: '🙋', title: 'Dobrovolníci', desc: 'Registrace dobrovolníků s výběrem aktivit. Koordinace venčení a akcí přehledně na jednom místě.' },
+]
+
+const rescueFeatures = [
+  { icon: '🦉', title: 'Evidence pacientů', desc: 'Příjem, léčba, rehabilitace a propuštění — kompletní workflow záchranného případu.' },
+  { icon: '🩺', title: 'Veterinární záznamy', desc: 'Diagnózy, průběh léčby, veterinář. Vše přehledně u každého případu.' },
+  { icon: '💛', title: 'Sbírky na léčbu', desc: 'Cílené sbírky pro konkrétní zvíře. Sdílejte příběh a získávejte podporu veřejnosti.' },
+  { icon: '📊', title: 'Statistiky záchran', desc: 'Přehled počtu zachráněných zvířat, úspěšnosti léčby a propuštění do přírody.' },
+]
+
+const sharedFeatures = [
+  { icon: '📊', title: 'Admin dashboard', desc: 'Mobilně responzivní přehled statistik a aktivit — funguje z telefonu kdekoli.' },
+  { icon: '📍', title: 'Veřejný profil', desc: 'SEO-optimalizovaná stránka vaší instituce. Lidé vás najdou na Googlu.' },
+  { icon: '✉️', title: 'E-mail notifikace', desc: 'Automatické e-maily při nové žádosti, změně stavu nebo registraci dobrovolníka.' },
+  { icon: '📤', title: 'Export dat', desc: 'Exportujte zvířata, žádosti a dobrovolníky do CSV pro vlastní potřebu.' },
+]
+
+const plans = [
+  {
+    tier: 'Free', price: '0 Kč', period: 'navždy zdarma', hot: false,
+    features: ['Do 15 zvířat / pacientů', 'Veřejný profil instituce', 'Adopční / příjmový formulář'],
+    missing: ['E-mail notifikace', 'Sbírky', 'Dobrovolníci'],
+    cta: 'Začít zdarma', href: '/auth/register',
+  },
+  {
+    tier: 'Standard', price: '490 Kč', period: 'měsíčně', hot: true,
+    features: ['Neomezená zvířata', 'E-mail notifikace', '1 aktivní sbírka', 'Správa dobrovolníků', 'Export dat (CSV)'],
+    missing: ['Více poboček'],
+    cta: '30 dní zdarma →', href: '/auth/register',
+  },
+  {
+    tier: 'Pro', price: '990 Kč', period: 'měsíčně', hot: false,
+    features: ['Vše ze Standard', 'Neomezené sbírky', 'Až 5 poboček', 'Statistiky a analytika', 'Prioritní podpora'],
+    missing: [],
+    cta: 'Kontaktovat nás', href: 'mailto:info@zozio.cz',
+  },
+]
+
+export default function ProInstitucePage() {
+  return (
+    <main className="overflow-x-hidden">
+
+      {/* Hero */}
+      <section className="bg-espresso pt-24 md:pt-32 pb-16 md:pb-20 px-4 md:px-12 relative overflow-hidden">
+        <div className="absolute top-1/2 right-[-60px] -translate-y-1/2 font-display font-extrabold text-[300px] text-white/[0.03] pointer-events-none leading-none">ZOZ</div>
+        <div className="max-w-[900px] mx-auto text-center relative z-10">
+          <div className="inline-flex items-center gap-2 bg-coral/20 text-coral font-body text-xs font-bold px-4 py-2 rounded-pill mb-6">
+            🏢 Pro útulky a záchranné stanice
+          </div>
+          <h1 className="font-display font-extrabold text-[clamp(32px,5vw,60px)] text-white leading-tight mb-5">
+            Moderní správa útulku<br />nebo záchranné stanice
+          </h1>
+          <p className="text-lg text-gray-light max-w-[600px] mx-auto leading-relaxed mb-8">
+            Zozio dává útulkům a záchranným stanicím nástroje pro správu adopcí, záchranných případů, sbírek a dobrovolníků. Vše na jednom místě, bez papírování.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/auth/register">
+              <Button variant="primary" size="lg" className="justify-center w-full sm:w-auto">Registrovat instituci zdarma</Button>
+            </Link>
+            <Link href="#cenik">
+              <Button variant="sand" size="lg" className="justify-center w-full sm:w-auto">Zobrazit ceník</Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Typ instituce */}
+      <section className="py-14 md:py-20 px-4 md:px-12 bg-warm">
+        <div className="max-w-[1100px] mx-auto">
+          <div className="text-center mb-10 md:mb-12">
+            <h2 className="font-display font-extrabold text-3xl md:text-4xl text-espresso">Pro jaký typ instituce?</h2>
+            <p className="text-base text-brown-mid mt-3 max-w-[500px] mx-auto">Zozio je přizpůsobeno oběma typům — každý má vlastní workflow a funkce.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+
+            {/* Útulky */}
+            <div className="bg-shelter-bg rounded-lg p-6 md:p-8">
+              <div className="text-4xl mb-4">🏠</div>
+              <h3 className="font-display font-extrabold text-2xl text-shelter-dark mb-2">Útulky</h3>
+              <p className="font-display font-bold text-coral mb-3 text-sm">Zachraňme opuštěná zvířata</p>
+              <p className="text-sm text-brown-mid leading-relaxed mb-6">
+                Pro obecní i soukromé útulky pečující o psy, kočky, králíky a další domácí zvířata. Hlavní cíl: najít každému zvířeti nový domov.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                {shelterFeatures.map(f => (
+                  <div key={f.title} className="bg-white rounded-md p-3">
+                    <div className="text-xl mb-1">{f.icon}</div>
+                    <div className="font-display font-bold text-sm text-espresso mb-0.5">{f.title}</div>
+                    <div className="text-xs text-gray leading-relaxed">{f.desc}</div>
+                  </div>
+                ))}
+              </div>
+              <Link href="/auth/register?type=shelter">
+                <Button variant="primary" className="w-full justify-center">Registrovat útulok</Button>
+              </Link>
+            </div>
+
+            {/* Záchranné stanice */}
+            <div className="bg-rescue-bg rounded-lg p-6 md:p-8">
+              <div className="text-4xl mb-4">🚑</div>
+              <h3 className="font-display font-extrabold text-2xl text-rescue-dark mb-2">Záchranné stanice</h3>
+              <p className="font-display font-bold text-rescue mb-3 text-sm">Zachraňme ohrožená zvířata</p>
+              <p className="text-sm text-brown-mid leading-relaxed mb-6">
+                Pro stanice léčící volně žijící zraněná zvířata — sovy, lišky, ježky, vydry a další. Hlavní cíl: uzdravit a vrátit do přírody.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                {rescueFeatures.map(f => (
+                  <div key={f.title} className="bg-white rounded-md p-3">
+                    <div className="text-xl mb-1">{f.icon}</div>
+                    <div className="font-display font-bold text-sm text-espresso mb-0.5">{f.title}</div>
+                    <div className="text-xs text-gray leading-relaxed">{f.desc}</div>
+                  </div>
+                ))}
+              </div>
+              <Link href="/auth/register?type=rescue_station">
+                <Button variant="rescue" className="w-full justify-center">Registrovat záchrannou stanici</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Sdílené funkce */}
+      <section className="py-14 md:py-20 px-4 md:px-12 bg-cream">
+        <div className="max-w-[1100px] mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="font-display font-extrabold text-3xl md:text-4xl text-espresso">Sdílené funkce pro všechny</h2>
+            <p className="text-base text-brown-mid mt-3 max-w-[500px] mx-auto">Obě instituce sdílejí silný základ.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+            {sharedFeatures.map(f => (
+              <div key={f.title} className="bg-white rounded-lg p-5 border border-gray-pale shadow-sm">
+                <div className="text-3xl mb-3">{f.icon}</div>
+                <div className="font-display font-extrabold text-base text-espresso mb-1.5">{f.title}</div>
+                <div className="text-xs text-gray leading-relaxed">{f.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Ceník */}
+      <section id="cenik" className="py-14 md:py-20 px-4 md:px-12 bg-espresso relative overflow-hidden">
+        <div className="max-w-[960px] mx-auto">
+          <div className="text-center mb-10 md:mb-12">
+            <h2 className="font-display font-extrabold text-3xl md:text-4xl text-white">Transparentní ceník</h2>
+            <p className="text-base text-gray-light mt-3 max-w-[480px] mx-auto">Začni zdarma. Plať jen když rosteš. Bez závazků, bez skrytých poplatků.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            {plans.map(plan => (
+              <div key={plan.tier} className={`relative rounded-lg p-6 border-2 transition-all
+                ${plan.hot ? 'bg-coral border-coral sm:scale-[1.03] shadow-lg' : 'bg-white/5 border-white/10'}`}>
+                {plan.hot && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber text-espresso font-display font-extrabold text-[11px] px-4 py-1 rounded-pill whitespace-nowrap">
+                    ⭐ NEJOBLÍBENĚJŠÍ
+                  </div>
+                )}
+                <div className={`text-xs font-bold uppercase tracking-widest mb-2 ${plan.hot ? 'text-white/75' : 'text-gray-light'}`}>{plan.tier}</div>
+                <div className="font-display font-extrabold text-4xl text-white leading-none mb-1">{plan.price}</div>
+                <div className={`text-xs mb-5 ${plan.hot ? 'text-white/70' : 'text-gray-light'}`}>{plan.period}</div>
+                <div className={`h-px mb-4 ${plan.hot ? 'bg-white/30' : 'bg-white/10'}`} />
+                <ul className="list-none space-y-2 mb-2">
+                  {plan.features.map(f => (
+                    <li key={f} className={`flex items-center gap-2 text-sm ${plan.hot ? 'text-white/88' : 'text-gray-light'}`}>
+                      <span className="text-amber">✓</span>{f}
+                    </li>
+                  ))}
+                  {plan.missing.map(f => (
+                    <li key={f} className={`flex items-center gap-2 text-sm ${plan.hot ? 'text-white/40' : 'text-white/20'}`}>
+                      <span>✗</span>{f}
+                    </li>
+                  ))}
+                </ul>
+                <div className={`h-px my-4 ${plan.hot ? 'bg-white/30' : 'bg-white/10'}`} />
+                <Link href={plan.href}>
+                  <button className={`w-full py-3 rounded-pill font-display font-extrabold text-sm cursor-pointer border-none transition-all
+                    ${plan.hot ? 'bg-white text-coral-dark hover:bg-cream' : 'bg-white/10 text-white hover:bg-white/16'}`}>
+                    {plan.cta}
+                  </button>
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-center text-sm text-gray">
+            🏛️ Neziskové organizace a obecní útulky: <strong className="text-gray-light">30% sleva</strong> po ověření ·{' '}
+            <a href="mailto:info@zozio.cz" className="text-coral hover:text-coral-light">info@zozio.cz</a>
+          </p>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-14 md:py-20 px-4 md:px-12 bg-warm">
+        <div className="max-w-[700px] mx-auto">
+          <h2 className="font-display font-extrabold text-3xl md:text-4xl text-espresso text-center mb-10">Časté otázky</h2>
+          <div className="space-y-4">
+            {[
+              { q: 'Jak dlouho trvá registrace?', a: 'Vyplnění registračního formuláře trvá 5 minut. Po odeslání tým Zozio instituci zkontroluje a schválí do 24 hodin.' },
+              { q: 'Musím platit hned?', a: 'Ne. Free plán je zdarma navždy bez kreditní karty. Standard plán nabízíme 30 dní zdarma — platba začne až po uplynutí zkušební doby.' },
+              { q: 'Mohu migrovat data ze starého systému?', a: 'Ano, pomůžeme vám s importem dat z Excelu nebo jiných systémů. Kontaktujte nás na info@zozio.cz.' },
+              { q: 'Funguje Zozio na telefonu?', a: 'Ano, admin panel je plně mobilně responzivní. Schvalovat žádosti, přidávat zvířata nebo spravovat dobrovolníky lze přímo z telefonu.' },
+              { q: 'Co když jsem nezisková organizace?', a: 'Neziskové organizace a obecní útulky získávají 30% slevu na Standard a Pro plán. Stačí po registraci doložit potvrzení o neziskové činnosti.' },
+            ].map(({ q, a }) => (
+              <div key={q} className="bg-white rounded-lg p-5 border border-gray-pale">
+                <div className="font-display font-bold text-base text-espresso mb-2">{q}</div>
+                <div className="text-sm text-brown-mid leading-relaxed">{a}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-12 md:py-16 px-4 md:px-12 bg-coral text-center relative overflow-hidden">
+        <div className="hidden md:block absolute top-1/2 left-[-50px] -translate-y-1/2 font-display font-extrabold text-[240px] text-white/[0.07] pointer-events-none leading-none">SOS</div>
+        <div className="hidden md:block absolute top-1/2 right-[-40px] -translate-y-1/2 font-display font-extrabold text-[240px] text-white/[0.07] pointer-events-none leading-none">ZOZ</div>
+        <div className="relative z-10 max-w-[600px] mx-auto">
+          <h2 className="font-display font-extrabold text-3xl md:text-4xl text-white mb-4">Připraveni začít?</h2>
+          <p className="text-base text-white/82 mb-8">Registrace je zdarma a trvá 5 minut. Bez kreditní karty.</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/auth/register">
+              <Button variant="dark" size="lg" className="justify-center w-full sm:w-auto">Registrovat instituci zdarma</Button>
+            </Link>
+            <a href="mailto:info@zozio.cz">
+              <button className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-[17px] rounded-pill font-display font-bold text-base text-white border-2 border-white/40 bg-white/20 hover:bg-white/30 transition-all cursor-pointer">
+                Napsat nám
+              </button>
+            </a>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  )
+}
