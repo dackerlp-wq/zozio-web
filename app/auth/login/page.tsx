@@ -25,9 +25,15 @@ export default function LoginPage() {
       return
     }
 
-    // ✅ Klíčová oprava — full page reload aby server přečetl nové cookies
+    // Full page reload aby server přečetl nové cookies
     const next = new URLSearchParams(window.location.search).get('next')
-    window.location.href = next ?? '/admin/dashboard'
+    if (next) {
+      window.location.href = next
+    } else {
+      // Přesměruj dle role
+      const role = data.session.user.user_metadata?.role
+      window.location.href = role === 'visitor' ? '/profil' : '/admin/dashboard'
+    }
   }
 
   return (
