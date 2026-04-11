@@ -722,9 +722,18 @@ export function AnimalForm({
         rescue_public_description: form.rescue_public_description || null,
         internal_notes: form.internal_notes || null,
 
-        // ── Zákonná evidence — příjem ────────────────────────────────────────
-        intake_time:           form.intake_time || null,
-        intake_worker:         form.intake_worker || null,
+        // ── Příjem — rozšířené ───────────────────────────────────────────────
+        intake_time:              form.intake_time || null,
+        intake_worker:            form.intake_worker || null,
+        intake_municipality:      form.intake_municipality || null,
+        intake_box:               form.intake_box || null,
+        intake_health_status:     form.intake_health_status || null,
+        intake_weight_kg:         form.intake_weight_kg ? parseFloat(form.intake_weight_kg) : null,
+        intake_description:       form.intake_description || null,
+        identifying_marks:        form.identifying_marks || null,
+        special_needs_text:       form.special_needs_text || null,
+
+        // ── Nálezce ───────────────────────────────────────────────────────────
         intake_finder_name:    form.intake_finder_name || null,
         intake_finder_phone:   form.intake_finder_phone || null,
         intake_finder_address: form.intake_finder_address || null,
@@ -737,13 +746,22 @@ export function AnimalForm({
         quarantine_vet:    form.quarantine_vet || null,
         quarantine_result: form.quarantine_result || null,
         quarantine_box:    form.quarantine_box || null,
+        quarantine_notes:  form.quarantine_notes || null,
 
         // ── Identifikace ──────────────────────────────────────────────────────
-        chip_implanter:  form.chip_implanter || null,
-        chip_location:   form.chip_location || null,
-        passport_issued: form.passport_issued || null,
-        crz_registered:  form.crz_registered,
-        crz_reg_date:    form.crz_reg_date || null,
+        chip_implanter:     form.chip_implanter || null,
+        chip_location:      form.chip_location || null,
+        chip_read_ok:       form.chip_read_ok,
+        passport_issued:    form.passport_issued || null,
+        passport_vet:       form.passport_vet || null,
+        passport_in_shelter: form.passport_in_shelter,
+        crz_registered:     form.crz_registered,
+        crz_reg_date:       form.crz_reg_date || null,
+        local_registered:   form.local_registered,
+        tatoo_number:       form.tatoo_number || null,
+        tatoo_location:     form.tatoo_location || null,
+        neutered_date:      form.neutered_date || null,
+        neutered_vet:       form.neutered_vet || null,
 
         // ── Adoptér ──────────────────────────────────────────────────────────
         adopter_name:          form.adopter_name || null,
@@ -972,7 +990,7 @@ export function AnimalForm({
 
             <Divider />
 
-            <SectionTitle>Detaily</SectionTitle>
+            <SectionTitle>📐 Popis zvířete</SectionTitle>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <Field label="Datum příjmu" required error={errors.intake_date}>
                 <input type="date" className={inputCls} value={form.intake_date} onChange={e => set('intake_date', e.target.value)} />
@@ -1128,20 +1146,6 @@ export function AnimalForm({
                   onChange={e => set('weight_kg', e.target.value)} placeholder="12.5" min="0" />
               </Field>
 
-              <Field label="Číslo čipu">
-                <input className={inputCls} value={form.chip_number} onChange={e => set('chip_number', e.target.value)} placeholder="203 000 123 456 789" />
-              </Field>
-
-              <Field label="Původ zvířete">
-                <select className={selectCls} value={form.origin} onChange={e => set('origin', e.target.value)}>
-                  <option value="">Vyberte...</option>
-                  {ORIGIN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </Field>
-
-              <Field label="Místo nálezu">
-                <input className={inputCls} value={form.found_location} onChange={e => set('found_location', e.target.value)} placeholder="Praha 5, Brno..." />
-              </Field>
             </div>
 
             <div className="mt-4">
@@ -1234,30 +1238,31 @@ export function AnimalForm({
             <Divider />
 
             {/* Nálezce / předávající */}
-            <SectionTitle>👤 Nálezce / předávající <span className="text-[10px] font-normal text-[#8B6550] ml-1">§25b odst. 2 zák. 246/1992 Sb.</span></SectionTitle>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-              <Field label="Jméno a příjmení">
+            <SectionTitle>👤 Nálezce / Odevzdávající</SectionTitle>
+            <InfoBox type="tip" icon="💡">Záznamy o odevzdávající osobě jsou důležité pro zpětné dohledání původu zvířete a případné uplatnění nákladů při neúspěšném hledání majitele.</InfoBox>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+              <Field label="Jméno a příjmení" law="Zákon">
                 <input className={inputCls} value={form.intake_finder_name}
                   onChange={e => set('intake_finder_name', e.target.value)}
-                  placeholder="Jan Novák" />
+                  placeholder="Jana Dvořáková" />
               </Field>
               <Field label="Telefon">
                 <input type="tel" className={inputCls} value={form.intake_finder_phone}
                   onChange={e => set('intake_finder_phone', e.target.value)}
                   placeholder="+420 777 123 456" />
               </Field>
-              <div className="sm:col-span-2">
-                <Field label="Adresa bydliště" hint="Ulice, č. p., PSČ, město">
-                  <input className={inputCls} value={form.intake_finder_address}
-                    onChange={e => set('intake_finder_address', e.target.value)}
-                    placeholder="Hlavní 1, 110 00 Praha 1" />
-                </Field>
-              </div>
               <Field label="E-mail">
                 <input type="email" className={inputCls} value={form.intake_finder_email}
                   onChange={e => set('intake_finder_email', e.target.value)}
-                  placeholder="jan@email.cz" />
+                  placeholder="jana@email.cz" />
               </Field>
+              <div className="sm:col-span-3">
+                <Field label="Adresa (trvalé bydliště)">
+                  <input className={inputCls} value={form.intake_finder_address}
+                    onChange={e => set('intake_finder_address', e.target.value)}
+                    placeholder="Ulice 12, Praha 5, 150 00" />
+                </Field>
+              </div>
               <Field label="Číslo OP / pasu nálezce">
                 <input className={inputCls} value={form.intake_finder_id}
                   onChange={e => set('intake_finder_id', e.target.value)}
