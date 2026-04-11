@@ -1,19 +1,29 @@
 import { notFound } from 'next/navigation'
+import AnimalWorkflowCard, { type Animal, type Institution } from '@/components/admin/AnimalWorkflowCard'
+import ExitModalTrigger from '@/components/admin/ExitModalTrigger'
 
-// Placeholder data-fetching helpers.
-// Replace these with real Supabase queries once auth + DB is wired up.
-async function getAnimal(id: string): Promise<Record<string, unknown> | null> {
-  // TODO: implement
+/* ─── Data fetching (placeholder — swap in Supabase later) ── */
+async function getAnimal(id: string): Promise<Animal | null> {
+  // TODO: const supabase = createClient(); const { data } = await supabase.from('animals').select('*').eq('id', id).single(); return data
   void id
+  return null
+}
+
+async function getInstitution(institutionId: string): Promise<Institution | null> {
+  // TODO: real query
+  void institutionId
   return null
 }
 
 export default async function AnimalPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ exit?: string }>
 }) {
   const { id } = await params
+  const { exit } = await searchParams
 
   const animal = await getAnimal(id)
 
@@ -21,21 +31,20 @@ export default async function AnimalPage({
     notFound()
   }
 
-  return (
-    <div className="min-h-screen p-6">
-      {/* Link to workflow view */}
-      <a
-        href={`/admin/animals/${id}/workflow`}
-        className="inline-flex items-center gap-1.5 text-sm font-semibold mb-4 hover:opacity-75"
-        style={{ color: '#185FA5' }}
-      >
-        ← Zpět na přehled
-      </a>
+  const institutionId = String(animal.institution_id ?? '')
+  const rawInstitution = await getInstitution(institutionId)
+  const institution: Institution = rawInstitution ?? { id: institutionId, name: 'Neznámá instituce', type: 'shelter' }
 
-      {/* TODO: AnimalForm component goes here */}
-      <div>
-        <p>Karta zvířete (id: {id})</p>
-      </div>
-    </div>
+  return (
+    <>
+      <AnimalWorkflowCard animal={animal} institution={institution} />
+      {exit === '1' && (
+        <ExitModalTrigger
+          animalId={id}
+          animalName={String(animal.name ?? 'Zvíře')}
+          evidenceNumber={String(animal.evidence_number ?? '—')}
+        />
+      )}
+    </>
   )
 }
