@@ -1,4 +1,5 @@
 import React from 'react'
+import WorkflowActions from './WorkflowActions'
 
 /* ─── Types ─────────────────────────────────────────────── */
 export interface Animal {
@@ -443,35 +444,7 @@ export default function AnimalWorkflowCard({ animal: a, institution }: { animal:
                 <div className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#8B6550', letterSpacing: '.05em' }}>
                   Přejít do další fáze
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <a
-                    href={`/admin/animals/${id}?exit=1&type=adopted`}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black text-white hover:opacity-90 transition-opacity"
-                    style={{ background: '#2D8A4E', textDecoration: 'none' }}
-                  >
-                    ✅ Zaznamenat adopci
-                  </a>
-                  <button
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black hover:border-[#E8634A] transition-colors"
-                    style={{ background: 'white', border: '2px solid #F0EDE8', color: '#6B4030' }}
-                  >
-                    📌 Označit rezervováno
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  <button
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-black hover:border-[#E8634A] transition-colors"
-                    style={{ fontSize: '12px', background: 'white', border: '2px solid #F0EDE8', color: '#6B4030' }}
-                  >
-                    💊 Přesunout do léčby
-                  </button>
-                  <button
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-black hover:border-red-300 transition-colors"
-                    style={{ fontSize: '12px', background: 'white', border: '2px solid #FCEBEB', color: '#D83030' }}
-                  >
-                    🕊️ Zaznamenat úhyn
-                  </button>
-                </div>
+                <WorkflowActions animalId={id} />
               </div>
             </div>
 

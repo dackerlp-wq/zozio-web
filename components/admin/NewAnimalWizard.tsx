@@ -47,6 +47,10 @@ interface WizardData {
   good_with_cats: boolean
   published: boolean
   adoption_fee: string
+  energy_level: string
+  care_level: string
+  suitable_for: string[]
+  good_with_seniors: boolean
 }
 
 const INITIAL: WizardData = {
@@ -58,6 +62,7 @@ const INITIAL: WizardData = {
   chip_number: '', crz_registered: false, passport_number: '', passport_in_shelter: false,
   quarantine_start: new Date().toISOString().slice(0, 10), quarantine_vet: '', health_status: '', weight_on_arrival: '', vaccination_notes: '',
   story: '', good_with_kids: false, good_with_dogs: false, good_with_cats: false, published: false, adoption_fee: '',
+  energy_level: '', care_level: '', suitable_for: [], good_with_seniors: false,
 }
 
 const STEPS = [
@@ -148,7 +153,7 @@ export default function NewAnimalWizard({ institutionId }: { institutionId: stri
   const [saving, setSaving] = useState(false)
   const router = useRouter()
 
-  function set(field: keyof WizardData, value: string | boolean) {
+  function set(field: keyof WizardData, value: string | boolean | string[]) {
     setData(prev => ({ ...prev, [field]: value }))
   }
 
@@ -161,6 +166,10 @@ export default function NewAnimalWizard({ institutionId }: { institutionId: stri
         age_years:    data.age_years    ? Number(data.age_years)    : null,
         weight_kg:    data.weight_kg    ? Number(data.weight_kg)    : null,
         adoption_fee: data.adoption_fee ? Number(data.adoption_fee) : null,
+        energy_level:    data.energy_level    || null,
+        care_level:      data.care_level      || null,
+        suitable_for:    data.suitable_for.length > 0 ? data.suitable_for : null,
+        good_with_seniors: data.good_with_seniors,
       }
       const res = await fetch('/api/animals', {
         method: 'POST',
@@ -336,7 +345,7 @@ const STEP_SUBTITLES = [
 ]
 
 /* ─── Step 1 ─────────────────────────────────────────────── */
-function Step1({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean) => void }) {
+function Step1({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean | string[]) => void }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-3">
@@ -361,7 +370,31 @@ function Step1({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
           </select>
         </Field>
         <Field label="Plemeno / rasa">
-          <input value={data.breed} onChange={e => set('breed', e.target.value)} placeholder="Labrador mix" style={inputStyle} />
+          <input
+            value={data.breed}
+            onChange={e => set('breed', e.target.value)}
+            placeholder="Labrador mix"
+            list="breed-suggestions"
+            style={inputStyle}
+          />
+          <datalist id="breed-suggestions">
+            {data.species === 'dog' && <>
+              <option value="Kříženec" />
+              <option value="Labrador" />
+              <option value="Zlatý retriever" />
+              <option value="Německý ovčák" />
+              <option value="Bígl" />
+              <option value="Jezevčík" />
+              <option value="Boxer" />
+            </>}
+            {data.species === 'cat' && <>
+              <option value="Kříženec" />
+              <option value="Mainská mývalí" />
+              <option value="Perská" />
+              <option value="Siamská" />
+              <option value="Britská krátkosrstá" />
+            </>}
+          </datalist>
         </Field>
         <Field label="Věk (roky)">
           <input type="number" min={0} max={30} value={data.age_years} onChange={e => set('age_years', e.target.value)} placeholder="3" style={inputStyle} />
@@ -392,7 +425,7 @@ function Step1({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
 }
 
 /* ─── Step 2 ─────────────────────────────────────────────── */
-function Step2({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean) => void }) {
+function Step2({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean | string[]) => void }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2 rounded-lg text-xs font-semibold" style={{ padding: '12px 14px', background: '#E6F1FB', borderLeft: '3px solid #185FA5', color: '#185FA5' }}>
@@ -460,7 +493,7 @@ function Step2({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
 }
 
 /* ─── Step 3 ─────────────────────────────────────────────── */
-function Step3({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean) => void }) {
+function Step3({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean | string[]) => void }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2 rounded-lg text-xs font-semibold" style={{ padding: '12px 14px', background: '#EAF3DE', borderLeft: '3px solid #2D8A4E', color: '#1a5e2e' }}>
@@ -496,7 +529,7 @@ function Step3({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
 }
 
 /* ─── Step 4 ─────────────────────────────────────────────── */
-function Step4({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean) => void }) {
+function Step4({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean | string[]) => void }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2 rounded-lg text-xs font-semibold" style={{ padding: '12px 14px', background: '#E6F1FB', borderLeft: '3px solid #185FA5', color: '#185FA5' }}>
@@ -534,8 +567,52 @@ function Step4({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
   )
 }
 
+/* ─── RadioPills helper ──────────────────────────────────── */
+function RadioPills({ label, options, value, onChange }: {
+  label: string
+  options: { value: string; label: string }[]
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="font-black uppercase text-xs" style={{ color: '#8B6550', letterSpacing: '.06em' }}>{label}</label>
+      <div className="flex flex-wrap gap-2">
+        {options.map(opt => {
+          const sel = value === opt.value
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              className="rounded-full text-xs font-black transition-colors"
+              style={{
+                padding: '5px 14px',
+                border: `2px solid ${sel ? '#E8634A' : '#F0EDE8'}`,
+                background: sel ? '#FDEAE6' : 'white',
+                color: sel ? '#E8634A' : '#6B4030',
+                cursor: 'pointer',
+              }}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 /* ─── Step 5 ─────────────────────────────────────────────── */
-function Step5({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean) => void }) {
+function Step5({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean | string[]) => void }) {
+  function toggleSuitableFor(val: string) {
+    const current = data.suitable_for
+    const next = current.includes(val)
+      ? current.filter(v => v !== val)
+      : [...current, val]
+    set('suitable_for', next)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <Field label="Příběh zvířete">
@@ -554,11 +631,65 @@ function Step5({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
         </Field>
       </div>
 
+      <RadioPills
+        label="Aktivita (energy_level)"
+        options={[
+          { value: 'low',       label: 'Nízká' },
+          { value: 'medium',    label: 'Střední' },
+          { value: 'high',      label: 'Vysoká' },
+          { value: 'very_high', label: 'Velmi vysoká' },
+        ]}
+        value={data.energy_level}
+        onChange={v => set('energy_level', v)}
+      />
+
+      <RadioPills
+        label="Náročnost chovu (care_level)"
+        options={[
+          { value: 'easy',   label: 'Lehká' },
+          { value: 'medium', label: 'Střední' },
+          { value: 'hard',   label: 'Náročná' },
+        ]}
+        value={data.care_level}
+        onChange={v => set('care_level', v)}
+      />
+
+      <div className="flex flex-col gap-1">
+        <label className="font-black uppercase text-xs" style={{ color: '#8B6550', letterSpacing: '.06em' }}>Vhodné bydlení</label>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { value: 'flat',    label: 'Byt' },
+            { value: 'house',   label: 'Dům se zahradou' },
+            { value: 'country', label: 'Venkov' },
+          ].map(opt => {
+            const sel = data.suitable_for.includes(opt.value)
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => toggleSuitableFor(opt.value)}
+                className="rounded-full text-xs font-black transition-colors"
+                style={{
+                  padding: '5px 14px',
+                  border: `2px solid ${sel ? '#E8634A' : '#F0EDE8'}`,
+                  background: sel ? '#FDEAE6' : 'white',
+                  color: sel ? '#E8634A' : '#6B4030',
+                  cursor: 'pointer',
+                }}
+              >
+                {sel ? '☑ ' : ''}{opt.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       <div className="flex flex-col gap-2">
         <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: '#8B6550', letterSpacing: '.05em' }}>Kompatibilita</div>
-        <Toggle checked={data.good_with_kids}  onChange={() => set('good_with_kids',  !data.good_with_kids)}  label="Vhodné pro děti" />
-        <Toggle checked={data.good_with_dogs}  onChange={() => set('good_with_dogs',  !data.good_with_dogs)}  label="Vychází se psy" />
-        <Toggle checked={data.good_with_cats}  onChange={() => set('good_with_cats',  !data.good_with_cats)}  label="Vychází s kočkami" />
+        <Toggle checked={data.good_with_kids}    onChange={() => set('good_with_kids',    !data.good_with_kids)}    label="Vhodné pro děti" />
+        <Toggle checked={data.good_with_seniors} onChange={() => set('good_with_seniors', !data.good_with_seniors)} label="Vhodné pro seniory" />
+        <Toggle checked={data.good_with_dogs}    onChange={() => set('good_with_dogs',    !data.good_with_dogs)}    label="Vychází se psy" />
+        <Toggle checked={data.good_with_cats}    onChange={() => set('good_with_cats',    !data.good_with_cats)}    label="Vychází s kočkami" />
       </div>
 
       <div className="rounded-lg" style={{ padding: '14px', background: '#F7F4F0', border: '1px solid #F0EDE8' }}>
