@@ -1693,22 +1693,24 @@ export function AnimalForm({
             <InfoBox type="tip" icon="💛">Čím víc vyplníš, tím snáz se zvíře adoptuje. Zájemci filtrují podle těchto vlastností.</InfoBox>
 
             <div className="mb-5">
-              <SectionTitle>Kompatibilita</SectionTitle>
+              <SectionTitle>👥 Kompatibilita</SectionTitle>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  {key:'good_with_kids',label:'Vztah k dětem'},
-                  {key:'good_with_dogs',label:'Vztah k psům'},
-                  {key:'good_with_cats',label:'Vztah ke kočkám'},
-                  {key:'good_with_other_animals',label:'Vztah k jiným zvířatům'},
-                ].map(({key,label}) => (
-                  <Field key={key} label={label}>
-                    <select className={selectCls} value={form[key as keyof FormState] as string}
-                      onChange={e => set(key as keyof FormState, e.target.value as FormState[keyof FormState])}>
-                      {GOOD_WITH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                  </Field>
-                ))}
-                <Field label="Vztah k dospělým / cizím lidem">
+                <Field label="Vztah k dětem">
+                  <select className={selectCls} value={form.good_with_kids} onChange={e => set('good_with_kids', e.target.value)}>
+                    {GOOD_WITH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </Field>
+                <Field label="Vztah k psům">
+                  <select className={selectCls} value={form.good_with_dogs} onChange={e => set('good_with_dogs', e.target.value)}>
+                    {GOOD_WITH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </Field>
+                <Field label="Vztah ke kočkám">
+                  <select className={selectCls} value={form.good_with_cats} onChange={e => set('good_with_cats', e.target.value)}>
+                    {GOOD_WITH_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </Field>
+                <Field label="Vztah k cizím lidem">
                   <select className={selectCls} value={form.good_with_adults} onChange={e => set('good_with_adults', e.target.value)}>
                     {GOOD_WITH_ADULTS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
@@ -1719,7 +1721,7 @@ export function AnimalForm({
             <Divider />
 
             <div className="mb-5">
-              <SectionTitle>Energetická úroveň</SectionTitle>
+              <SectionTitle>⚡ Energetická úroveň</SectionTitle>
               <div className="grid grid-cols-4 gap-2">
                 {ACTIVITY_CARDS.map(c => (
                   <SelectCard key={c.value} value={c.value} selected={form.activity_level === c.value}
@@ -1730,7 +1732,7 @@ export function AnimalForm({
 
             <Divider />
 
-            <Field label="Popis povahy" hint="Zobrazí se návštěvníkům webu">
+            <Field label="Popis povahy (veřejný)" hint="Zobrazí se návštěvníkům webu">
               <textarea className={textareaCls + ' min-h-[100px]'} rows={4} value={form.description}
                 onChange={e => set('description', e.target.value)}
                 placeholder="Bella je přátelská, miluje procházky..." />
