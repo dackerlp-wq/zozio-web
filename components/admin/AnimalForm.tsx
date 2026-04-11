@@ -168,8 +168,8 @@ function parseMedications(raw: unknown): MedicationEntry[] {
   return []
 }
 
-// ── CSS classes (reduced border radius) ────────────────────────────────────────
-const inputCls = 'w-full px-3 py-2.5 rounded-md border-2 border-[#F0EDE8] bg-white text-sm text-[#2C1810] placeholder:text-[#A09890] focus:outline-none focus:border-[#E8634A] transition-colors'
+// ── CSS classes ────────────────────────────────────────────────────────────────
+const inputCls = 'w-full px-3 py-[9px] rounded-md border-2 border-[#F0EDE8] bg-white text-[13px] text-[#2C1810] placeholder:text-[#A09890] focus:outline-none focus:border-[#E8634A] transition-colors'
 const selectCls = inputCls + ' appearance-none bg-[url("data:image/svg+xml,%3Csvg%20width%3D%2210%22%20height%3D%226%22%20viewBox%3D%220%200%2010%206%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M1%201L5%205L9%201%22%20stroke%3D%22%23A09890%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22%2F%3E%3C%2Fsvg%3E")] bg-no-repeat bg-[right_12px_center] pr-8'
 const textareaCls = inputCls + ' resize-y min-h-[80px]'
 
@@ -179,7 +179,7 @@ function Field({ label, required, children, error, hint, law }: {
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-bold uppercase tracking-wide text-[#8B6550] flex items-center flex-wrap gap-0.5">
+      <label className="text-[11px] font-extrabold uppercase tracking-wide text-[#8B6550] flex items-center flex-wrap gap-0.5">
         {label}
         {required && <span className="text-[#E8634A] ml-0.5">*</span>}
         {law && <LawBadge>{law}</LawBadge>}
@@ -192,7 +192,7 @@ function Field({ label, required, children, error, hint, law }: {
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <div className="font-display font-bold text-base text-[#2C1810] mb-3 flex items-center gap-2">{children}</div>
+  return <div className="font-extrabold text-[15px] text-[#2C1810] mb-3 flex items-center gap-2">{children}</div>
 }
 
 function Divider() { return <div className="h-px bg-[#F0EDE8] my-5" /> }
@@ -209,7 +209,7 @@ function ToggleRow({ label, desc, checked, onChange }: {
       <button
         type="button" role="switch" aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-[#E8634A]' : 'bg-[#D5CFC8]'}`}
+        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${checked ? 'bg-[#2D8A4E]' : 'bg-[#D5CFC8]'}`}
       >
         <span className={`absolute top-[3px] left-[3px] w-[18px] h-[18px] bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-5' : ''}`} />
       </button>
@@ -825,16 +825,17 @@ export function AnimalForm({
     } finally { setSaving(false) }
   }
 
-  // ── Tabs ───────────────────────────────────────────────────────────────────
-  const tabs: { id: Tab; icon: string; label: string; badge?: string }[] = [
+  // ── Tabs ───────────────────────────────────────────────��───────────────────
+  // badgeType: 'new' = červená (NOVÉ záložky), 'changed' = modrá (rozšíření)
+  const tabs: { id: Tab; icon: string; label: string; badgeText?: string; badgeType?: 'new'|'changed' }[] = [
     { id: 'basic',       icon: '🐾', label: 'Základní' },
-    { id: 'intake',      icon: '📥', label: 'Příjem',        badge: 'zákon' },
-    { id: 'identity',    icon: '🔖', label: 'Identifikace',  badge: 'zákon' },
-    { id: 'health',      icon: '💊', label: 'Zdraví' },
+    { id: 'intake',      icon: '📥', label: 'Příjem',        badgeText: 'NOVÉ',  badgeType: 'new' },
+    { id: 'identity',    icon: '🔖', label: 'Identifikace',  badgeText: 'NOVÉ',  badgeType: 'new' },
+    { id: 'health',      icon: '💊', label: 'Zdraví',        badgeText: '+',     badgeType: 'changed' },
     ...(isShelter ? [{ id: 'personality' as Tab, icon: '❤️', label: 'Povaha' }] : []),
     { id: 'photos',      icon: '📷', label: 'Fotky' },
-    { id: 'adopce',      icon: '📋', label: isShelter ? 'Adopce' : 'Odchod' },
-    ...(!isShelter ? [{ id: 'rescue' as Tab, icon: '🦉', label: 'Záchrana' }] : []),
+    { id: 'adopce',      icon: '📋', label: isShelter ? 'Adopce & Odchod' : 'Odchod', badgeText: '+', badgeType: 'changed' as const },
+    ...(!isShelter ? [{ id: 'rescue' as Tab, icon: '🦉', label: 'Záchrana', badgeText: '+', badgeType: 'changed' as const }] : []),
     ...(mode === 'edit' ? [{ id: 'history' as Tab, icon: '🕐', label: 'Historie' }] : []),
   ]
 
@@ -856,7 +857,7 @@ export function AnimalForm({
       <div className="flex gap-1 bg-[#F0EDE8] rounded-xl p-1 mb-5 overflow-x-auto scrollbar-none">
         {tabs.map(t => (
           <button key={t.id} type="button" onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all touch-manipulation flex-shrink-0 ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-bold whitespace-nowrap transition-all touch-manipulation flex-shrink-0 ${
               activeTab === t.id
                 ? 'bg-white text-[#2C1810] shadow-sm'
                 : 'text-[#8B6550] hover:bg-white/60 hover:text-[#2C1810]'
@@ -865,10 +866,12 @@ export function AnimalForm({
             <span>{t.icon}</span>
             <span className="hidden sm:inline">{t.label}</span>
             {t.id === 'basic' && errorCount > 0 && (
-              <span className="bg-[#E8634A] text-white text-[9px] font-bold px-1 py-px rounded ml-0.5">{errorCount}</span>
+              <span className="bg-[#E8634A] text-white text-[9px] font-extrabold px-1.5 py-px rounded-full ml-0.5">{errorCount}</span>
             )}
-            {t.badge && activeTab !== t.id && (
-              <span className="hidden sm:inline bg-[#2C1810] text-white text-[8px] font-bold px-1.5 py-px rounded ml-0.5 uppercase tracking-wide">{t.badge}</span>
+            {t.badgeText && activeTab !== t.id && (
+              <span className={`hidden sm:inline text-white text-[9px] font-extrabold px-1.5 py-px rounded ml-0.5 uppercase tracking-wide ${
+                t.badgeType === 'new' ? 'bg-[#E8634A]' : 'bg-[#185FA5]'
+              }`}>{t.badgeText}</span>
             )}
           </button>
         ))}
@@ -2140,7 +2143,7 @@ export function AnimalForm({
                 onChange={v => set('cites_protected', v)}
               />
               {form.cites_protected && (
-                <div className="mt-2 border-l-[3px] border-[#185FA5] bg-[#E6F1FB] rounded-lg p-4">
+                <div className="mt-2 border-2 border-[#185FA5] bg-[#E6F1FB] rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-sm font-extrabold text-[#185FA5]">CITES / Zvláště chráněný druh</span>
                     <LawBadge>§54 zák. 114/1992</LawBadge>
