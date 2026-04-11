@@ -8,6 +8,13 @@ import { createClient } from '@/lib/supabase/client'
 interface Species { id: string; name_cs: string }
 interface Breed   { id: string; name_cs: string; size_category?: string; energy_level?: string; is_custom?: boolean }
 
+interface AntiparasiticEntry {
+  _key: string
+  name: string      // název přípravku
+  type: string      // typ (odčervení, vnější, spot-on, obojek...)
+  date: string      // datum aplikace
+}
+
 interface VaccinationRecord {
   _key: string
   type: string
@@ -167,13 +174,15 @@ const selectCls = inputCls + ' appearance-none bg-[url("data:image/svg+xml,%3Csv
 const textareaCls = inputCls + ' resize-y min-h-[80px]'
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
-function Field({ label, required, children, error, hint }: {
-  label: string; required?: boolean; children: React.ReactNode; error?: string; hint?: string
+function Field({ label, required, children, error, hint, law }: {
+  label: string; required?: boolean; children: React.ReactNode; error?: string; hint?: string; law?: string
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-bold uppercase tracking-wide text-[#8B6550]">
-        {label}{required && <span className="text-[#E8634A] ml-0.5">*</span>}
+      <label className="text-[11px] font-bold uppercase tracking-wide text-[#8B6550] flex items-center flex-wrap gap-0.5">
+        {label}
+        {required && <span className="text-[#E8634A] ml-0.5">*</span>}
+        {law && <LawBadge>{law}</LawBadge>}
       </label>
       {children}
       {error && <p className="text-xs text-[#E8634A]">{error}</p>}
@@ -241,13 +250,29 @@ function SelectCard({ value, selected, icon, label, desc, onChange }: {
   )
 }
 
-function InfoBox({ type, icon, children }: { type: 'tip'|'warn'|'info'; icon: string; children: React.ReactNode }) {
-  const cls = type === 'warn' ? 'bg-[#FCEBEB] text-[#D83030]' : type === 'info' ? 'bg-[#E6F1FB] text-[#185FA5]' : 'bg-[#FFF3D6] text-[#7a5800]'
+function InfoBox({ type, icon, children }: { type: 'tip'|'warn'|'info'|'law'|'new'; icon: string; children: React.ReactNode }) {
+  const styles = {
+    warn: { bg: 'bg-[#FCEBEB]', text: 'text-[#D83030]', border: 'border-l-[3px] border-[#D83030]' },
+    info: { bg: 'bg-[#E6F1FB]', text: 'text-[#185FA5]', border: 'border-l-[3px] border-[#185FA5]' },
+    tip:  { bg: 'bg-[#FFF3D6]', text: 'text-[#7a5800]', border: 'border-l-[3px] border-[#F0A500]' },
+    law:  { bg: 'bg-[#E6F1FB]', text: 'text-[#185FA5]', border: 'border-l-[3px] border-[#185FA5]' },
+    new:  { bg: 'bg-[#EAF3DE]', text: 'text-[#1a5e2e]', border: 'border-l-[3px] border-[#2D8A4E]' },
+  }
+  const s = styles[type]
   return (
-    <div className={`flex items-start gap-2.5 px-3.5 py-3 rounded-lg text-sm font-semibold mb-4 ${cls}`}>
+    <div className={`flex items-start gap-2.5 px-3.5 py-3 rounded-lg text-sm font-semibold mb-4 ${s.bg} ${s.text} ${s.border}`}>
       <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
       <span>{children}</span>
     </div>
+  )
+}
+
+// Badge zobrazující odkaz na zákon — zobrazuje se inline vedle popisku pole
+function LawBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-block text-[9px] bg-[#E6F1FB] text-[#185FA5] px-1.5 py-px rounded font-bold ml-1 leading-none align-middle tracking-normal normal-case">
+      {children}
+    </span>
   )
 }
 
@@ -311,7 +336,33 @@ function initFormData(data?: Record<string, unknown>) {
     rescue_find_type: String(d.rescue_find_type ?? ''),
     rescue_prognosis: String(d.rescue_prognosis ?? 'unknown'),
     rescue_public_description: String(d.rescue_public_description ?? ''),
-    internal_notes:   String(d.internal_notes ?? ''),
+    internal_notes:      String(d.internal_notes ?? ''),
+    identifying_marks:   String(d.identifying_marks ?? ''),
+    intake_health_status: String(d.intake_health_status ?? ''),
+    intake_weight_kg:    d.intake_weight_kg != null ? String(d.intake_weight_kg) : '',
+    intake_description:  String(d.intake_description ?? ''),
+    intake_box:          String(d.intake_box ?? ''),
+    intake_municipality: String(d.intake_municipality ?? ''),
+    neutered_date:       String(d.neutered_date ?? ''),
+    neutered_vet:        String(d.neutered_vet ?? ''),
+    passport_vet:        String(d.passport_vet ?? ''),
+    passport_in_shelter: Boolean(d.passport_in_shelter),
+    tatoo_number:        String(d.tatoo_number ?? ''),
+    tatoo_location:      String(d.tatoo_location ?? ''),
+    local_registered:    Boolean(d.local_registered),
+    chip_read_ok:        d.chip_read_ok !== false,
+    quarantine_notes:    String(d.quarantine_notes ?? ''),
+    release_date:        String(d.release_date ?? ''),
+    release_location:    String(d.release_location ?? ''),
+    release_notes:       String(d.release_notes ?? ''),
+    cites_protected:     Boolean(d.cites_protected),
+    cites_number:        String(d.cites_number ?? ''),
+    cites_level:         String(d.cites_level ?? ''),
+    cites_authority:     String(d.cites_authority ?? ''),
+    cites_permit:        String(d.cites_permit ?? ''),
+    cites_notification_date: String(d.cites_notification_date ?? ''),
+    ringed:              Boolean(d.ringed),
+    ring_number:         String(d.ring_number ?? ''),
 
     // ── Zákonná evidence — příjem (§25b zák. 246/1992 Sb.) ─────────────────
     intake_time:             String(d.intake_time ?? ''),
@@ -350,6 +401,11 @@ function initFormData(data?: Record<string, unknown>) {
     exit_date:   String(d.exit_date ?? ''),
     exit_notes:  String(d.exit_notes ?? ''),
     exit_worker: String(d.exit_worker ?? ''),
+
+    // ── Přemístění ────────────────────────────────────────────────────────────
+    transfer_institution: String(d.transfer_institution ?? ''),
+    transfer_date:        String(d.transfer_date ?? ''),
+    transfer_doc_number:  String(d.transfer_doc_number ?? ''),
 
     // ── Uhynutí / likvidace (VZ 255/2012 Sb.) ────────────────────────────────
     death_date:          String(d.death_date ?? ''),
@@ -402,6 +458,13 @@ export function AnimalForm({
   )
   const [addingVaccine, setAddingVaccine] = useState(false)
   const [newVaccine, setNewVaccine] = useState({ type: '', label: '', last_date: '', batch_number: '', expiry_date: '', vet_name: '', custom: false })
+
+  // Antiparasitika
+  const [antiparasitics, setAntiparasitics] = useState<AntiparasiticEntry[]>(() => {
+    const raw = (source as any)?.antiparasitics_data
+    if (!Array.isArray(raw)) return []
+    return raw.map((x: any) => ({ _key: uid(), name: x.name ?? '', type: x.type ?? '', date: x.date ?? '' }))
+  })
 
   // Medications
   const [medications, setMedications] = useState<MedicationEntry[]>(() =>
@@ -691,11 +754,30 @@ export function AnimalForm({
         adoption_contract_num: form.adoption_contract_num || null,
         adoption_date:         form.adoption_date || null,
 
+        // ── Záchrana / rescue ─────────────────────────────────────────────────
+        release_date:     form.release_date || null,
+        release_location: form.release_location || null,
+        release_notes:    form.release_notes || null,
+        cites_protected:  form.cites_protected,
+        cites_number:     form.cites_number || null,
+        cites_level:      form.cites_level || null,
+        cites_authority:  form.cites_authority || null,
+        cites_permit:     form.cites_permit || null,
+        cites_notification_date: form.cites_notification_date || null,
+        ringed:           form.ringed,
+        ring_number:      form.ring_number || null,
+
+        // ── Antiparazitika ───────────────────────────────────────────────────
+        antiparasitics_data: antiparasitics.filter(ap => ap.name.trim()).map(({ _key: _, ...ap }) => ap),
+
         // ── Odchod ───────────────────────────────────────────────────────────
-        exit_type:   form.exit_type || null,
-        exit_date:   form.exit_date || null,
-        exit_notes:  form.exit_notes || null,
-        exit_worker: form.exit_worker || null,
+        exit_type:            form.exit_type || null,
+        exit_date:            form.exit_date || null,
+        exit_notes:           form.exit_notes || null,
+        exit_worker:          form.exit_worker || null,
+        transfer_institution: form.transfer_institution || null,
+        transfer_date:        form.transfer_date || null,
+        transfer_doc_number:  form.transfer_doc_number || null,
 
         // ── Uhynutí / likvidace ───────────────────────────────────────────────
         death_date:          form.death_date || null,
@@ -810,6 +892,21 @@ export function AnimalForm({
                 </ul>
               </div>
             )}
+            {/* Evidenční číslo — zobrazit jen v edit módu */}
+            {mode === 'edit' && (source as any)?.evidence_number && (
+              <div className="mb-5 px-4 py-3 rounded-lg bg-[#FDFCFA] border-2 border-[#F0EDE8] flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-[#8B6550] flex items-center gap-1">
+                    Evidenční číslo <LawBadge>§25b Vyhl.342</LawBadge>
+                  </div>
+                  <div className="font-mono font-extrabold text-[#E8634A] text-lg leading-tight mt-0.5">
+                    {String((source as any).evidence_number)}
+                  </div>
+                </div>
+                <div className="text-xs text-[#A09890]">Generováno automaticky</div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
               <Field label="Jméno" required error={errors.name}>
                 <input className={inputCls} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Max, Luna, Běla..." />
@@ -1008,8 +1105,12 @@ export function AnimalForm({
                 </div>
               </Field>
 
-              <Field label="Barva / zbarvení">
+              <Field label="Barva / zbarvení" law="Zákon">
                 <input className={inputCls} value={form.color} onChange={e => set('color', e.target.value)} placeholder="Černohnědá, tricolor..." />
+              </Field>
+
+              <Field label="Identifikační znaky" law="§25b" hint="Výrazné znaky — jizvy, skvrny, deformace">
+                <input className={inputCls} value={form.identifying_marks ?? ''} onChange={e => set('identifying_marks', e.target.value)} placeholder="Jizva na pravém uchu, bílá tečka na čele..." />
               </Field>
 
               <Field label="Velikost">
@@ -1197,44 +1298,51 @@ export function AnimalForm({
 
             {/* Vaccinations */}
             <div className="mb-5">
-              <SectionTitle>Očkování</SectionTitle>
+              <SectionTitle>
+                💉 Vakcinace
+                <span className="text-[11px] bg-[#E6F1FB] text-[#185FA5] px-2 py-px rounded font-bold">+šarže +veterinář +platnost</span>
+              </SectionTitle>
+              <InfoBox type="tip" icon="💡">Pro zákonnou evidenci je potřeba zaznamenat číslo šarže vakcíny, jméno veterináře a datum platnosti (revakcinace).</InfoBox>
 
               {vaccinations.length > 0 && (
-                <div className="space-y-2 mb-3">
+                <div className="rounded-lg border-2 border-[#F0EDE8] overflow-hidden mb-3">
+                  {/* Header */}
+                  <div className="grid bg-[#FDFCFA] border-b border-[#F0EDE8]"
+                    style={{ gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1.5fr auto' }}>
+                    {['Typ vakcíny', 'Datum podání', 'Platnost do', 'Šarže', 'Veterinář', ''].map((h, i) => (
+                      <div key={i} className={`px-3 py-2.5 text-[10px] font-bold uppercase tracking-wide ${i >= 2 && i <= 4 ? 'text-[#185FA5]' : 'text-[#8B6550]'}`}>
+                        {h}{i >= 2 && i <= 4 && <span className="ml-1 text-[8px] bg-[#E6F1FB] px-1 py-px rounded">NOVÉ</span>}
+                      </div>
+                    ))}
+                  </div>
+                  {/* Rows */}
                   {vaccinations.map(v => (
-                    <div key={v._key} className="p-3 rounded-lg border-2 border-[#F0EDE8] bg-[#FDFCFA]">
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-[#2C1810]">{v.label || v.type}</div>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
-                            <div>
-                              <div className="text-[9px] font-bold uppercase tracking-wide text-[#8B6550] mb-0.5">Datum</div>
-                              <input type="date" className={inputCls + ' !py-1.5 !text-xs'}
-                                value={v.last_date} onChange={e => updateVaccination(v._key, 'last_date', e.target.value)} />
-                            </div>
-                            <div>
-                              <div className="text-[9px] font-bold uppercase tracking-wide text-[#8B6550] mb-0.5">Šarže (batch)</div>
-                              <input className={inputCls + ' !py-1.5 !text-xs'}
-                                value={v.batch_number ?? ''} onChange={e => updateVaccination(v._key, 'batch_number', e.target.value)}
-                                placeholder="AB12345" />
-                            </div>
-                            <div>
-                              <div className="text-[9px] font-bold uppercase tracking-wide text-[#8B6550] mb-0.5">Expirace</div>
-                              <input type="date" className={inputCls + ' !py-1.5 !text-xs'}
-                                value={v.expiry_date ?? ''} onChange={e => updateVaccination(v._key, 'expiry_date', e.target.value)} />
-                            </div>
-                            <div>
-                              <div className="text-[9px] font-bold uppercase tracking-wide text-[#8B6550] mb-0.5">Veterinář</div>
-                              <input className={inputCls + ' !py-1.5 !text-xs'}
-                                value={v.vet_name ?? ''} onChange={e => updateVaccination(v._key, 'vet_name', e.target.value)}
-                                placeholder="MVDr. Novák" />
-                            </div>
-                          </div>
-                        </div>
+                    <div key={v._key} className="grid border-b border-[#F0EDE8] last:border-b-0 hover:bg-[#FDFCFA] transition-colors"
+                      style={{ gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1.5fr auto' }}>
+                      <div className="px-3 py-2 flex items-center">
+                        <span className="text-sm font-semibold text-[#2C1810]">{v.label || v.type}</span>
+                      </div>
+                      <div className="px-2 py-1.5">
+                        <input type="date" className="w-full text-xs border border-[#F0EDE8] rounded px-2 py-1.5 focus:outline-none focus:border-[#E8634A] bg-transparent"
+                          value={v.last_date} onChange={e => updateVaccination(v._key, 'last_date', e.target.value)} />
+                      </div>
+                      <div className="px-2 py-1.5">
+                        <input type="date" className="w-full text-xs border border-[#F0EDE8] rounded px-2 py-1.5 focus:outline-none focus:border-[#E8634A] bg-transparent text-[#2D8A4E] font-semibold"
+                          value={v.expiry_date ?? ''} onChange={e => updateVaccination(v._key, 'expiry_date', e.target.value)} />
+                      </div>
+                      <div className="px-2 py-1.5">
+                        <input className="w-full text-xs font-mono border border-[#F0EDE8] rounded px-2 py-1.5 focus:outline-none focus:border-[#E8634A] bg-transparent"
+                          value={v.batch_number ?? ''} onChange={e => updateVaccination(v._key, 'batch_number', e.target.value)}
+                          placeholder="CZ-2024-001" />
+                      </div>
+                      <div className="px-2 py-1.5">
+                        <input className="w-full text-xs border border-[#F0EDE8] rounded px-2 py-1.5 focus:outline-none focus:border-[#E8634A] bg-transparent"
+                          value={v.vet_name ?? ''} onChange={e => updateVaccination(v._key, 'vet_name', e.target.value)}
+                          placeholder="MVDr. Novák" />
+                      </div>
+                      <div className="px-2 py-2 flex items-center">
                         <button type="button" onClick={() => removeVaccination(v._key)}
-                          className="w-7 h-7 flex items-center justify-center rounded-md text-[#A09890] hover:text-[#D83030] hover:bg-[#FCEBEB] transition-colors touch-manipulation flex-shrink-0 mt-0.5">
-                          ✕
-                        </button>
+                          className="w-7 h-7 flex items-center justify-center rounded text-[#A09890] hover:text-[#D83030] hover:bg-[#FCEBEB] transition-colors touch-manipulation text-xs">✕</button>
                       </div>
                     </div>
                   ))}
@@ -1295,9 +1403,61 @@ export function AnimalForm({
 
             <Divider />
 
+            {/* Antiparazitika */}
+            <div className="mb-5">
+              <SectionTitle>
+                🪲 Antiparazitika
+                <span className="text-[11px] bg-[#EAF3DE] text-[#1a5e2e] px-2 py-px rounded font-bold">NOVÉ</span>
+              </SectionTitle>
+              {antiparasitics.length > 0 && (
+                <div className="rounded-lg border-2 border-[#F0EDE8] overflow-hidden mb-3">
+                  <div className="grid bg-[#FDFCFA] border-b border-[#F0EDE8]"
+                    style={{ gridTemplateColumns: '2fr 1.2fr 1fr auto' }}>
+                    {['Přípravek', 'Typ', 'Datum', ''].map((h, i) => (
+                      <div key={i} className="px-3 py-2.5 text-[10px] font-bold uppercase tracking-wide text-[#8B6550]">{h}</div>
+                    ))}
+                  </div>
+                  {antiparasitics.map(ap => (
+                    <div key={ap._key} className="grid border-b border-[#F0EDE8] last:border-b-0 hover:bg-[#FDFCFA]"
+                      style={{ gridTemplateColumns: '2fr 1.2fr 1fr auto' }}>
+                      <div className="px-2 py-1.5">
+                        <input className="w-full text-xs border border-[#F0EDE8] rounded px-2 py-1.5 focus:outline-none focus:border-[#E8634A]"
+                          value={ap.name} onChange={e => setAntiparasitics(prev => prev.map(x => x._key === ap._key ? { ...x, name: e.target.value } : x))}
+                          placeholder="Nexgard Spectra" />
+                      </div>
+                      <div className="px-2 py-1.5">
+                        <select className="w-full text-xs border border-[#F0EDE8] rounded px-2 py-1.5 focus:outline-none focus:border-[#E8634A] appearance-none bg-white"
+                          value={ap.type} onChange={e => setAntiparasitics(prev => prev.map(x => x._key === ap._key ? { ...x, type: e.target.value } : x))}>
+                          <option value="">Typ...</option>
+                          <option value="deworming">Odčervení (interní)</option>
+                          <option value="external">Antiparazitikum (vnější)</option>
+                          <option value="spot-on">Spot-on</option>
+                          <option value="collar">Obojek</option>
+                        </select>
+                      </div>
+                      <div className="px-2 py-1.5">
+                        <input type="date" className="w-full text-xs border border-[#F0EDE8] rounded px-2 py-1.5 focus:outline-none focus:border-[#E8634A]"
+                          value={ap.date} onChange={e => setAntiparasitics(prev => prev.map(x => x._key === ap._key ? { ...x, date: e.target.value } : x))} />
+                      </div>
+                      <div className="px-2 py-2 flex items-center">
+                        <button type="button" onClick={() => setAntiparasitics(prev => prev.filter(x => x._key !== ap._key))}
+                          className="w-7 h-7 flex items-center justify-center rounded text-[#A09890] hover:text-[#D83030] hover:bg-[#FCEBEB] transition-colors text-xs">✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button type="button" onClick={() => setAntiparasitics(prev => [...prev, { _key: uid(), name: '', type: '', date: '' }])}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-[#D5CFC8] text-sm font-semibold text-[#8B6550] hover:border-[#E8634A] hover:text-[#E8634A] transition-colors w-full touch-manipulation">
+                + Přidat antiparazitikum
+              </button>
+            </div>
+
+            <Divider />
+
             {/* Medications */}
             <div className="mb-5">
-              <SectionTitle>Léky</SectionTitle>
+              <SectionTitle>💊 Aktuální léky</SectionTitle>
 
               {medications.length > 0 && (
                 <div className="space-y-2 mb-3">
@@ -1358,43 +1518,58 @@ export function AnimalForm({
 
             <Divider />
 
-            <div className="space-y-2.5">
-              <SectionTitle>Karanténa <span className="text-[10px] font-normal text-[#8B6550] ml-1">Vyhl. 342/2012 Sb.</span></SectionTitle>
-              <ToggleRow label="Zvíře je / bylo v karanténě" desc="Zákonná povinnost pro každé nově přijaté zvíře"
+            <div>
+              <SectionTitle>
+                🔒 Karanténa
+                <span className="text-[11px] bg-[#E6F1FB] text-[#185FA5] px-2 py-px rounded font-bold">+datum od +veterinář +výsledek</span>
+              </SectionTitle>
+              <ToggleRow label="Zvíře je / bylo v karanténě" desc="Karanténa je povinná pro nová zvířata (obvykle 14 dní) · §24 Vyhláška 342/2012"
                 checked={form.in_quarantine} onChange={v => set('in_quarantine', v)} />
               {form.in_quarantine && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                  <Field label="Karanténa zahájena" hint="Datum zahájení">
-                    <input type="date" className={inputCls} value={form.quarantine_start}
-                      onChange={e => set('quarantine_start', e.target.value)} />
-                  </Field>
-                  <Field label="Karanténa ukončena">
-                    <input type="date" className={inputCls} value={form.quarantine_end ?? form.quarantine_until}
-                      onChange={e => { set('quarantine_end', e.target.value); set('quarantine_until', e.target.value) }} />
-                  </Field>
-                  <Field label="Zodpovědný veterinář">
-                    <input className={inputCls} value={form.quarantine_vet}
-                      onChange={e => set('quarantine_vet', e.target.value)}
-                      placeholder="MVDr. Jan Novák" />
-                  </Field>
-                  <Field label="Výsledek karantény">
-                    <select className={selectCls} value={form.quarantine_result}
-                      onChange={e => set('quarantine_result', e.target.value)}>
-                      <option value="">Vyberte výsledek...</option>
-                      <option value="negative">Negativní — bez nákazy</option>
-                      <option value="positive">Pozitivní — zjištěna nákaza</option>
-                      <option value="inconclusive">Neprůkazné</option>
-                    </select>
-                  </Field>
-                  <Field label="Číslo karanténního boxu">
-                    <input className={inputCls} value={form.quarantine_box}
-                      onChange={e => set('quarantine_box', e.target.value)}
-                      placeholder="Box č. 3A" />
-                  </Field>
-                  <Field label="Důvod karantény" hint="Volitelný popis">
-                    <input className={inputCls} value={form.quarantine_reason}
-                      onChange={e => set('quarantine_reason', e.target.value)} />
-                  </Field>
+                <div className="mt-3 border-2 border-[#E8634A] rounded-xl p-4 bg-[#FDEAE6]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span>🔒</span>
+                    <span className="text-sm font-extrabold text-[#993C1D]">Záznamy karantény</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <Field label="Datum zahájení" law="Zákon">
+                      <input type="date" className={inputCls + ' bg-white'} value={form.quarantine_start}
+                        onChange={e => set('quarantine_start', e.target.value)} />
+                    </Field>
+                    <Field label="Datum ukončení" law="Zákon">
+                      <input type="date" className={inputCls + ' bg-white'} value={form.quarantine_end || form.quarantine_until}
+                        onChange={e => { set('quarantine_end', e.target.value); set('quarantine_until', e.target.value) }} />
+                    </Field>
+                    <Field label="Box karantény">
+                      <input className={inputCls + ' bg-white'} value={form.quarantine_box}
+                        onChange={e => set('quarantine_box', e.target.value)} placeholder="K-01, Izolace B..." />
+                    </Field>
+                    <Field label="Veterinář karantény" law="Zákon">
+                      <input className={inputCls + ' bg-white'} value={form.quarantine_vet}
+                        onChange={e => set('quarantine_vet', e.target.value)} placeholder="MVDr. Jana Horáková" />
+                    </Field>
+                    <Field label="Výsledek karantény" law="Zákon">
+                      <select className={selectCls + ' bg-white'} value={form.quarantine_result}
+                        onChange={e => set('quarantine_result', e.target.value)}>
+                        <option value="">Probíhá...</option>
+                        <option value="negative">Ukončena — bez nálezů</option>
+                        <option value="positive">Ukončena — zjištěno onemocnění</option>
+                        <option value="inconclusive">Prodloužena / neprůkazné</option>
+                      </select>
+                    </Field>
+                    <Field label="Důvod karantény">
+                      <input className={inputCls + ' bg-white'} value={form.quarantine_reason}
+                        onChange={e => set('quarantine_reason', e.target.value)}
+                        placeholder="Nový příjem, podezření na parvo..." />
+                    </Field>
+                    <div className="sm:col-span-3">
+                      <Field label="Poznámky z karantény">
+                        <textarea className={textareaCls + ' bg-white !min-h-[60px]'} rows={2}
+                          value={form.quarantine_notes} onChange={e => set('quarantine_notes', e.target.value)}
+                          placeholder="Zvíře bez projevů onemocnění po celou dobu karantény..." />
+                      </Field>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1581,34 +1756,137 @@ export function AnimalForm({
 
             {/* ── Odchod ze zařízení (§25b odst. 4 zák. 246/1992 Sb.) ── */}
             <div className="mb-5">
-              <SectionTitle>🚪 Odchod ze zařízení <span className="text-[10px] font-normal text-[#8B6550] ml-1">§25b odst. 4 zák. 246/1992 Sb.</span></SectionTitle>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Field label="Typ odchodu">
-                  <select className={selectCls} value={form.exit_type}
-                    onChange={e => set('exit_type', e.target.value)}>
-                    <option value="">— dosud v zařízení —</option>
-                    <option value="adopted">Adoptováno</option>
-                    <option value="returned">Vráceno majiteli</option>
-                    <option value="transferred">Přemístěno do jiné instituce</option>
-                    <option value="deceased">Uhynutí / eutanazie</option>
-                    <option value="escaped">Útěk</option>
-                  </select>
-                </Field>
-                <Field label="Datum odchodu">
-                  <input type="date" className={inputCls} value={form.exit_date}
-                    onChange={e => set('exit_date', e.target.value)} />
-                </Field>
-                <Field label="Propustil/a (pracovník)">
-                  <input className={inputCls} value={form.exit_worker}
-                    onChange={e => set('exit_worker', e.target.value)}
-                    placeholder="Jméno pracovníka" />
-                </Field>
-                <div className="sm:col-span-3">
-                  <Field label="Poznámky k odchodu">
-                    <input className={inputCls} value={form.exit_notes}
-                      onChange={e => set('exit_notes', e.target.value)} />
-                  </Field>
-                </div>
+              <SectionTitle>
+                🚪 Způsob odchodu a zákonné záznamy
+                <span className="text-[11px] bg-[#EAF3DE] text-[#1a5e2e] px-2 py-px rounded font-bold">ZÁKONNÉ</span>
+              </SectionTitle>
+              <InfoBox type="law" icon="⚖️">
+                <strong>§25b zák. 246/1992 Sb. + §14 zák. 246/1992 Sb.</strong> — Útulky jsou povinny evidovat komu, kdy a za jakých podmínek bylo zvíře předáno. Záznamy o adoptérovi musí být uchovány min. 3 roky.
+              </InfoBox>
+
+              {/* Exit option cards */}
+              <div className="space-y-2 mb-4">
+                {[
+                  { value: 'adopted',     icon: '✅', label: 'Adopce (předání novému majiteli)', desc: 'Zvíře bylo předáno adoptérovi na základě adopční smlouvy' },
+                  { value: 'returned',    icon: '↩️', label: 'Vrácení původnímu majiteli',       desc: 'Byl nalezen registrovaný majitel zvířete' },
+                  { value: 'transferred', icon: '🚛', label: 'Přemístění do jiného útulku',       desc: 'Zvíře bylo přeřazeno do jiné instituce' },
+                  { value: 'deceased',    icon: '🕊️', label: 'Úhyn / Eutanazie',                  desc: 'Zvíře uhynulo nebo bylo humánně utraceno' },
+                  { value: 'escaped',     icon: '🏃', label: 'Útěk / Ztráta',                     desc: 'Zvíře uprchlo z útulku nebo bylo ztraceno' },
+                ].map(opt => (
+                  <div key={opt.value}>
+                    <button type="button"
+                      onClick={() => set('exit_type', form.exit_type === opt.value ? '' : opt.value)}
+                      className={`w-full flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-all touch-manipulation ${
+                        form.exit_type === opt.value
+                          ? 'border-[#E8634A] bg-[#FDEAE6]'
+                          : 'border-[#F0EDE8] bg-white hover:border-[#E8634A]/50'
+                      }`}>
+                      <span className="text-xl flex-shrink-0 mt-0.5">{opt.icon}</span>
+                      <div>
+                        <div className="text-sm font-extrabold text-[#2C1810]">{opt.label}</div>
+                        <div className="text-xs text-[#8B6550] mt-0.5">{opt.desc}</div>
+                      </div>
+                    </button>
+
+                    {/* Sub-fields per exit type */}
+                    {form.exit_type === opt.value && opt.value === 'adopted' && (
+                      <div className="mt-1 p-4 rounded-xl bg-[#FDEAE6] border-2 border-[#E8634A]/20">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                          <Field label="Datum předání" required law="Zákon">
+                            <input type="date" className={inputCls + ' bg-white'} value={form.exit_date} onChange={e => set('exit_date', e.target.value)} />
+                          </Field>
+                          <Field label="Číslo adopční smlouvy" law="Zákon">
+                            <input className={inputCls + ' bg-white font-mono'} value={form.adoption_contract_num} onChange={e => set('adoption_contract_num', e.target.value)} placeholder="ADO-2024-042" />
+                          </Field>
+                          <Field label="Adopční poplatek (Kč)">
+                            <input type="number" className={inputCls + ' bg-white'} value={form.adoption_fee} onChange={e => set('adoption_fee', e.target.value)} placeholder="0 = zdarma" min="0" />
+                          </Field>
+                        </div>
+                        <div className="text-xs font-bold text-[#993C1D] uppercase tracking-wide mb-2">👤 Adoptér (nový majitel) <LawBadge>§25b — zákonný záznam</LawBadge></div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <Field label="Jméno a příjmení" required>
+                            <input className={inputCls + ' bg-white'} value={form.adopter_name} onChange={e => set('adopter_name', e.target.value)} placeholder="Jana Dvořáková" />
+                          </Field>
+                          <Field label="Telefon" required>
+                            <input type="tel" className={inputCls + ' bg-white'} value={form.adopter_phone} onChange={e => set('adopter_phone', e.target.value)} placeholder="+420 777 123 456" />
+                          </Field>
+                          <Field label="E-mail">
+                            <input type="email" className={inputCls + ' bg-white'} value={form.adopter_email} onChange={e => set('adopter_email', e.target.value)} placeholder="jana@email.cz" />
+                          </Field>
+                          <div className="sm:col-span-3">
+                            <Field label="Trvalá adresa" required law="Zákon" hint="Povinné dle §25b zák. 246/1992 — uchováno 3 roky">
+                              <input className={inputCls + ' bg-white'} value={form.adopter_address} onChange={e => set('adopter_address', e.target.value)} placeholder="Ulice 12, Praha 5, 150 00" />
+                            </Field>
+                          </div>
+                        </div>
+                        {animalId && (
+                          <div className="mt-3 p-2.5 bg-white rounded-lg border border-[#F0EDE8] text-xs text-[#8B6550] flex items-center gap-2">
+                            <span>ℹ️</span>
+                            <span>Po uložení bude automaticky vygenerována</span>
+                            <a href={`/admin/animals/${animalId}/pdf/adoption`} target="_blank" rel="noopener noreferrer"
+                              className="font-bold text-[#E8634A] hover:underline">adopční smlouva ke stažení (PDF) →</a>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {form.exit_type === opt.value && opt.value === 'returned' && (
+                      <div className="mt-1 p-4 rounded-xl bg-[#FDEAE6] border-2 border-[#E8634A]/20">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <Field label="Datum vrácení" law="Zákon"><input type="date" className={inputCls + ' bg-white'} value={form.exit_date} onChange={e => set('exit_date', e.target.value)} /></Field>
+                          <Field label="Jméno majitele" law="Zákon"><input className={inputCls + ' bg-white'} value={form.adopter_name} onChange={e => set('adopter_name', e.target.value)} /></Field>
+                          <Field label="Doklad totožnosti č."><input className={inputCls + ' bg-white'} value={form.adopter_id_number} onChange={e => set('adopter_id_number', e.target.value)} placeholder="OP: 123456789" /></Field>
+                        </div>
+                      </div>
+                    )}
+
+                    {form.exit_type === opt.value && opt.value === 'transferred' && (
+                      <div className="mt-1 p-4 rounded-xl bg-[#FDEAE6] border-2 border-[#E8634A]/20">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <Field label="Cílová instituce" law="Zákon"><input className={inputCls + ' bg-white'} value={form.transfer_institution} onChange={e => set('transfer_institution', e.target.value)} placeholder="Útulek Brno - Medlánky" /></Field>
+                          <Field label="Datum přemístění" law="Zákon"><input type="date" className={inputCls + ' bg-white'} value={form.exit_date} onChange={e => set('exit_date', e.target.value)} /></Field>
+                          <Field label="Číslo přepravního dokladu"><input className={inputCls + ' bg-white'} value={form.transfer_doc_number} onChange={e => set('transfer_doc_number', e.target.value)} /></Field>
+                        </div>
+                      </div>
+                    )}
+
+                    {form.exit_type === opt.value && opt.value === 'deceased' && (
+                      <div className="mt-1 p-4 rounded-xl bg-[#FDEAE6] border-2 border-[#E8634A]/20">
+                        <InfoBox type="warn" icon="⚖️">
+                          <strong>Zákonná povinnost:</strong> Úhyn / eutanazie musí být evidovány dle §25b zák. 246/1992 Sb. Způsob likvidace těla musí být proveden v souladu s VZ č. 255/2012 Sb.
+                        </InfoBox>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <Field label="Datum úhynu / eutanazie" required law="Zákon"><input type="date" className={inputCls + ' bg-white'} value={form.death_date} onChange={e => set('death_date', e.target.value)} /></Field>
+                          <Field label="Typ" required>
+                            <select className={selectCls + ' bg-white'} value={form.death_type} onChange={e => set('death_type', e.target.value)}>
+                              <option value="">Vyberte...</option>
+                              <option value="natural">Přirozený úhyn</option>
+                              <option value="euthanasia">Eutanazie — lékařský důvod</option>
+                              <option value="accident">Nehoda / úraz</option>
+                              <option value="unknown">Jiné</option>
+                            </select>
+                          </Field>
+                          <Field label="Provádějící veterinář" law="Zákon"><input className={inputCls + ' bg-white'} value={form.death_vet} onChange={e => set('death_vet', e.target.value)} placeholder="MVDr. Jan Novák" /></Field>
+                          <div className="sm:col-span-3">
+                            <Field label="Příčina / diagnóza" law="Zákon"><textarea className={textareaCls + ' bg-white !min-h-[60px]'} rows={2} value={form.death_cause} onChange={e => set('death_cause', e.target.value)} /></Field>
+                          </div>
+                          <Field label="Způsob likvidace těla" required law="VZ 255/2012">
+                            <select className={selectCls + ' bg-white'} value={form.disposal_method} onChange={e => set('disposal_method', e.target.value)}>
+                              <option value="">Vyberte...</option>
+                              <option value="incineration">Spalovna (RASEKO / Asanace)</option>
+                              <option value="composting">Kompostování</option>
+                              <option value="burial">Pohřbení (povolené pozemky)</option>
+                              <option value="rendering">Asanační podnik</option>
+                              <option value="other">Jiné</option>
+                            </select>
+                          </Field>
+                          <Field label="Číslo dokladu o likvidaci"><input className={inputCls + ' bg-white'} value={form.disposal_doc_number} onChange={e => set('disposal_doc_number', e.target.value)} /></Field>
+                          <Field label="Firma / asanační podnik"><input className={inputCls + ' bg-white'} value={form.disposal_company} onChange={e => set('disposal_company', e.target.value)} placeholder="RASEKO s.r.o." /></Field>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1762,6 +2040,52 @@ export function AnimalForm({
         {/* ═══ TAB: RESCUE (rescue_station) ═══ */}
         {activeTab === 'rescue' && !isShelter && (
           <div>
+            {/* CITES box */}
+            <div className="mb-5">
+              <ToggleRow
+                label="🦅 Zvíře je chráněno CITES / ÚMLUVA"
+                desc="§54 zák. 114/1992 Sb. — Zákon o ochraně přírody a krajiny"
+                checked={form.cites_protected}
+                onChange={v => set('cites_protected', v)}
+              />
+              {form.cites_protected && (
+                <div className="mt-2 border-l-[3px] border-[#185FA5] bg-[#E6F1FB] rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm font-extrabold text-[#185FA5]">CITES / Zvláště chráněný druh</span>
+                    <LawBadge>§54 zák. 114/1992</LawBadge>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="Číslo CITES dokladu">
+                      <input className={inputCls + ' bg-white'} value={form.cites_number} onChange={e => set('cites_number', e.target.value)} placeholder="CZ/2026/CITES/001" />
+                    </Field>
+                    <Field label="Stupeň ochrany">
+                      <select className={selectCls + ' bg-white'} value={form.cites_level} onChange={e => set('cites_level', e.target.value)}>
+                        <option value="">Vyberte...</option>
+                        <option value="I">Příloha I — nejvyšší ochrana</option>
+                        <option value="II">Příloha II — regulovaný obchod</option>
+                        <option value="III">Příloha III — ochrana v zemi původu</option>
+                        <option value="A">Příloha A (EU)</option>
+                        <option value="B">Příloha B (EU)</option>
+                      </select>
+                    </Field>
+                    <Field label="Příslušný orgán (AOPK / ČIŽP)">
+                      <input className={inputCls + ' bg-white'} value={form.cites_authority} onChange={e => set('cites_authority', e.target.value)} placeholder="AOPK Praha" />
+                    </Field>
+                    <Field label="Číslo povolení">
+                      <input className={inputCls + ' bg-white'} value={form.cites_permit} onChange={e => set('cites_permit', e.target.value)} placeholder="POV-2026-001" />
+                    </Field>
+                    <Field label="Datum nahlášení orgánu">
+                      <input type="date" className={inputCls + ' bg-white'} value={form.cites_notification_date} onChange={e => set('cites_notification_date', e.target.value)} />
+                    </Field>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Divider />
+
+            {/* Nález */}
+            <SectionTitle>🔍 Nález</SectionTitle>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
               <Field label="Druh nálezu" hint="Jak bylo zvíře nalezeno">
                 <input className={inputCls} value={form.rescue_find_type}
@@ -1788,19 +2112,56 @@ export function AnimalForm({
                   {GOOD_WITH_ADULTS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </Field>
+            </div>
 
+            <Divider />
+
+            {/* Kroužek */}
+            <div className="mb-5">
+              <ToggleRow
+                label="Kroužkované zvíře"
+                desc="Zvíře nese vědecký nebo hnízdní kroužek"
+                checked={form.ringed}
+                onChange={v => set('ringed', v)}
+              />
+              {form.ringed && (
+                <div className="mt-2">
+                  <Field label="Číslo kroužku">
+                    <input className={inputCls} value={form.ring_number} onChange={e => set('ring_number', e.target.value)} placeholder="Praha-CZ A 12345" />
+                  </Field>
+                </div>
+              )}
+            </div>
+
+            <Divider />
+
+            {/* Pypuštění */}
+            <SectionTitle>🦋 Vypuštění do přírody</SectionTitle>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+              <Field label="Datum vypuštění">
+                <input type="date" className={inputCls} value={form.release_date} onChange={e => set('release_date', e.target.value)} />
+              </Field>
+              <Field label="Místo vypuštění">
+                <input className={inputCls} value={form.release_location} onChange={e => set('release_location', e.target.value)} placeholder="Přírodní rezervace Divoká Šárka..." />
+              </Field>
               <div className="sm:col-span-2">
-                <Field label="Veřejný popis případu" hint="Záchranný příběh zobrazený na webu">
-                  <textarea className={textareaCls + ' min-h-[100px]'} value={form.rescue_public_description}
-                    onChange={e => set('rescue_public_description', e.target.value)} placeholder="Sova byla nalezena..." />
+                <Field label="Poznámky k vypuštění">
+                  <textarea className={textareaCls} value={form.release_notes} onChange={e => set('release_notes', e.target.value)} placeholder="Zvíře bylo vypuštěno v dobré kondici..." />
                 </Field>
               </div>
+            </div>
 
-              <div className="sm:col-span-2">
-                <Field label="Interní poznámky">
-                  <textarea className={textareaCls} value={form.internal_notes} onChange={e => set('internal_notes', e.target.value)} />
-                </Field>
-              </div>
+            <Divider />
+
+            <SectionTitle>📖 Popis případu</SectionTitle>
+            <div className="grid grid-cols-1 gap-4 mb-5">
+              <Field label="Veřejný popis případu" hint="Záchranný příběh zobrazený na webu">
+                <textarea className={textareaCls + ' min-h-[100px]'} value={form.rescue_public_description}
+                  onChange={e => set('rescue_public_description', e.target.value)} placeholder="Sova byla nalezena..." />
+              </Field>
+              <Field label="Interní poznámky">
+                <textarea className={textareaCls} value={form.internal_notes} onChange={e => set('internal_notes', e.target.value)} />
+              </Field>
             </div>
           </div>
         )}
