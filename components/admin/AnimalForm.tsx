@@ -45,7 +45,7 @@ interface AnimalFormProps {
   currentUser?:    { id: string; name: string }
 }
 
-type Tab = 'basic' | 'intake' | 'health' | 'personality' | 'photos' | 'adopce' | 'rescue' | 'history'
+type Tab = 'basic' | 'intake' | 'identity' | 'health' | 'personality' | 'photos' | 'adopce' | 'rescue' | 'history'
 
 interface PendingPhoto { file: File; preview: string }
 
@@ -828,7 +828,8 @@ export function AnimalForm({
   // ── Tabs ───────────────────────────────────────────────────────────────────
   const tabs: { id: Tab; icon: string; label: string; badge?: string }[] = [
     { id: 'basic',       icon: '🐾', label: 'Základní' },
-    { id: 'intake',      icon: '📥', label: 'Příjem',   badge: 'zákon' },
+    { id: 'intake',      icon: '📥', label: 'Příjem',        badge: 'zákon' },
+    { id: 'identity',    icon: '🔖', label: 'Identifikace',  badge: 'zákon' },
     { id: 'health',      icon: '💊', label: 'Zdraví' },
     ...(isShelter ? [{ id: 'personality' as Tab, icon: '❤️', label: 'Povaha' }] : []),
     { id: 'photos',      icon: '📷', label: 'Fotky' },
@@ -892,25 +893,21 @@ export function AnimalForm({
                 </ul>
               </div>
             )}
-            {/* Evidenční číslo — zobrazit jen v edit módu */}
-            {mode === 'edit' && (source as any)?.evidence_number && (
-              <div className="mb-5 px-4 py-3 rounded-lg bg-[#FDFCFA] border-2 border-[#F0EDE8] flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-[#8B6550] flex items-center gap-1">
-                    Evidenční číslo <LawBadge>§25b Vyhl.342</LawBadge>
-                  </div>
-                  <div className="font-mono font-extrabold text-[#E8634A] text-lg leading-tight mt-0.5">
-                    {String((source as any).evidence_number)}
-                  </div>
-                </div>
-                <div className="text-xs text-[#A09890]">Generováno automaticky</div>
-              </div>
-            )}
+            <InfoBox type="law" icon="⚖️">
+              <strong>Zákonná povinnost</strong> — Evidence zvířat dle §25b zák. 246/1992 Sb. a Vyhl. č. 342/2012 Sb. musí obsahovat evidenční číslo, druh, pohlaví, věk, barvu, identifikační znaky a datum příjmu.
+            </InfoBox>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+            <div className={`grid grid-cols-1 gap-4 mb-5 ${mode === 'edit' && (source as any)?.evidence_number ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
               <Field label="Jméno" required error={errors.name}>
                 <input className={inputCls} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Max, Luna, Běla..." />
               </Field>
+
+              {mode === 'edit' && (source as any)?.evidence_number && (
+                <Field label="Evidenční číslo" law="§25b / Vyhl.342">
+                  <input className={inputCls + ' font-mono font-bold text-[#E8634A] bg-[#FDFCFA]'} value={String((source as any).evidence_number)} readOnly />
+                  <p className="text-xs text-[#A09890]">Generováno automaticky</p>
+                </Field>
+              )}
 
               <Field label="Druh zvířete" required error={errors.species_id}>
                 {addingSpecies ? (
@@ -1157,15 +1154,6 @@ export function AnimalForm({
               Tyto údaje jsou povinné dle <strong>§25b zák. 246/1992 Sb.</strong> a slouží pro zákonnou evidenci a případné kontroly SVS. Vyplňte co nejúplněji.
             </InfoBox>
 
-            {/* Evidenční číslo */}
-            {(source as any)?.evidence_number && (
-              <div className="mb-4 px-4 py-3 rounded-lg bg-[#FDEAE6] border border-[#E8634A]/30">
-                <span className="text-xs font-bold uppercase tracking-wide text-[#8B6550]">Evidenční číslo</span>
-                <div className="text-lg font-extrabold text-[#E8634A] mt-0.5">{(source as any).evidence_number}</div>
-                <div className="text-xs text-[#8B6550] mt-0.5">Generováno automaticky při příjmu</div>
-              </div>
-            )}
-
             {/* Příjem — čas a pracovník */}
             <SectionTitle>📥 Příjem do zařízení</SectionTitle>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
@@ -1182,6 +1170,62 @@ export function AnimalForm({
                   onChange={e => set('intake_worker', e.target.value)}
                   placeholder="Jméno pracovníka" />
               </Field>
+              <Field label="Způsob příjmu" law="§25b">
+                <select className={selectCls} value={form.origin} onChange={e => set('origin', e.target.value)}>
+                  <option value="">Vyberte...</option>
+                  {ORIGIN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </Field>
+              <Field label="Místo nálezu / původu">
+                <input className={inputCls} value={form.found_location}
+                  onChange={e => set('found_location', e.target.value)}
+                  placeholder="Praha 5, Brno..." />
+              </Field>
+              <Field label="Datum nálezu">
+                <input type="date" className={inputCls} value={form.found_date}
+                  onChange={e => set('found_date', e.target.value)} />
+              </Field>
+              <Field label="Obec / Správce">
+                <input className={inputCls} value={form.intake_municipality}
+                  onChange={e => set('intake_municipality', e.target.value)}
+                  placeholder="Praha 5" />
+              </Field>
+              <Field label="Box / výběh">
+                <input className={inputCls} value={form.intake_box}
+                  onChange={e => set('intake_box', e.target.value)}
+                  placeholder="B-12" />
+              </Field>
+            </div>
+
+            <Divider />
+
+            {/* Stav zvířete při příjmu */}
+            <SectionTitle>🩺 Stav zvířete při příjmu</SectionTitle>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+              <Field label="Zdravotní stav při příjmu" law="§25b">
+                <select className={selectCls} value={form.intake_health_status}
+                  onChange={e => set('intake_health_status', e.target.value)}>
+                  <option value="">Vyberte...</option>
+                  <option value="good">Dobrý</option>
+                  <option value="malnourished">Podvyživený</option>
+                  <option value="injured_mild">Zraněný — lehce</option>
+                  <option value="injured_serious">Zraněný — vážně</option>
+                  <option value="sick">Nemocný</option>
+                  <option value="critical">Kritický</option>
+                  <option value="unknown">Neznámý</option>
+                </select>
+              </Field>
+              <Field label="Váha při příjmu (kg)">
+                <input type="number" step="0.1" className={inputCls} value={form.intake_weight_kg}
+                  onChange={e => set('intake_weight_kg', e.target.value)} placeholder="12.5" min="0" />
+              </Field>
+              <div className="sm:col-span-3">
+                <Field label="Popis stavu při příjmu" law="§25b">
+                  <textarea className={textareaCls} rows={3} value={form.intake_description}
+                    onChange={e => set('intake_description', e.target.value)}
+                    placeholder="Stav srsti, rány, výživa, chování při příjmu..." />
+                </Field>
+              </div>
             </div>
 
             <Divider />
@@ -1217,56 +1261,100 @@ export function AnimalForm({
                   placeholder="123456789" />
               </Field>
             </div>
+          </div>
+        )}
+
+        {/* ═══ TAB: IDENTIFIKACE ═══ */}
+        {activeTab === 'identity' && (
+          <div>
+            <InfoBox type="law" icon="⚖️">
+              <strong>§13 zák. 166/1999 Sb. (Veterinární zákon)</strong> — Povinné označení zvířat. Pes musí být označen čipem od 3 měsíců věku a zaevidován v Centrálním registru zvířat.
+            </InfoBox>
+
+            <SectionTitle>💉 Čipování</SectionTitle>
+            {form.chip_number && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#EAF3DE] text-[#1a5e2e] text-xs font-bold">✓ Čip nalezen</span>
+                {form.chip_read_ok && <span className="text-xs text-[#8B6550]">· ověřeno čtečkou</span>}
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+              <Field label="Číslo čipu (15 číslic)" law="Zákon" hint="ISO 11784/11785 · 15místný kód">
+                <input className={inputCls + ' font-mono tracking-wide font-bold'} value={form.chip_number}
+                  onChange={e => set('chip_number', e.target.value)} placeholder="203 000 123 456 789" />
+              </Field>
+              <Field label="Datum čipování" law="Zákon">
+                <input type="date" className={inputCls} value={form.chip_date} onChange={e => set('chip_date', e.target.value)} />
+              </Field>
+              <Field label="Veterinář čipování">
+                <input className={inputCls} value={form.chip_implanter} onChange={e => set('chip_implanter', e.target.value)} placeholder="MVDr. Jan Novák" />
+              </Field>
+              <Field label="Umístění čipu">
+                <select className={selectCls} value={form.chip_location} onChange={e => set('chip_location', e.target.value)}>
+                  <option value="">Vyberte...</option>
+                  <option value="left_neck">Levý krk (standard)</option>
+                  <option value="right_neck">Pravý krk</option>
+                  <option value="nape">Šíje</option>
+                  <option value="other">Jiné místo</option>
+                </select>
+              </Field>
+              <div className="sm:col-span-2">
+                <ToggleRow label="Čip byl ověřen čtečkou" desc="Čip byl přečten a ověřen při příjmu"
+                  checked={form.chip_read_ok} onChange={v => set('chip_read_ok', v)} />
+              </div>
+            </div>
 
             <Divider />
 
-            {/* Identifikace */}
-            <SectionTitle>🏷️ Identifikace <span className="text-[10px] font-normal text-[#8B6550] ml-1">§13 zák. 166/1999 Sb.</span></SectionTitle>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-              <Field label="Číslo čipu (ISO 11784/85)">
-                <input className={inputCls} value={form.chip_number}
-                  onChange={e => set('chip_number', e.target.value)}
-                  placeholder="203 000 123 456 789" />
+            <SectionTitle>📋 Registrace v databázích</SectionTitle>
+            <InfoBox type="tip" icon="💡">Pes musí být zapsán do centrální databáze (pes.cz / chipdb.cz). Útulky jsou povinny provést přeregistraci po adopci na nového majitele.</InfoBox>
+            <div className="flex flex-col gap-2 mb-5">
+              <ToggleRow label="Zapsán v CRZ (Centrální registr zvířat)" desc="chipdb.cz · pes.cz · CRZ ČMKJ"
+                checked={form.crz_registered} onChange={v => set('crz_registered', v)} />
+              {form.crz_registered && (
+                <div className="mt-1 ml-2">
+                  <Field label="Datum registrace CRZ">
+                    <input type="date" className={inputCls} value={form.crz_reg_date} onChange={e => set('crz_reg_date', e.target.value)} />
+                  </Field>
+                </div>
+              )}
+              <ToggleRow label="Registrován u obce (místní poplatek ze psa)" desc="Zák. č. 565/1990 Sb. — pro psy nad 3 měsíce"
+                checked={form.local_registered} onChange={v => set('local_registered', v)} />
+            </div>
+
+            <Divider />
+
+            <SectionTitle>📘 Pas zvířete / průkaz</SectionTitle>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              <Field label="Číslo pasu">
+                <input className={inputCls + ' font-mono'} value={form.passport_number} onChange={e => set('passport_number', e.target.value)} placeholder="CZ 12345678" />
               </Field>
-              <Field label="Datum čipování">
-                <input type="date" className={inputCls} value={form.chip_date}
-                  onChange={e => set('chip_date', e.target.value)} />
+              <Field label="Datum vydání pasu">
+                <input type="date" className={inputCls} value={form.passport_issued} onChange={e => set('passport_issued', e.target.value)} />
               </Field>
-              <Field label="Kdo čipoval (veterinář)">
-                <input className={inputCls} value={form.chip_implanter}
-                  onChange={e => set('chip_implanter', e.target.value)}
-                  placeholder="MVDr. Jana Černá" />
+              <Field label="Vydávající veterinář">
+                <input className={inputCls} value={form.passport_vet} onChange={e => set('passport_vet', e.target.value)} placeholder="MVDr. Jana Horáková" />
               </Field>
-              <Field label="Místo vpichu čipu">
-                <input className={inputCls} value={form.chip_location}
-                  onChange={e => set('chip_location', e.target.value)}
-                  placeholder="Levá strana krku" />
+            </div>
+            <ToggleRow label="Pas je fyzicky v útulku" desc="Pas je uschován na recepci"
+              checked={form.passport_in_shelter} onChange={v => set('passport_in_shelter', v)} />
+
+            <Divider />
+
+            <SectionTitle>✍️ Tetování</SectionTitle>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Číslo tetování" hint="Starší forma identifikace — pro zvířata tetovaná před povinností čipování">
+                <input className={inputCls + ' font-mono'} value={form.tatoo_number} onChange={e => set('tatoo_number', e.target.value)} placeholder="CZ12345" />
               </Field>
-              <Field label="Číslo průkazu zvířete (pas)">
-                <input className={inputCls} value={form.passport_number}
-                  onChange={e => set('passport_number', e.target.value)}
-                  placeholder="CZ 12345678" />
+              <Field label="Umístění tetování">
+                <select className={selectCls} value={form.tatoo_location} onChange={e => set('tatoo_location', e.target.value)}>
+                  <option value="">Nevyplněno</option>
+                  <option value="right_ear">Pravé ucho</option>
+                  <option value="left_ear">Levé ucho</option>
+                  <option value="right_flank">Pravý bok / tříslo</option>
+                  <option value="other">Jiné</option>
+                </select>
               </Field>
-              <Field label="Datum vydání průkazu">
-                <input type="date" className={inputCls} value={form.passport_issued}
-                  onChange={e => set('passport_issued', e.target.value)} />
-              </Field>
-              <div className="sm:col-span-2">
-                <ToggleRow
-                  label="Registrováno v CRZ (Centrální registr zvířat)"
-                  desc="Povinné pro psy dle zák. 166/1999 Sb."
-                  checked={form.crz_registered}
-                  onChange={v => set('crz_registered', v)}
-                />
-                {form.crz_registered && (
-                  <div className="mt-2">
-                    <Field label="Datum registrace CRZ">
-                      <input type="date" className={inputCls} value={form.crz_reg_date}
-                        onChange={e => set('crz_reg_date', e.target.value)} />
-                    </Field>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         )}
@@ -1274,24 +1362,27 @@ export function AnimalForm({
         {/* ═══ TAB: HEALTH ═══ */}
         {activeTab === 'health' && (
           <div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-              <Field label="Celkový zdravotní stav">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <Field label="Zdravotní stav">
                 <select className={selectCls} value={form.health_status} onChange={e => set('health_status', e.target.value)}>
                   {HEALTH_STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </Field>
+              <Field label="Kastrace / sterilizace">
+                <div className="flex flex-wrap gap-2 pt-0.5">
+                  {[{value:'yes',label:'Ano'},{value:'no',label:'Ne'},{value:'planned',label:'Plánovaná'},{value:'unknown',label:'Nevím'}].map(o => (
+                    <RadioPill key={o.value} value={o.value} selected={form.neutered === o.value} onChange={v => set('neutered', v)}>{o.label}</RadioPill>
+                  ))}
+                </div>
+              </Field>
             </div>
-
-            <Divider />
-
-            {/* Kastrace */}
-            <div className="mb-5">
-              <SectionTitle>Kastrace / sterilizace</SectionTitle>
-              <div className="flex flex-wrap gap-2">
-                {[{value:'yes',label:'Ano'},{value:'no',label:'Ne'},{value:'planned',label:'Plánovaná'},{value:'unknown',label:'Nevím'}].map(o => (
-                  <RadioPill key={o.value} value={o.value} selected={form.neutered === o.value} onChange={v => set('neutered', v)}>{o.label}</RadioPill>
-                ))}
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+              <Field label="Datum kastrace/sterilizace">
+                <input type="date" className={inputCls} value={form.neutered_date} onChange={e => set('neutered_date', e.target.value)} />
+              </Field>
+              <Field label="Veterinář (výkon)">
+                <input className={inputCls} value={form.neutered_vet} onChange={e => set('neutered_vet', e.target.value)} placeholder="MVDr. Jan Novák" />
+              </Field>
             </div>
 
             <Divider />
