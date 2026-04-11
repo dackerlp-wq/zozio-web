@@ -16,7 +16,7 @@
     },
     {
       "path": "/api/cron/sync-darujme",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }

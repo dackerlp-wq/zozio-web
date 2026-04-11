@@ -89,22 +89,51 @@ export default async function EditAnimalPage({ params, searchParams }: PageProps
           </a>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* PDF karta */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* PDF karta — interní přehled */}
           <a
             href={`/admin/animals/${id}/pdf`}
             target="_blank"
             rel="noopener noreferrer"
+            title="Interní karta zvířete"
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 border-[#F0EDE8] bg-white text-[#6B4030] font-bold text-sm hover:border-[#E8634A] hover:text-[#E8634A] transition-colors"
           >
             <span>📄</span>
             <span className="hidden sm:inline">PDF karta</span>
           </a>
+
+          {/* PDF: Zákonná evidence — pro SVS / kontroly */}
+          <a
+            href={`/admin/animals/${id}/pdf/records`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Zákonná evidence pro kontrolu orgánů (SVS, OÚ)"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 border-[#2C1810] bg-white text-[#2C1810] font-bold text-sm hover:bg-[#2C1810] hover:text-white transition-colors"
+          >
+            <span>📋</span>
+            <span className="hidden sm:inline">Zákonná evidence</span>
+          </a>
+
+          {/* PDF: Adopční smlouva — pouze pro útulky */}
+          {isShelter && (
+            <a
+              href={`/admin/animals/${id}/pdf/adoption`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Adopční smlouva pro nového majitele"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#E8634A] text-white font-bold text-sm hover:bg-[#C0472E] transition-colors"
+            >
+              <span>🤝</span>
+              <span className="hidden sm:inline">Adopční smlouva</span>
+            </a>
+          )}
+
           {/* QR karta */}
           <a
             href={`/admin/animals/${id}/qr`}
             target="_blank"
             rel="noopener noreferrer"
+            title="QR karta pro označení klece/boxu"
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#2C1810] text-white font-bold text-sm hover:bg-[#6B4030] transition-colors"
           >
             <span>▣</span>

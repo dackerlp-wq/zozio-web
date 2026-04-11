@@ -8,7 +8,15 @@ import { createClient } from '@/lib/supabase/client'
 interface Species { id: string; name_cs: string }
 interface Breed   { id: string; name_cs: string; size_category?: string; energy_level?: string; is_custom?: boolean }
 
-interface VaccinationRecord { _key: string; type: string; label: string; last_date: string }
+interface VaccinationRecord {
+  _key: string
+  type: string
+  label: string
+  last_date: string
+  batch_number?: string  // šarže — §13 zák. 166/1999 Sb.
+  expiry_date?: string   // expirace vakcíny
+  vet_name?: string      // veterinář, který aplikoval
+}
 interface MedicationEntry   { _key: string; name: string; dosage: string; frequency: string }
 
 interface StatusHistoryEntry {
@@ -30,7 +38,7 @@ interface AnimalFormProps {
   currentUser?:    { id: string; name: string }
 }
 
-type Tab = 'basic' | 'health' | 'personality' | 'photos' | 'adopce' | 'rescue' | 'history'
+type Tab = 'basic' | 'intake' | 'health' | 'personality' | 'photos' | 'adopce' | 'rescue' | 'history'
 
 interface PendingPhoto { file: File; preview: string }
 
@@ -304,6 +312,53 @@ function initFormData(data?: Record<string, unknown>) {
     rescue_prognosis: String(d.rescue_prognosis ?? 'unknown'),
     rescue_public_description: String(d.rescue_public_description ?? ''),
     internal_notes:   String(d.internal_notes ?? ''),
+
+    // ── Zákonná evidence — příjem (§25b zák. 246/1992 Sb.) ─────────────────
+    intake_time:             String(d.intake_time ?? ''),
+    intake_worker:           String(d.intake_worker ?? ''),
+    intake_finder_name:      String(d.intake_finder_name ?? ''),
+    intake_finder_phone:     String(d.intake_finder_phone ?? ''),
+    intake_finder_address:   String(d.intake_finder_address ?? ''),
+    intake_finder_email:     String(d.intake_finder_email ?? ''),
+    intake_finder_id:        String(d.intake_finder_id ?? ''),
+
+    // ── Karanténa (Vyhl. 342/2012 Sb.) ──────────────────────────────────────
+    quarantine_start:  String(d.quarantine_start ?? ''),
+    quarantine_end:    String(d.quarantine_end ?? ''),
+    quarantine_vet:    String(d.quarantine_vet ?? ''),
+    quarantine_result: String(d.quarantine_result ?? ''),
+    quarantine_box:    String(d.quarantine_box ?? ''),
+
+    // ── Identifikace (§13 zák. 166/1999 Sb.) ─────────────────────────────────
+    chip_implanter:    String(d.chip_implanter ?? ''),
+    chip_location:     String(d.chip_location ?? ''),
+    passport_issued:   String(d.passport_issued ?? ''),
+    crz_registered:    Boolean(d.crz_registered),
+    crz_reg_date:      String(d.crz_reg_date ?? ''),
+
+    // ── Adoptér (§25b odst. 4 zák. 246/1992 Sb.) ─────────────────────────────
+    adopter_name:          String(d.adopter_name ?? ''),
+    adopter_address:       String(d.adopter_address ?? ''),
+    adopter_phone:         String(d.adopter_phone ?? ''),
+    adopter_email:         String(d.adopter_email ?? ''),
+    adopter_id_number:     String(d.adopter_id_number ?? ''),
+    adoption_contract_num: String(d.adoption_contract_num ?? ''),
+    adoption_date:         String(d.adoption_date ?? ''),
+
+    // ── Odchod ───────────────────────────────────────────────────────────────
+    exit_type:   String(d.exit_type ?? ''),
+    exit_date:   String(d.exit_date ?? ''),
+    exit_notes:  String(d.exit_notes ?? ''),
+    exit_worker: String(d.exit_worker ?? ''),
+
+    // ── Uhynutí / likvidace (VZ 255/2012 Sb.) ────────────────────────────────
+    death_date:          String(d.death_date ?? ''),
+    death_type:          String(d.death_type ?? ''),
+    death_cause:         String(d.death_cause ?? ''),
+    death_vet:           String(d.death_vet ?? ''),
+    disposal_method:     String(d.disposal_method ?? ''),
+    disposal_doc_number: String(d.disposal_doc_number ?? ''),
+    disposal_company:    String(d.disposal_company ?? ''),
   }
 }
 type FormState = ReturnType<typeof initFormData>
@@ -346,7 +401,7 @@ export function AnimalForm({
     parseVaccinations(source?.vaccination_records)
   )
   const [addingVaccine, setAddingVaccine] = useState(false)
-  const [newVaccine, setNewVaccine] = useState({ type: '', label: '', last_date: '', custom: false })
+  const [newVaccine, setNewVaccine] = useState({ type: '', label: '', last_date: '', batch_number: '', expiry_date: '', vet_name: '', custom: false })
 
   // Medications
   const [medications, setMedications] = useState<MedicationEntry[]>(() =>
@@ -478,8 +533,16 @@ export function AnimalForm({
   function addVaccination() {
     if (!newVaccine.type && !newVaccine.label) return
     const label = newVaccine.custom ? newVaccine.label : (PREDEFINED_VACCINES.find(v => v.type === newVaccine.type)?.label ?? newVaccine.type)
-    setVaccinations(prev => [...prev, { _key: uid(), type: newVaccine.custom ? newVaccine.label : newVaccine.type, label, last_date: newVaccine.last_date }])
-    setNewVaccine({ type: '', label: '', last_date: '', custom: false })
+    setVaccinations(prev => [...prev, {
+      _key: uid(),
+      type: newVaccine.custom ? newVaccine.label : newVaccine.type,
+      label,
+      last_date: newVaccine.last_date,
+      batch_number: newVaccine.batch_number || undefined,
+      expiry_date: newVaccine.expiry_date || undefined,
+      vet_name: newVaccine.vet_name || undefined,
+    }])
+    setNewVaccine({ type: '', label: '', last_date: '', batch_number: '', expiry_date: '', vet_name: '', custom: false })
     setAddingVaccine(false)
   }
 
@@ -595,6 +658,53 @@ export function AnimalForm({
         rescue_prognosis: form.rescue_prognosis || null,
         rescue_public_description: form.rescue_public_description || null,
         internal_notes: form.internal_notes || null,
+
+        // ── Zákonná evidence — příjem ────────────────────────────────────────
+        intake_time:           form.intake_time || null,
+        intake_worker:         form.intake_worker || null,
+        intake_finder_name:    form.intake_finder_name || null,
+        intake_finder_phone:   form.intake_finder_phone || null,
+        intake_finder_address: form.intake_finder_address || null,
+        intake_finder_email:   form.intake_finder_email || null,
+        intake_finder_id:      form.intake_finder_id || null,
+
+        // ── Karanténa ────────────────────────────────────────────────────────
+        quarantine_start:  form.quarantine_start || null,
+        quarantine_end:    form.quarantine_end || null,
+        quarantine_vet:    form.quarantine_vet || null,
+        quarantine_result: form.quarantine_result || null,
+        quarantine_box:    form.quarantine_box || null,
+
+        // ── Identifikace ──────────────────────────────────────────────────────
+        chip_implanter:  form.chip_implanter || null,
+        chip_location:   form.chip_location || null,
+        passport_issued: form.passport_issued || null,
+        crz_registered:  form.crz_registered,
+        crz_reg_date:    form.crz_reg_date || null,
+
+        // ── Adoptér ──────────────────────────────────────────────────────────
+        adopter_name:          form.adopter_name || null,
+        adopter_address:       form.adopter_address || null,
+        adopter_phone:         form.adopter_phone || null,
+        adopter_email:         form.adopter_email || null,
+        adopter_id_number:     form.adopter_id_number || null,
+        adoption_contract_num: form.adoption_contract_num || null,
+        adoption_date:         form.adoption_date || null,
+
+        // ── Odchod ───────────────────────────────────────────────────────────
+        exit_type:   form.exit_type || null,
+        exit_date:   form.exit_date || null,
+        exit_notes:  form.exit_notes || null,
+        exit_worker: form.exit_worker || null,
+
+        // ── Uhynutí / likvidace ───────────────────────────────────────────────
+        death_date:          form.death_date || null,
+        death_type:          form.death_type || null,
+        death_cause:         form.death_cause || null,
+        death_vet:           form.death_vet || null,
+        disposal_method:     form.disposal_method || null,
+        disposal_doc_number: form.disposal_doc_number || null,
+        disposal_company:    form.disposal_company || null,
       }
 
       let savedId = animalId
@@ -634,12 +744,13 @@ export function AnimalForm({
   }
 
   // ── Tabs ───────────────────────────────────────────────────────────────────
-  const tabs: { id: Tab; icon: string; label: string }[] = [
+  const tabs: { id: Tab; icon: string; label: string; badge?: string }[] = [
     { id: 'basic',       icon: '🐾', label: 'Základní' },
+    { id: 'intake',      icon: '📥', label: 'Příjem',   badge: 'zákon' },
     { id: 'health',      icon: '💊', label: 'Zdraví' },
     ...(isShelter ? [{ id: 'personality' as Tab, icon: '❤️', label: 'Povaha' }] : []),
     { id: 'photos',      icon: '📷', label: 'Fotky' },
-    { id: 'adopce',      icon: '📋', label: 'Adopce' },
+    { id: 'adopce',      icon: '📋', label: isShelter ? 'Adopce' : 'Odchod' },
     ...(!isShelter ? [{ id: 'rescue' as Tab, icon: '🦉', label: 'Záchrana' }] : []),
     ...(mode === 'edit' ? [{ id: 'history' as Tab, icon: '🕐', label: 'Historie' }] : []),
   ]
@@ -672,6 +783,9 @@ export function AnimalForm({
             <span className="hidden sm:inline">{t.label}</span>
             {t.id === 'basic' && errorCount > 0 && (
               <span className="bg-[#E8634A] text-white text-[9px] font-bold px-1 py-px rounded ml-0.5">{errorCount}</span>
+            )}
+            {t.badge && activeTab !== t.id && (
+              <span className="hidden sm:inline bg-[#2C1810] text-white text-[8px] font-bold px-1.5 py-px rounded ml-0.5 uppercase tracking-wide">{t.badge}</span>
             )}
           </button>
         ))}
@@ -935,6 +1049,127 @@ export function AnimalForm({
           </div>
         )}
 
+        {/* ═══ TAB: PŘÍJEM (zákonná evidence) ═══ */}
+        {activeTab === 'intake' && (
+          <div>
+            <InfoBox type="info" icon="⚖️">
+              Tyto údaje jsou povinné dle <strong>§25b zák. 246/1992 Sb.</strong> a slouží pro zákonnou evidenci a případné kontroly SVS. Vyplňte co nejúplněji.
+            </InfoBox>
+
+            {/* Evidenční číslo */}
+            {(source as any)?.evidence_number && (
+              <div className="mb-4 px-4 py-3 rounded-lg bg-[#FDEAE6] border border-[#E8634A]/30">
+                <span className="text-xs font-bold uppercase tracking-wide text-[#8B6550]">Evidenční číslo</span>
+                <div className="text-lg font-extrabold text-[#E8634A] mt-0.5">{(source as any).evidence_number}</div>
+                <div className="text-xs text-[#8B6550] mt-0.5">Generováno automaticky při příjmu</div>
+              </div>
+            )}
+
+            {/* Příjem — čas a pracovník */}
+            <SectionTitle>📥 Příjem do zařízení</SectionTitle>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+              <Field label="Datum příjmu" required>
+                <input type="date" className={inputCls} value={form.intake_date}
+                  onChange={e => set('intake_date', e.target.value)} />
+              </Field>
+              <Field label="Čas příjmu" hint="hh:mm">
+                <input type="time" className={inputCls} value={form.intake_time}
+                  onChange={e => set('intake_time', e.target.value)} />
+              </Field>
+              <Field label="Přijal/a (pracovník)">
+                <input className={inputCls} value={form.intake_worker}
+                  onChange={e => set('intake_worker', e.target.value)}
+                  placeholder="Jméno pracovníka" />
+              </Field>
+            </div>
+
+            <Divider />
+
+            {/* Nálezce / předávající */}
+            <SectionTitle>👤 Nálezce / předávající <span className="text-[10px] font-normal text-[#8B6550] ml-1">§25b odst. 2 zák. 246/1992 Sb.</span></SectionTitle>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+              <Field label="Jméno a příjmení">
+                <input className={inputCls} value={form.intake_finder_name}
+                  onChange={e => set('intake_finder_name', e.target.value)}
+                  placeholder="Jan Novák" />
+              </Field>
+              <Field label="Telefon">
+                <input type="tel" className={inputCls} value={form.intake_finder_phone}
+                  onChange={e => set('intake_finder_phone', e.target.value)}
+                  placeholder="+420 777 123 456" />
+              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Adresa bydliště" hint="Ulice, č. p., PSČ, město">
+                  <input className={inputCls} value={form.intake_finder_address}
+                    onChange={e => set('intake_finder_address', e.target.value)}
+                    placeholder="Hlavní 1, 110 00 Praha 1" />
+                </Field>
+              </div>
+              <Field label="E-mail">
+                <input type="email" className={inputCls} value={form.intake_finder_email}
+                  onChange={e => set('intake_finder_email', e.target.value)}
+                  placeholder="jan@email.cz" />
+              </Field>
+              <Field label="Číslo OP / pasu nálezce">
+                <input className={inputCls} value={form.intake_finder_id}
+                  onChange={e => set('intake_finder_id', e.target.value)}
+                  placeholder="123456789" />
+              </Field>
+            </div>
+
+            <Divider />
+
+            {/* Identifikace */}
+            <SectionTitle>🏷️ Identifikace <span className="text-[10px] font-normal text-[#8B6550] ml-1">§13 zák. 166/1999 Sb.</span></SectionTitle>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+              <Field label="Číslo čipu (ISO 11784/85)">
+                <input className={inputCls} value={form.chip_number}
+                  onChange={e => set('chip_number', e.target.value)}
+                  placeholder="203 000 123 456 789" />
+              </Field>
+              <Field label="Datum čipování">
+                <input type="date" className={inputCls} value={form.chip_date}
+                  onChange={e => set('chip_date', e.target.value)} />
+              </Field>
+              <Field label="Kdo čipoval (veterinář)">
+                <input className={inputCls} value={form.chip_implanter}
+                  onChange={e => set('chip_implanter', e.target.value)}
+                  placeholder="MVDr. Jana Černá" />
+              </Field>
+              <Field label="Místo vpichu čipu">
+                <input className={inputCls} value={form.chip_location}
+                  onChange={e => set('chip_location', e.target.value)}
+                  placeholder="Levá strana krku" />
+              </Field>
+              <Field label="Číslo průkazu zvířete (pas)">
+                <input className={inputCls} value={form.passport_number}
+                  onChange={e => set('passport_number', e.target.value)}
+                  placeholder="CZ 12345678" />
+              </Field>
+              <Field label="Datum vydání průkazu">
+                <input type="date" className={inputCls} value={form.passport_issued}
+                  onChange={e => set('passport_issued', e.target.value)} />
+              </Field>
+              <div className="sm:col-span-2">
+                <ToggleRow
+                  label="Registrováno v CRZ (Centrální registr zvířat)"
+                  desc="Povinné pro psy dle zák. 166/1999 Sb."
+                  checked={form.crz_registered}
+                  onChange={v => set('crz_registered', v)}
+                />
+                {form.crz_registered && (
+                  <div className="mt-2">
+                    <Field label="Datum registrace CRZ">
+                      <input type="date" className={inputCls} value={form.crz_reg_date}
+                        onChange={e => set('crz_reg_date', e.target.value)} />
+                    </Field>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ═══ TAB: HEALTH ═══ */}
         {activeTab === 'health' && (
           <div>
@@ -967,19 +1202,40 @@ export function AnimalForm({
               {vaccinations.length > 0 && (
                 <div className="space-y-2 mb-3">
                   {vaccinations.map(v => (
-                    <div key={v._key} className="flex items-center gap-2 p-2.5 rounded-lg border-2 border-[#F0EDE8] bg-[#FDFCFA]">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-[#2C1810] truncate">{v.label || v.type}</div>
-                        <input
-                          type="date" className="text-xs text-[#8B6550] bg-transparent border-0 p-0 mt-0.5 focus:outline-none"
-                          value={v.last_date} onChange={e => updateVaccination(v._key, 'last_date', e.target.value)}
-                          placeholder="Datum posledního očkování"
-                        />
+                    <div key={v._key} className="p-3 rounded-lg border-2 border-[#F0EDE8] bg-[#FDFCFA]">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-[#2C1810]">{v.label || v.type}</div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                            <div>
+                              <div className="text-[9px] font-bold uppercase tracking-wide text-[#8B6550] mb-0.5">Datum</div>
+                              <input type="date" className={inputCls + ' !py-1.5 !text-xs'}
+                                value={v.last_date} onChange={e => updateVaccination(v._key, 'last_date', e.target.value)} />
+                            </div>
+                            <div>
+                              <div className="text-[9px] font-bold uppercase tracking-wide text-[#8B6550] mb-0.5">Šarže (batch)</div>
+                              <input className={inputCls + ' !py-1.5 !text-xs'}
+                                value={v.batch_number ?? ''} onChange={e => updateVaccination(v._key, 'batch_number', e.target.value)}
+                                placeholder="AB12345" />
+                            </div>
+                            <div>
+                              <div className="text-[9px] font-bold uppercase tracking-wide text-[#8B6550] mb-0.5">Expirace</div>
+                              <input type="date" className={inputCls + ' !py-1.5 !text-xs'}
+                                value={v.expiry_date ?? ''} onChange={e => updateVaccination(v._key, 'expiry_date', e.target.value)} />
+                            </div>
+                            <div>
+                              <div className="text-[9px] font-bold uppercase tracking-wide text-[#8B6550] mb-0.5">Veterinář</div>
+                              <input className={inputCls + ' !py-1.5 !text-xs'}
+                                value={v.vet_name ?? ''} onChange={e => updateVaccination(v._key, 'vet_name', e.target.value)}
+                                placeholder="MVDr. Novák" />
+                            </div>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => removeVaccination(v._key)}
+                          className="w-7 h-7 flex items-center justify-center rounded-md text-[#A09890] hover:text-[#D83030] hover:bg-[#FCEBEB] transition-colors touch-manipulation flex-shrink-0 mt-0.5">
+                          ✕
+                        </button>
                       </div>
-                      <button type="button" onClick={() => removeVaccination(v._key)}
-                        className="w-7 h-7 flex items-center justify-center rounded-md text-[#A09890] hover:text-[#D83030] hover:bg-[#FCEBEB] transition-colors touch-manipulation">
-                        ✕
-                      </button>
                     </div>
                   ))}
                 </div>
@@ -1002,7 +1258,22 @@ export function AnimalForm({
                       </select>
                     )}
                     <input type="date" className={inputCls} value={newVaccine.last_date}
-                      onChange={e => setNewVaccine(p => ({...p, last_date: e.target.value}))} />
+                      onChange={e => setNewVaccine(p => ({...p, last_date: e.target.value}))}
+                      placeholder="Datum aplikace" />
+                    <Field label="Šarže vakcíny (batch)" hint="Povinné dle §13 zák. 166/1999 Sb.">
+                      <input className={inputCls} placeholder="AB12345" value={newVaccine.batch_number}
+                        onChange={e => setNewVaccine(p => ({...p, batch_number: e.target.value}))} />
+                    </Field>
+                    <Field label="Expirace vakcíny">
+                      <input type="date" className={inputCls} value={newVaccine.expiry_date}
+                        onChange={e => setNewVaccine(p => ({...p, expiry_date: e.target.value}))} />
+                    </Field>
+                    <div className="sm:col-span-2">
+                      <Field label="Aplikoval (veterinář)">
+                        <input className={inputCls} placeholder="MVDr. Jan Novák" value={newVaccine.vet_name}
+                          onChange={e => setNewVaccine(p => ({...p, vet_name: e.target.value}))} />
+                      </Field>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <button type="button" onClick={addVaccination}
@@ -1010,7 +1281,7 @@ export function AnimalForm({
                       className="px-4 py-2 rounded-md bg-[#E8634A] text-white text-sm font-bold disabled:opacity-50 touch-manipulation">
                       Přidat
                     </button>
-                    <button type="button" onClick={() => { setAddingVaccine(false); setNewVaccine({type:'',label:'',last_date:'',custom:false}) }}
+                    <button type="button" onClick={() => { setAddingVaccine(false); setNewVaccine({type:'',label:'',last_date:'',batch_number:'',expiry_date:'',vet_name:'',custom:false}) }}
                       className="px-4 py-2 rounded-md border-2 border-[#F0EDE8] text-[#8B6550] text-sm touch-manipulation">Zrušit</button>
                   </div>
                 </div>
@@ -1088,16 +1359,41 @@ export function AnimalForm({
             <Divider />
 
             <div className="space-y-2.5">
-              <SectionTitle>Karanténa</SectionTitle>
-              <ToggleRow label="Zvíře je v karanténě" desc="Nebude zobrazeno na veřejných stránkách"
+              <SectionTitle>Karanténa <span className="text-[10px] font-normal text-[#8B6550] ml-1">Vyhl. 342/2012 Sb.</span></SectionTitle>
+              <ToggleRow label="Zvíře je / bylo v karanténě" desc="Zákonná povinnost pro každé nově přijaté zvíře"
                 checked={form.in_quarantine} onChange={v => set('in_quarantine', v)} />
               {form.in_quarantine && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                  <Field label="Karanténa do">
-                    <input type="date" className={inputCls} value={form.quarantine_until} onChange={e => set('quarantine_until', e.target.value)} />
+                  <Field label="Karanténa zahájena" hint="Datum zahájení">
+                    <input type="date" className={inputCls} value={form.quarantine_start}
+                      onChange={e => set('quarantine_start', e.target.value)} />
                   </Field>
-                  <Field label="Důvod">
-                    <input className={inputCls} value={form.quarantine_reason} onChange={e => set('quarantine_reason', e.target.value)} />
+                  <Field label="Karanténa ukončena">
+                    <input type="date" className={inputCls} value={form.quarantine_end ?? form.quarantine_until}
+                      onChange={e => { set('quarantine_end', e.target.value); set('quarantine_until', e.target.value) }} />
+                  </Field>
+                  <Field label="Zodpovědný veterinář">
+                    <input className={inputCls} value={form.quarantine_vet}
+                      onChange={e => set('quarantine_vet', e.target.value)}
+                      placeholder="MVDr. Jan Novák" />
+                  </Field>
+                  <Field label="Výsledek karantény">
+                    <select className={selectCls} value={form.quarantine_result}
+                      onChange={e => set('quarantine_result', e.target.value)}>
+                      <option value="">Vyberte výsledek...</option>
+                      <option value="negative">Negativní — bez nákazy</option>
+                      <option value="positive">Pozitivní — zjištěna nákaza</option>
+                      <option value="inconclusive">Neprůkazné</option>
+                    </select>
+                  </Field>
+                  <Field label="Číslo karanténního boxu">
+                    <input className={inputCls} value={form.quarantine_box}
+                      onChange={e => set('quarantine_box', e.target.value)}
+                      placeholder="Box č. 3A" />
+                  </Field>
+                  <Field label="Důvod karantény" hint="Volitelný popis">
+                    <input className={inputCls} value={form.quarantine_reason}
+                      onChange={e => set('quarantine_reason', e.target.value)} />
                   </Field>
                 </div>
               )}
@@ -1248,54 +1544,218 @@ export function AnimalForm({
           </div>
         )}
 
-        {/* ═══ TAB: ADOPCE ═══ */}
+        {/* ═══ TAB: ADOPCE / ODCHOD ═══ */}
         {activeTab === 'adopce' && (
           <div>
-            <div className="mb-5">
-              <SectionTitle>📖 Příběh zvířete</SectionTitle>
-              <textarea className={textareaCls + ' min-h-[120px]'} rows={5} value={form.story}
-                onChange={e => set('story', e.target.value)}
-                placeholder="Jak se zvíře dostalo do útulku, co prožilo, jaké má zvyky..." />
-            </div>
+            {isShelter && (
+              <>
+                <div className="mb-5">
+                  <SectionTitle>📖 Příběh zvířete</SectionTitle>
+                  <textarea className={textareaCls + ' min-h-[120px]'} rows={5} value={form.story}
+                    onChange={e => set('story', e.target.value)}
+                    placeholder="Jak se zvíře dostalo do útulku, co prožilo, jaké má zvyky..." />
+                </div>
 
-            <Divider />
+                <Divider />
 
+                <div className="mb-5">
+                  <SectionTitle>Adopční podmínky</SectionTitle>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Adopční poplatek (Kč)" hint="0 = zdarma">
+                      <input type="number" className={inputCls} value={form.adoption_fee}
+                        onChange={e => set('adoption_fee', e.target.value)} placeholder="0 = zdarma" min="0" />
+                    </Field>
+                    <div className="sm:col-span-2">
+                      <Field label="Požadavky na adoptéra">
+                        <textarea className={textareaCls} rows={3} value={form.adopter_requirements}
+                          onChange={e => set('adopter_requirements', e.target.value)}
+                          placeholder="Zkušenost s plemenem, zahrada, bez malých dětí..." />
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+
+                <Divider />
+              </>
+            )}
+
+            {/* ── Odchod ze zařízení (§25b odst. 4 zák. 246/1992 Sb.) ── */}
             <div className="mb-5">
-              <SectionTitle>Adopční podmínky</SectionTitle>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Adopční poplatek (Kč)" hint="0 = zdarma">
-                  <input type="number" className={inputCls} value={form.adoption_fee}
-                    onChange={e => set('adoption_fee', e.target.value)} placeholder="0 = zdarma" min="0" />
+              <SectionTitle>🚪 Odchod ze zařízení <span className="text-[10px] font-normal text-[#8B6550] ml-1">§25b odst. 4 zák. 246/1992 Sb.</span></SectionTitle>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Field label="Typ odchodu">
+                  <select className={selectCls} value={form.exit_type}
+                    onChange={e => set('exit_type', e.target.value)}>
+                    <option value="">— dosud v zařízení —</option>
+                    <option value="adopted">Adoptováno</option>
+                    <option value="returned">Vráceno majiteli</option>
+                    <option value="transferred">Přemístěno do jiné instituce</option>
+                    <option value="deceased">Uhynutí / eutanazie</option>
+                    <option value="escaped">Útěk</option>
+                  </select>
                 </Field>
-                <div className="sm:col-span-2">
-                  <Field label="Požadavky na adoptéra">
-                    <textarea className={textareaCls} rows={3} value={form.adopter_requirements}
-                      onChange={e => set('adopter_requirements', e.target.value)}
-                      placeholder="Zkušenost s plemenem, zahrada, bez malých dětí..." />
+                <Field label="Datum odchodu">
+                  <input type="date" className={inputCls} value={form.exit_date}
+                    onChange={e => set('exit_date', e.target.value)} />
+                </Field>
+                <Field label="Propustil/a (pracovník)">
+                  <input className={inputCls} value={form.exit_worker}
+                    onChange={e => set('exit_worker', e.target.value)}
+                    placeholder="Jméno pracovníka" />
+                </Field>
+                <div className="sm:col-span-3">
+                  <Field label="Poznámky k odchodu">
+                    <input className={inputCls} value={form.exit_notes}
+                      onChange={e => set('exit_notes', e.target.value)} />
                   </Field>
                 </div>
               </div>
             </div>
 
+            {/* ── Adoptér (jen při adopci) ── */}
+            {form.exit_type === 'adopted' && (
+              <>
+                <Divider />
+                <div className="mb-5">
+                  <SectionTitle>🤝 Adoptér <span className="text-[10px] font-normal text-[#8B6550] ml-1">§25b odst. 4 zák. 246/1992 Sb.</span></SectionTitle>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Jméno a příjmení adoptéra" required>
+                      <input className={inputCls} value={form.adopter_name}
+                        onChange={e => set('adopter_name', e.target.value)}
+                        placeholder="Jana Nováková" />
+                    </Field>
+                    <Field label="Telefon">
+                      <input type="tel" className={inputCls} value={form.adopter_phone}
+                        onChange={e => set('adopter_phone', e.target.value)}
+                        placeholder="+420 777 123 456" />
+                    </Field>
+                    <div className="sm:col-span-2">
+                      <Field label="Adresa trvalého bydliště" required>
+                        <input className={inputCls} value={form.adopter_address}
+                          onChange={e => set('adopter_address', e.target.value)}
+                          placeholder="Hlavní 1, 110 00 Praha 1" />
+                      </Field>
+                    </div>
+                    <Field label="E-mail">
+                      <input type="email" className={inputCls} value={form.adopter_email}
+                        onChange={e => set('adopter_email', e.target.value)}
+                        placeholder="jana@email.cz" />
+                    </Field>
+                    <Field label="Číslo OP / pasu adoptéra">
+                      <input className={inputCls} value={form.adopter_id_number}
+                        onChange={e => set('adopter_id_number', e.target.value)}
+                        placeholder="123456789" />
+                    </Field>
+                    <Field label="Číslo adopční smlouvy">
+                      <input className={inputCls} value={form.adoption_contract_num}
+                        onChange={e => set('adoption_contract_num', e.target.value)}
+                        placeholder="ZOZ-SMLV-2026-..." />
+                    </Field>
+                    <Field label="Datum adopce">
+                      <input type="date" className={inputCls} value={form.adoption_date}
+                        onChange={e => set('adoption_date', e.target.value)} />
+                    </Field>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {animalId && (
+                      <a
+                        href={`/admin/animals/${animalId}/pdf/adoption`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#E8634A] text-white font-bold text-sm hover:bg-[#C0472E] transition-colors"
+                      >
+                        🤝 Vygenerovat adopční smlouvu (PDF)
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── Uhynutí (VZ 255/2012 Sb.) ── */}
+            {form.exit_type === 'deceased' && (
+              <>
+                <Divider />
+                <div className="mb-5">
+                  <SectionTitle>🕊️ Uhynutí / eutanazie <span className="text-[10px] font-normal text-[#8B6550] ml-1">VZ 255/2012 Sb.</span></SectionTitle>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Datum uhynutí">
+                      <input type="date" className={inputCls} value={form.death_date}
+                        onChange={e => set('death_date', e.target.value)} />
+                    </Field>
+                    <Field label="Typ uhynutí">
+                      <select className={selectCls} value={form.death_type}
+                        onChange={e => set('death_type', e.target.value)}>
+                        <option value="">Vyberte...</option>
+                        <option value="natural">Přirozená smrt</option>
+                        <option value="euthanasia">Eutanazie</option>
+                        <option value="accident">Nehoda / úraz</option>
+                        <option value="unknown">Neznámá příčina</option>
+                      </select>
+                    </Field>
+                    <div className="sm:col-span-2">
+                      <Field label="Příčina / popis" hint="Diagnóza nebo okolnosti">
+                        <input className={inputCls} value={form.death_cause}
+                          onChange={e => set('death_cause', e.target.value)} />
+                      </Field>
+                    </div>
+                    <Field label="Veterinář">
+                      <input className={inputCls} value={form.death_vet}
+                        onChange={e => set('death_vet', e.target.value)}
+                        placeholder="MVDr. Jan Novák" />
+                    </Field>
+                  </div>
+                  <div className="mt-4">
+                    <SectionTitle>♻️ Likvidace těla</SectionTitle>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <Field label="Způsob likvidace">
+                        <select className={selectCls} value={form.disposal_method}
+                          onChange={e => set('disposal_method', e.target.value)}>
+                          <option value="">Vyberte...</option>
+                          <option value="incineration">Spalovna</option>
+                          <option value="composting">Kompostování</option>
+                          <option value="burial">Pohřbení</option>
+                          <option value="rendering">Asanační podnik</option>
+                          <option value="other">Jiné</option>
+                        </select>
+                      </Field>
+                      <Field label="Číslo dokladu o likvidaci">
+                        <input className={inputCls} value={form.disposal_doc_number}
+                          onChange={e => set('disposal_doc_number', e.target.value)} />
+                      </Field>
+                      <Field label="Firma / asanační podnik">
+                        <input className={inputCls} value={form.disposal_company}
+                          onChange={e => set('disposal_company', e.target.value)} />
+                      </Field>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
             <Divider />
 
             <div className="space-y-2.5 mb-5">
               <SectionTitle>Interní</SectionTitle>
-              <ToggleRow label="Zvíře je v dočasné péči" desc="Nachází se u pečovatele, ne v útulku"
-                checked={form.in_foster} onChange={v => set('in_foster', v)} />
+              {isShelter && (
+                <ToggleRow label="Zvíře je v dočasné péči" desc="Nachází se u pečovatele, ne v útulku"
+                  checked={form.in_foster} onChange={v => set('in_foster', v)} />
+              )}
               <Field label="Interní poznámky" hint="Vidí jen tým instituce">
                 <textarea className={textareaCls} rows={2} value={form.internal_notes}
                   onChange={e => set('internal_notes', e.target.value)} />
               </Field>
             </div>
 
-            <Divider />
-
-            <div>
-              <SectionTitle>Publikace</SectionTitle>
-              <ToggleRow label="Publikovat na webu" desc="Zvíře se zobrazí na veřejných stránkách zozio.cz"
-                checked={form.published} onChange={v => set('published', v)} />
-            </div>
+            {isShelter && (
+              <>
+                <Divider />
+                <div>
+                  <SectionTitle>Publikace</SectionTitle>
+                  <ToggleRow label="Publikovat na webu" desc="Zvíře se zobrazí na veřejných stránkách zozio.cz"
+                    checked={form.published} onChange={v => set('published', v)} />
+                </div>
+              </>
+            )}
           </div>
         )}
 
