@@ -1,19 +1,13 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import Link from 'next/link'
 import { WorkflowBar } from '@/components/admin/AnimalWorkflowCard'
 import type { Animal } from '@/components/admin/AnimalWorkflowCard'
 
 /* ─── Types ─────────────────────────────────────────────── */
 interface AnimalRow extends Animal {
-  days_in_shelter?: number
   vaccine_expiring_in?: number | null
-}
-
-/* ─── Data fetching (placeholder) ───────────────────────── */
-async function getAnimals(): Promise<AnimalRow[]> {
-  // TODO: const supabase = createClient()
-  // const { data } = await supabase.from('animals').select('*').order('intake_date', { ascending: false })
-  // return data ?? []
-  return []
 }
 
 /* ─── Constants ──────────────────────────────────────────── */
@@ -85,7 +79,36 @@ function getPhaseDots(a: Animal): PhaseDot[] {
    Page
 ══════════════════════════════════════════════════════════ */
 export default async function AnimalsListPage() {
-  const animals = await getAnimals()
+  /* ── Auth ── */
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
+
+  const service = createServiceClient()
+
+  const { data: membership } = await service
+    .from('institution_members')
+    .select('role, institution_id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!membership) redirect('/auth/register')
+
+  const { data: institution } = await service
+    .from('institutions')
+    .select('id, name, type')
+    .eq('id', membership.institution_id)
+    .single()
+
+  if (!institution) redirect('/admin/dashboard')
+
+  const { data: rawAnimals } = await service
+    .from('animals')
+    .select('*')
+    .eq('institution_id', institution.id)
+    .order('intake_date', { ascending: false })
+
+  const animals = (rawAnimals ?? []) as AnimalRow[]
 
   const activeAnimals = animals.filter(a => !['adopted','deceased','escaped','released'].includes(String(a.adoption_status ?? '')))
   const attentionCount = animals.filter(a => {

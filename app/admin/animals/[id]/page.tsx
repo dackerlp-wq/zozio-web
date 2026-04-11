@@ -1,39 +1,60 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import AnimalWorkflowCard, { type Animal, type Institution } from '@/components/admin/AnimalWorkflowCard'
 import ExitModalTrigger from '@/components/admin/ExitModalTrigger'
-
-/* ─── Data fetching (placeholder — swap in Supabase later) ── */
-async function getAnimal(id: string): Promise<Animal | null> {
-  // TODO: const supabase = createClient(); const { data } = await supabase.from('animals').select('*').eq('id', id).single(); return data
-  void id
-  return null
-}
-
-async function getInstitution(institutionId: string): Promise<Institution | null> {
-  // TODO: real query
-  void institutionId
-  return null
-}
 
 export default async function AnimalPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ exit?: string }>
+  searchParams: Promise<{ exit?: string; scan?: string }>
 }) {
-  const { id } = await params
-  const { exit } = await searchParams
+  const { id }    = await params
+  const { exit }  = await searchParams
 
-  const animal = await getAnimal(id)
+  /* ── Auth ── */
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect(`/auth/login?next=/admin/animals/${id}`)
 
-  if (!animal) {
-    notFound()
+  const service = createServiceClient()
+
+  /* ── Membership & institution ── */
+  const { data: membership } = await service
+    .from('institution_members')
+    .select('role, institution_id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!membership) redirect('/auth/register')
+
+  const { data: rawInstitution } = await service
+    .from('institutions')
+    .select('id, name, type')
+    .eq('id', membership.institution_id)
+    .single()
+
+  if (!rawInstitution) redirect('/admin/dashboard')
+
+  const institution: Institution = {
+    id:   String(rawInstitution.id),
+    name: String(rawInstitution.name),
+    type: String(rawInstitution.type),
   }
 
-  const institutionId = String(animal.institution_id ?? '')
-  const rawInstitution = await getInstitution(institutionId)
-  const institution: Institution = rawInstitution ?? { id: institutionId, name: 'Neznámá instituce', type: 'shelter' }
+  /* ── Animal ── */
+  const { data: rawAnimal } = await service
+    .from('animals')
+    .select('*')
+    .eq('id', id)
+    .eq('institution_id', institution.id)
+    .single()
+
+  if (!rawAnimal) notFound()
+
+  const animal = rawAnimal as unknown as Animal
 
   return (
     <>

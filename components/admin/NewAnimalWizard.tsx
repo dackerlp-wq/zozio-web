@@ -142,7 +142,7 @@ function Toggle({ checked, onChange, label, sub }: { checked: boolean; onChange:
 /* ══════════════════════════════════════════════════════════
    Main component
 ══════════════════════════════════════════════════════════ */
-export default function NewAnimalWizard() {
+export default function NewAnimalWizard({ institutionId }: { institutionId: string }) {
   const [step, setStep] = useState(0) // 0-indexed
   const [data, setData] = useState<WizardData>(INITIAL)
   const [saving, setSaving] = useState(false)
@@ -157,6 +157,7 @@ export default function NewAnimalWizard() {
     try {
       const body = {
         ...data,
+        institution_id: institutionId,
         age_years:    data.age_years    ? Number(data.age_years)    : null,
         weight_kg:    data.weight_kg    ? Number(data.weight_kg)    : null,
         adoption_fee: data.adoption_fee ? Number(data.adoption_fee) : null,
