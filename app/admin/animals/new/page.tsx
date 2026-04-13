@@ -26,5 +26,12 @@ export default async function NewAnimalPage() {
 
   if (!institution) redirect('/admin/dashboard')
 
-  return <NewAnimalWizard institutionId={String(institution.id)} />
+  const { data: speciesRows } = await service
+    .from('animal_species')
+    .select('id, name_cs')
+    .order('name_cs')
+
+  const species = (speciesRows ?? []).map(s => ({ id: String(s.id), name_cs: String(s.name_cs) }))
+
+  return <NewAnimalWizard institutionId={String(institution.id)} species={species} />
 }

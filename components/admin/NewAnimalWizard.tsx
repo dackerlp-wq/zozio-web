@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation'
 import { WorkflowBar } from './AnimalWorkflowCard'
 
 /* ─── Types ─────────────────────────────────────────────── */
+interface Species { id: string; name_cs: string }
+
 interface WizardData {
   // Step 1 — Základní info
   name: string
-  species: string
+  species_id: string
   sex: string
   adoption_status: string
   urgent: boolean
@@ -54,7 +56,7 @@ interface WizardData {
 }
 
 const INITIAL: WizardData = {
-  name: '', species: 'dog', sex: '', adoption_status: 'intake', urgent: false,
+  name: '', species_id: '', sex: '', adoption_status: 'intake', urgent: false,
   breed: '', age_years: '', weight_kg: '', color: '',
   intake_date: new Date().toISOString().slice(0, 10), intake_time: '', intake_worker: '',
   origin: 'found', found_location: '', found_date: '', box: '', municipality: '',
@@ -147,7 +149,7 @@ function Toggle({ checked, onChange, label, sub }: { checked: boolean; onChange:
 /* ══════════════════════════════════════════════════════════
    Main component
 ══════════════════════════════════════════════════════════ */
-export default function NewAnimalWizard({ institutionId }: { institutionId: string }) {
+export default function NewAnimalWizard({ institutionId, species }: { institutionId: string; species: Species[] }) {
   const [step, setStep] = useState(0) // 0-indexed
   const [data, setData] = useState<WizardData>(INITIAL)
   const [saving, setSaving] = useState(false)
@@ -157,32 +159,59 @@ export default function NewAnimalWizard({ institutionId }: { institutionId: stri
     setData(prev => ({ ...prev, [field]: value }))
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(goToEdit = false) {
     setSaving(true)
     try {
-      // Mapujeme pole wizardu na správné DB sloupce
-      const { age_years, energy_level, care_level, suitable_for, good_with_seniors, ...rest } = data
-      const body = {
-        ...rest,
-        institution_id:   institutionId,
-        birth_year:       age_years ? new Date().getFullYear() - Number(age_years) : null,
-        weight_kg:        data.weight_kg    ? Number(data.weight_kg)    : null,
-        adoption_fee:     data.adoption_fee ? Number(data.adoption_fee) : null,
-        activity_level:   energy_level  || null,
-        care_difficulty:  care_level    || null,
-        suitable_for_flat:   suitable_for.includes('flat'),
-        suitable_for_house:  suitable_for.includes('house'),
-        good_with_adults:    good_with_seniors || false,
+      // Explicitní mapování — pouze existující DB sloupce
+      const body: Record<string, unknown> = {
+        institution_id:      institutionId,
+        name:                data.name.trim() || 'Nové zvíře',
+        species_id:          data.species_id || null,
+        sex:                 data.sex || null,
+        breed:               data.breed || null,
+        color:               data.color || null,
+        birth_year:          data.age_years ? new Date().getFullYear() - Number(data.age_years) : null,
+        weight_kg:           data.weight_kg ? Number(data.weight_kg) : null,
+        adoption_status:     data.adoption_status,
+        urgent:              data.urgent,
+        intake_date:         data.intake_date || null,
+        intake_time:         data.intake_time || null,
+        intake_worker:       data.intake_worker || null,
+        origin:              data.origin || null,
+        found_location:      data.found_location || null,
+        found_date:          data.found_date || null,
+        intake_finder_name:  data.finder_name || null,
+        intake_finder_phone: data.finder_phone || null,
+        intake_finder_email: data.finder_email || null,
+        intake_finder_address: data.finder_address || null,
+        chip_number:         data.chip_number || null,
+        passport_number:     data.passport_number || null,
+        crz_registered:      data.crz_registered,
+        quarantine_start:    data.quarantine_start || null,
+        quarantine_vet:      data.quarantine_vet || null,
+        health_status:       data.health_status || null,
+        story:               data.story || null,
+        adoption_fee:        data.adoption_fee ? Number(data.adoption_fee) : null,
+        activity_level:      data.energy_level || null,
+        care_difficulty:     data.care_level || null,
+        suitable_for_flat:   data.suitable_for.includes('flat'),
+        suitable_for_house:  data.suitable_for.includes('house'),
+        good_with_kids:      data.good_with_kids,
+        good_with_dogs:      data.good_with_dogs,
+        good_with_cats:      data.good_with_cats,
+        good_with_adults:    data.good_with_seniors,
+        published:           false, // wizard nikdy nepublikuje
       }
+
       const res = await fetch('/api/animals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
       if (res.ok) {
-        const json = await res.json() as { id?: string }
+        const json = await res.json() as { id?: string; error?: string }
         if (json.id) {
-          router.push(`/admin/animals/${json.id}`)
+          router.push(goToEdit ? `/admin/animals/${json.id}/edit` : `/admin/animals/${json.id}`)
           return
         }
       }
@@ -204,8 +233,8 @@ export default function NewAnimalWizard({ institutionId }: { institutionId: stri
           <a href="/admin/animals" className="text-xs font-semibold mb-2 block hover:opacity-75" style={{ color: '#8B6550' }}>
             ← Zpět na seznam
           </a>
-          <h1 className="font-black" style={{ fontSize: '22px', color: '#2C1810' }}>Přijmout nové zvíře</h1>
-          <p className="text-sm mt-1" style={{ color: '#8B6550' }}>Průvodce tě provede celým procesem příjmu, identifikace a karantény.</p>
+          <h1 className="font-black" style={{ fontSize: '22px', color: '#2C1810' }}>Zrychlený příjem</h1>
+          <p className="text-sm mt-1" style={{ color: '#8B6550' }}>Zachyť minimum dat teď — detaily doplníš v plném formuláři na profilu zvířete.</p>
         </div>
 
         {/* Steps stepper */}
@@ -265,7 +294,7 @@ export default function NewAnimalWizard({ institutionId }: { institutionId: stri
 
           {/* wz-body */}
           <div style={{ padding: '20px' }}>
-            {step === 0 && <Step1 data={data} set={set} />}
+            {step === 0 && <Step1 data={data} set={set} species={species} />}
             {step === 1 && <Step2 data={data} set={set} />}
             {step === 2 && <Step3 data={data} set={set} />}
             {step === 3 && <Step4 data={data} set={set} />}
@@ -303,14 +332,24 @@ export default function NewAnimalWizard({ institutionId }: { institutionId: stri
                   Pokračovat: {STEPS[step + 1]?.label.split('\n')[0]} →
                 </button>
               ) : (
-                <button
-                  onClick={handleSubmit}
-                  disabled={saving}
-                  className="font-black rounded-lg text-white"
-                  style={{ padding: '6px 16px', fontSize: '12px', background: '#2D8A4E', border: 'none', cursor: 'pointer', opacity: saving ? .7 : 1 }}
-                >
-                  {saving ? 'Ukládám...' : '✓ Dokončit a přijmout zvíře'}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleSubmit(false)}
+                    disabled={saving}
+                    className="font-black rounded-lg text-white"
+                    style={{ padding: '6px 14px', fontSize: '12px', background: '#2D8A4E', border: 'none', cursor: saving ? 'wait' : 'pointer', opacity: saving ? .7 : 1 }}
+                  >
+                    {saving ? 'Ukládám…' : '✓ Přijmout zvíře'}
+                  </button>
+                  <button
+                    onClick={() => handleSubmit(true)}
+                    disabled={saving}
+                    className="font-black rounded-lg"
+                    style={{ padding: '6px 14px', fontSize: '12px', background: 'white', border: '2px solid #E8634A', color: '#E8634A', cursor: saving ? 'wait' : 'pointer', opacity: saving ? .7 : 1 }}
+                  >
+                    📋 Přejít na plný formulář
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -348,35 +387,34 @@ const STEP_SUBTITLES = [
 ]
 
 /* ─── Step 1 ─────────────────────────────────────────────── */
-function Step1({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean | string[]) => void }) {
+function Step1({ data, set, species }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean | string[]) => void; species: Species[] }) {
   const [breedSuggestions, setBreedSuggestions] = useState<string[]>([])
 
   useEffect(() => {
-    fetch('/api/breeds')
+    const sid = data.species_id
+    if (!sid) return
+    fetch(`/api/breeds?species_id=${sid}`)
       .then(r => r.ok ? r.json() : [])
       .then((rows: { name_cs?: string }[]) => {
         const names = rows.map(r => r.name_cs ?? '').filter(Boolean)
         setBreedSuggestions(names)
       })
       .catch(() => {})
-  }, [])
+  }, [data.species_id])
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-3">
-        <Field label="Jméno" req>
+        <Field label="Jméno">
           <input value={data.name} onChange={e => set('name', e.target.value)} placeholder="Bella" style={inputStyle} />
         </Field>
-        <Field label="Druh" req>
-          <select value={data.species} onChange={e => set('species', e.target.value)} style={inputStyle}>
-            <option value="dog">Pes</option>
-            <option value="cat">Kočka</option>
-            <option value="bird">Pták</option>
-            <option value="rabbit">Králík</option>
-            <option value="other">Jiné</option>
+        <Field label="Druh">
+          <select value={data.species_id} onChange={e => set('species_id', e.target.value)} style={inputStyle}>
+            <option value="">Vyberte druh…</option>
+            {species.map(s => <option key={s.id} value={s.id}>{s.name_cs}</option>)}
           </select>
         </Field>
-        <Field label="Pohlaví" req>
+        <Field label="Pohlaví">
           <select value={data.sex} onChange={e => set('sex', e.target.value)} style={inputStyle}>
             <option value="">Vyberte...</option>
             <option value="male">Samec</option>
@@ -435,7 +473,7 @@ function Step2({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <Field label="Datum příjmu" req lawTag>
+        <Field label="Datum příjmu" lawTag>
           <input type="date" value={data.intake_date} onChange={e => set('intake_date', e.target.value)} style={inputStyle} />
         </Field>
         <Field label="Čas příjmu">
@@ -444,7 +482,7 @@ function Step2({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
         <Field label="Přijal (pracovník)" lawTag>
           <input placeholder="Jana Nováková" value={data.intake_worker} onChange={e => set('intake_worker', e.target.value)} style={inputStyle} />
         </Field>
-        <Field label="Způsob příjmu" req lawTag>
+        <Field label="Způsob příjmu" lawTag>
           <select value={data.origin} onChange={e => set('origin', e.target.value)} style={inputStyle}>
             <option value="found">Nalezeno — nálezcem</option>
             <option value="municipal">Odchyceno obcí</option>
@@ -701,12 +739,10 @@ function Step5({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
         <p className="text-xs mt-2" style={{ color: '#A09890' }}>Fotky lze přidat i po vytvoření karty zvířete.</p>
       </div>
 
-      <Toggle
-        checked={data.published}
-        onChange={() => set('published', !data.published)}
-        label="Zveřejnit profil na zozio.cz"
-        sub="Profil bude viditelný pro potenciální adoptéry"
-      />
+      <div className="rounded-lg flex gap-2 text-xs" style={{ padding: '12px 14px', background: '#E6F1FB', borderLeft: '3px solid #185FA5', color: '#185FA5' }}>
+        <span>ℹ️</span>
+        <span>Profil <strong>nebude zveřejněn</strong>. Zveřejnění provedeš ručně na profilu zvířete po doplnění fotek a popisu.</span>
+      </div>
     </div>
   )
 }

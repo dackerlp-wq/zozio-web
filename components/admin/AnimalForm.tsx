@@ -1748,18 +1748,18 @@ export function AnimalForm({
               <InfoBox type="warn" icon="📷">Zvíře bez fotky se obtížně adoptuje. Nahraj alespoň hlavní fotku.</InfoBox>
             )}
 
-            <div
-              onClick={() => fileInputRef.current?.click()}
+            <label
+              htmlFor="animal-photo-input"
               onDragOver={e => e.preventDefault()}
               onDrop={e => { e.preventDefault(); handleFileDrop(e.dataTransfer.files) }}
-              className="border-2 border-dashed border-[#D5CFC8] rounded-lg p-8 text-center cursor-pointer hover:border-[#E8634A] hover:bg-[#FDEAE6]/50 transition-colors mb-4 touch-manipulation"
+              className="border-2 border-dashed border-[#D5CFC8] rounded-lg p-8 text-center cursor-pointer hover:border-[#E8634A] hover:bg-[#FDEAE6]/50 transition-colors mb-4 touch-manipulation block"
             >
               <div className="text-3xl mb-2">📸</div>
               <div className="text-sm font-bold text-[#2C1810]">Klikni nebo přetáhni fotky</div>
               <div className="text-xs text-[#8B6550] mt-1">JPG, PNG, WebP · max 8 MB</div>
-              <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
+              <input id="animal-photo-input" ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
                 onChange={e => handleFileDrop(e.target.files)} />
-            </div>
+            </label>
 
             {allPhotoUrls.length > 0 && (
               <>
@@ -1788,10 +1788,10 @@ export function AnimalForm({
                       </div>
                     )
                   })}
-                  <button type="button" onClick={() => fileInputRef.current?.click()}
-                    className="aspect-square rounded-lg border-2 border-dashed border-[#D5CFC8] flex items-center justify-center hover:border-[#E8634A] transition-colors touch-manipulation">
+                  <label htmlFor="animal-photo-input"
+                    className="aspect-square rounded-lg border-2 border-dashed border-[#D5CFC8] flex items-center justify-center hover:border-[#E8634A] transition-colors touch-manipulation cursor-pointer">
                     <span className="text-2xl text-[#A09890]">+</span>
-                  </button>
+                  </label>
                 </div>
                 <p className="text-xs text-[#8B6550] mt-2">{allPhotoUrls.length} fotek · ★ = nastavit jako hlavní</p>
               </>

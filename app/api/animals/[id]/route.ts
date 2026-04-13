@@ -118,7 +118,7 @@ export async function PUT(
 
     if (error) {
       console.error('Supabase update error:', JSON.stringify(error))
-      throw error
+      return NextResponse.json({ error: error.message ?? 'DB chyba', detail: error.details }, { status: 400 })
     }
 
     revalidatePath('/adopt')
