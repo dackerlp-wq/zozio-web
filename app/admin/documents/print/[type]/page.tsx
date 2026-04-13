@@ -1213,23 +1213,32 @@ export default async function PrintPage({
   const dateFrom = sp.dateFrom ?? new Date().toISOString().slice(0, 8) + '01'
   const dateTo   = sp.dateTo   ?? new Date().toISOString().slice(0, 10)
 
+  /* ── Species lookup (separate query — avoids FK join issues) ── */
+  const { data: speciesRows } = await service.from('animal_species').select('id, name_cs')
+  const speciesMap: Record<string, string> = {}
+  for (const s of speciesRows ?? []) speciesMap[String(s.id)] = String(s.name_cs)
+
+  function withSpecies(a: Row): Row {
+    return { ...a, species_name: a.species_id ? (speciesMap[String(a.species_id)] ?? null) : null }
+  }
+
   let animal: Row | null = null
   let animals: Row[] = []
 
   if (animalTypes.has(type)) {
     if (!sp.animalId) notFound()
-    const { data } = await service
+    const { data, error } = await service
       .from('animals')
-      .select('*, animal_species(name_cs)')
+      .select('*')
       .eq('id', sp.animalId)
       .eq('institution_id', instId)
       .single()
-    if (!data) notFound()
-    animal = { ...data, species_name: (data as Row).animal_species?.name_cs ?? null }
+    if (error || !data) notFound()
+    animal = withSpecies(data as Row)
   } else {
     let query = service
       .from('animals')
-      .select('*, animal_species(name_cs)')
+      .select('*')
       .eq('institution_id', instId)
 
     if (type === 'exit-list' || type === 'rescue-release-list') {
@@ -1245,12 +1254,10 @@ export default async function PrintPage({
         .lte('exit_date', dateTo)
         .order('exit_date')
     } else if (type === 'summary-report' || type === 'rescue-summary') {
-      // Fetch all animals that were ever in the system during the period
       query = query
         .lte('intake_date', dateTo)
         .order('intake_date')
     } else {
-      // intake-list, found-animals, rescue-intake-list
       query = query
         .gte('intake_date', dateFrom)
         .lte('intake_date', dateTo)
@@ -1258,10 +1265,7 @@ export default async function PrintPage({
     }
 
     const { data } = await query
-    animals = (data ?? []).map((a: Row) => ({
-      ...a,
-      species_name: (a as Row).animal_species?.name_cs ?? null,
-    }))
+    animals = (data ?? []).map(a => withSpecies(a as Row))
   }
 
   /* ── Render ── */
