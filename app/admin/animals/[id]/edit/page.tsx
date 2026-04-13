@@ -67,10 +67,9 @@ export default async function EditAnimalPage({
 
   const statusHistory = (historyRows ?? []).map((h) => ({
     id:         String(h.id),
-    old_status: null as string | null,
-    new_status: String(h.status),
+    status:     String(h.status ?? ''),
     changed_at: String(h.changed_at),
-    note:       h.note ? String(h.note) : null,
+    note:       h.note ? String(h.note) : undefined,
     changed_by: h.changed_by ? String(h.changed_by) : undefined,
   }))
 
@@ -82,7 +81,7 @@ export default async function EditAnimalPage({
       mode="edit"
       animal={animal as Record<string, unknown>}
       statusHistory={statusHistory}
-      currentUser={{ id: user.id, email: user.email ?? '' }}
+      currentUser={{ id: user.id, name: user.email ?? '' }}
     />
   )
 }
