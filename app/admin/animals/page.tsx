@@ -1,108 +1,38 @@
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { WorkflowBar } from '@/components/admin/AnimalWorkflowCard'
-import type { Animal } from '@/components/admin/AnimalWorkflowCard'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
 import { AdminAnimalSearch } from '@/components/admin/AdminAnimalSearch'
 
-/* ─── Types ─────────────────────────────────────────────── */
-interface AnimalRow extends Animal {
-  vaccine_expiring_in?: number | null
-}
-
 interface PageProps {
-  searchParams: Promise<{ q?: string; status?: string }>
+  searchParams: Promise<{ q?: string; status?: string; species?: string; page?: string }>
 }
 
-/* ─── Constants ──────────────────────────────────────────── */
-const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  intake:         { bg: '#E6F1FB', text: '#185FA5', label: 'V příjmu' },
-  available:      { bg: '#FDEAE6', text: '#993C1D', label: 'K adopci' },
-  reserved:       { bg: '#FFF3D6', text: '#7a5800', label: 'Rezervováno' },
-  adopted:        { bg: '#EAF3DE', text: '#1a5e2e', label: 'Adoptováno' },
-  foster:         { bg: '#E6F1FB', text: '#185FA5', label: 'Dočasná péče' },
-  treatment:      { bg: '#FCEBEB', text: '#D83030', label: 'V léčbě' },
-  rehabilitation: { bg: '#FFF3D6', text: '#7a5800', label: 'Rehabilitace' },
-  released:       { bg: '#EAF3DE', text: '#1a5e2e', label: 'Vypuštěn' },
-  deceased:       { bg: '#F0EDE8', text: '#8B6550', label: 'Uhynul' },
-  escaped:        { bg: '#FCEBEB', text: '#D83030', label: 'Uprchlý' },
-}
+const PAGE_SIZE = 20
 
-const SPECIES_ICON: Record<string, string> = {
-  dog: '🐕', cat: '🐈', bird: '🐦', rabbit: '🐇', other: '🐾',
-}
-
-/* ─── Helpers ────────────────────────────────────────────── */
-function getDays(a: Animal): number {
-  if (!a.intake_date) return 0
-  if (a.exit_date) {
-    return Math.floor((new Date(String(a.exit_date)).getTime() - new Date(String(a.intake_date)).getTime()) / 86400000)
+function computeAge(birthYear: number | null, birthMonth: number | null): string | null {
+  if (!birthYear) return null
+  const now = new Date()
+  const age = now.getFullYear() - birthYear
+  if (age <= 0) {
+    const months = (now.getFullYear() - birthYear) * 12 + (now.getMonth() - (birthMonth ?? 0))
+    return months <= 1 ? '< 1 m.' : `${months} m.`
   }
-  return Math.floor((Date.now() - new Date(String(a.intake_date)).getTime()) / 86400000)
+  return age === 1 ? '1 r.' : `${age} r.`
 }
 
-function getSexLabel(sex: unknown): string {
-  if (sex === 'female' || sex === 'f') return 'Samice'
-  if (sex === 'male'   || sex === 'm') return 'Samec'
-  return String(sex ?? '')
-}
-
-function ageLabel(a: Animal): string {
-  const y = Number(a.age_years)
-  if (!a.age_years && a.age_years !== 0) return ''
-  return `${y} ${y === 1 ? 'rok' : y < 5 ? 'roky' : 'let'}`
-}
-
-type PhaseDot = 'done' | 'active' | 'err' | 'future'
-
-function getPhaseDots(a: Animal): PhaseDot[] {
-  const s = String(a.adoption_status ?? 'intake')
-  const isExited = Boolean(a.exit_type)
-  const days = getDays(a)
-
-  const dots: PhaseDot[] = [
-    'done',
-    a.chip_number ? 'done' : (s === 'intake' ? 'active' : 'future'),
-    a.quarantine_end || (a.in_quarantine === false && a.quarantine_start)
-      ? 'done'
-      : a.chip_number ? 'active' : 'future',
-    a.health_status && a.health_status !== 'unknown' ? 'done' : 'future',
-    ['available','reserved','adopted','foster','treatment','rehabilitation'].includes(s) ? (isExited ? 'done' : 'active') : 'future',
-    isExited ? 'done' : 'future',
-  ]
-
-  if (days > 30 && !a.quarantine_end && !a.quarantine_start) dots[2] = 'err'
-  return dots
-}
-
-function filterAnimals(animals: AnimalRow[], q: string, status: string): AnimalRow[] {
-  let result = animals
-  if (status) result = result.filter(a => String(a.adoption_status ?? '') === status)
-  if (q.trim()) {
-    const lower = q.toLowerCase().trim()
-    result = result.filter(a =>
-      String(a.name ?? '').toLowerCase().includes(lower) ||
-      String(a.breed ?? '').toLowerCase().includes(lower) ||
-      String(a.evidence_number ?? '').toLowerCase().includes(lower) ||
-      String(a.chip_number ?? '').toLowerCase().includes(lower)
-    )
-  }
-  return result
-}
-
-/* ══════════════════════════════════════════════════════════
-   Page
-══════════════════════════════════════════════════════════ */
-export default async function AnimalsListPage({ searchParams }: PageProps) {
-  const { q = '', status = '' } = await searchParams
+export default async function AdminAnimalsPage({ searchParams }: PageProps) {
+  const { q, status: filterStatus, species: filterSpecies, page: pageParam } = await searchParams
+  const page = Number(pageParam ?? 1)
+  const offset = (page - 1) * PAGE_SIZE
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
   const service = createServiceClient()
-
   const { data: membership } = await service
     .from('institution_members')
     .select('role, institution_id')
@@ -119,278 +49,447 @@ export default async function AnimalsListPage({ searchParams }: PageProps) {
 
   if (!institution) redirect('/admin/dashboard')
 
-  const { data: rawAnimals } = await service
-    .from('animals')
-    .select('*')
-    .eq('institution_id', institution.id)
-    .order('intake_date', { ascending: false })
+  const isShelter = institution.type === 'shelter'
 
-  const allAnimals = (rawAnimals ?? []) as AnimalRow[]
-  const animals    = filterAnimals(allAnimals, q, status)
+  // Species list for filter dropdown
+  const { data: speciesList } = await service
+    .from('animal_species')
+    .select('id, name_cs, icon')
+    .order('name_cs')
 
-  const activeAnimals  = allAnimals.filter(a => !['adopted','deceased','escaped','released'].includes(String(a.adoption_status ?? '')))
-  const redAlerts      = allAnimals.filter(a => getDays(a) > 60 && !a.exit_type)
-  const warnAlerts     = allAnimals.filter(a => a.vaccine_expiring_in != null && (a.vaccine_expiring_in as number) < 14 && !a.exit_type)
-  const attentionCount = redAlerts.length + warnAlerts.length
-  const isFiltered     = Boolean(q.trim() || status)
+  const statusField = isShelter ? 'adoption_status' : 'status'
+  const table       = isShelter ? 'animals' : 'rescue_cases'
+
+  // Archivní stavy (nezobrazovat v hlavním výpisu)
+  const archiveStatuses = isShelter ? ['adopted', 'deceased'] : ['released', 'deceased']
+  const isArchive = filterStatus === 'archive'
+
+  // Počty pro záložky
+  const shelterTabStatuses = ['available', 'reserved', 'foster'] as const
+  const rescueTabStatuses  = ['intake', 'treatment', 'rehabilitation'] as const
+  const tabStatuses = isShelter ? shelterTabStatuses : rescueTabStatuses
+
+  const [activeResult, archiveResult, ...tabCountResults] = await Promise.all([
+    // Aktivní zvířata (bez archivu)
+    service.from(table).select('id', { count: 'exact', head: true })
+      .eq('institution_id', institution.id)
+      .not(statusField, 'in', `(${archiveStatuses.join(',')})`),
+    // Archivní zvířata
+    service.from(table).select('id', { count: 'exact', head: true })
+      .eq('institution_id', institution.id)
+      .in(statusField, archiveStatuses),
+    // Jednotlivé záložky
+    ...tabStatuses.map(s =>
+      service.from(table).select('id', { count: 'exact', head: true })
+        .eq('institution_id', institution.id)
+        .eq(statusField, s)
+    ),
+  ])
+
+  const activeCount  = activeResult.count ?? 0
+  const archiveCount = archiveResult.count ?? 0
+  const tabCounts    = tabCountResults.map(r => r.count ?? 0)
+
+  // Main query
+  const selectFields = isShelter
+    ? 'id, name, breed, birth_year, birth_month, urgent, adoption_status, health_status, in_quarantine, in_foster, photos, species:animal_species(id, name_cs, icon), intake_date, created_at'
+    : 'id, name, case_number, estimated_age, status, health_status, photos, species:animal_species(id, name_cs, icon), intake_date, created_at'
+
+  let animalsQuery = service
+    .from(table)
+    .select(selectFields, { count: 'exact' })
+    .eq('institution_id', institution.id) as any
+
+  if (isArchive) {
+    animalsQuery = animalsQuery.in(statusField, archiveStatuses)
+  } else if (filterStatus) {
+    animalsQuery = animalsQuery.eq(statusField, filterStatus)
+  } else {
+    // Výchozí: skrýt archivní záznamy
+    animalsQuery = animalsQuery.not(statusField, 'in', `(${archiveStatuses.join(',')})`)
+  }
+
+  if (filterSpecies) animalsQuery = animalsQuery.eq('species_id', filterSpecies)
+  if (q)             animalsQuery = isShelter
+    ? animalsQuery.or(`name.ilike.%${q}%,breed.ilike.%${q}%,chip_number.ilike.%${q}%`)
+    : animalsQuery.or(`name.ilike.%${q}%,case_number.ilike.%${q}%`)
+
+  const { data: animals, count } = isShelter
+    ? await animalsQuery.order('urgent', { ascending: false }).order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1)
+    : await animalsQuery.order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1)
+
+  const items = (animals ?? []) as any[]
+  const filteredCount = count ?? 0
+  const totalPages = Math.ceil(filteredCount / PAGE_SIZE)
+
+  // Tab definitions
+  const shelterTabs = [
+    { value: '',          label: 'Aktivní',     count: activeCount },
+    { value: 'available', label: 'K adopci',    count: tabCounts[0] },
+    { value: 'reserved',  label: 'Rezervovaná', count: tabCounts[1] },
+    { value: 'foster',    label: 'Pěstounská',  count: tabCounts[2] },
+    { value: 'archive',   label: 'Archiv',      count: archiveCount, muted: true },
+  ]
+  const rescueTabs = [
+    { value: '',               label: 'Aktivní',      count: activeCount },
+    { value: 'intake',         label: 'Příjem',        count: tabCounts[0] },
+    { value: 'treatment',      label: 'Léčba',         count: tabCounts[1] },
+    { value: 'rehabilitation', label: 'Rehabilitace',  count: tabCounts[2] },
+    { value: 'archive',        label: 'Archiv',        count: archiveCount, muted: true },
+  ]
+  const tabs = isShelter ? shelterTabs : rescueTabs
+  const activeColor = isShelter ? '#E8634A' : '#2E9E8F'
+
+  function buildUrl(overrides: Record<string, string | undefined>) {
+    const params = new URLSearchParams()
+    const merged = { status: filterStatus, q, species: filterSpecies, ...overrides }
+    Object.entries(merged).forEach(([k, v]) => { if (v) params.set(k, v) })
+    const qs = params.toString()
+    return `/admin/animals${qs ? `?${qs}` : ''}`
+  }
 
   return (
-    <div className="min-h-screen pb-24" style={{ backgroundColor: '#F7F4F0' }}>
-      <div className="max-w-[1200px] mx-auto px-4 pt-6">
+    <div>
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="font-display font-extrabold text-2xl md:text-3xl text-espresso">
+          {isShelter ? '🐾 Všechna zvířata' : '🦉 Všichni pacienti'}
+        </h1>
+        <Link href="/admin/animals/new">
+          <Button variant={isShelter ? 'primary' : 'rescue'} size="sm">
+            + {isShelter ? 'Přidat' : 'Nový pacient'}
+          </Button>
+        </Link>
+      </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
-          <div>
-            <h1 className="font-black" style={{ fontSize: '22px', color: '#2C1810' }}>Zvířata v útulku</h1>
-            <div className="text-sm mt-0.5" style={{ color: '#8B6550' }}>
-              {activeAnimals.length} aktivních · {attentionCount} vyžadují pozornost
-            </div>
-          </div>
-          <Link
-            href="/admin/animals/new"
-            className="inline-flex items-center gap-1.5 font-black rounded-lg text-white hover:opacity-90 transition-opacity"
-            style={{ padding: '10px 20px', background: '#E8634A', fontSize: '13px', textDecoration: 'none' }}
-          >
-            + Přijmout nové zvíře
-          </Link>
+      {/* Status tabs */}
+      <div className="flex gap-0 border-b border-[#F0EDE8] mb-5 overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
+        {tabs.map((tab: any) => {
+          const isActive = (filterStatus ?? '') === tab.value
+          const isMuted  = tab.muted && !isActive
+          return (
+            <Link
+              key={tab.value}
+              href={buildUrl({ status: tab.value || undefined, page: undefined })}
+              className={`flex items-center gap-1.5 px-3 md:px-4 py-2.5 font-bold text-sm whitespace-nowrap border-b-2 transition-colors no-underline shrink-0`}
+              style={{
+                borderColor: isActive ? (tab.muted ? '#8B6550' : activeColor) : 'transparent',
+                color: isActive ? (tab.muted ? '#8B6550' : activeColor) : (isMuted ? '#A09890' : '#8B6550'),
+              }}
+            >
+              {tab.label}
+              <span
+                className="inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full text-[10px] font-bold"
+                style={{
+                  backgroundColor: isActive ? (tab.muted ? '#8B6550' : activeColor) : '#F5E6D3',
+                  color: isActive ? 'white' : '#8B6550',
+                }}
+              >
+                {tab.count}
+              </span>
+            </Link>
+          )
+        })}
+      </div>
+
+      {/* Search + species filter */}
+      <AdminAnimalSearch
+        currentQ={q ?? ''}
+        currentStatus={filterStatus ?? ''}
+        isShelter={isShelter}
+        institutionName={institution.name}
+      />
+
+      {items.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-2xl border border-[#F0EDE8]">
+          <div className="text-5xl mb-4">{isShelter ? '🐾' : '🦉'}</div>
+          <h3 className="font-display font-bold text-xl text-espresso mb-2">
+            {q || filterStatus ? 'Žádné výsledky' : 'Zatím žádné záznamy'}
+          </h3>
+          {!q && !filterStatus && (
+            <Link href="/admin/animals/new" className="mt-4 inline-block">
+              <Button variant="primary">+ Přidat první záznam</Button>
+            </Link>
+          )}
         </div>
-
-        {/* 2-column layout */}
-        <div className="flex gap-5 items-start flex-col lg:flex-row">
-
-          {/* ── Levý sloupec — seznam zvířat ── */}
-          <div className="flex-1 min-w-0">
-            {/* Search */}
-            <div className="mb-4">
-              <AdminAnimalSearch
-                currentQ={q}
-                currentStatus={status}
-                isShelter={institution.type === 'shelter'}
-                institutionName={String(institution.name)}
-              />
-            </div>
-
-            {/* Result count when filtered */}
-            {isFiltered && (
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-black" style={{ color: '#8B6550' }}>
-                  {animals.length === 0
-                    ? 'Žádné výsledky'
-                    : `${animals.length} ${animals.length === 1 ? 'výsledek' : animals.length < 5 ? 'výsledky' : 'výsledků'}`}
+      ) : (
+        <>
+          {/* ── Mobile cards ── */}
+          <div className="md:hidden space-y-3">
+            {items.map((item: any) => {
+              const statusVal = isShelter ? item.adoption_status : item.status
+              const age = isShelter
+                ? computeAge(item.birth_year, item.birth_month)
+                : item.estimated_age ?? null
+              const primaryPhoto = Array.isArray(item.photos) && item.photos.length > 0
+                ? (typeof item.photos[0] === 'string' ? item.photos[0] : item.photos[0]?.url)
+                : null
+              return (
+                <div key={item.id} className="bg-white rounded-lg border border-[#F0EDE8] shadow-sm overflow-hidden">
+                  <div className="flex items-center gap-3 p-4">
+                    {/* Foto nebo ikona */}
+                    <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-[#F5E6D3] flex items-center justify-center text-xl">
+                      {primaryPhoto
+                        ? <img src={primaryPhoto} alt={item.name ?? ''} className="w-full h-full object-cover" />
+                        : (item.species?.icon ?? (isShelter ? '🐾' : '🦉'))
+                      }
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        {isShelter && item.urgent && <span className="text-xs">🆘</span>}
+                        {item.in_quarantine          && <span className="text-xs" title="Karanténa">🚧</span>}
+                        {isShelter && item.in_foster  && <span className="text-xs" title="Foster">🏠</span>}
+                        <span className="font-display font-bold text-sm text-espresso truncate">
+                          {item.name ?? item.case_number ?? '—'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#8B6550] font-semibold">
+                        {item.species?.name_cs ?? '—'}
+                        {age ? ` · ${age}` : ''}
+                        {isShelter && item.breed ? ` · ${item.breed}` : ''}
+                      </div>
+                    </div>
+                    {/* Status badge */}
+                    <Badge variant={statusVal} size="sm" />
+                  </div>
+                  {/* Akce */}
+                  <div className="flex border-t border-[#F0EDE8] divide-x divide-[#F0EDE8]">
+                    <Link href={`/admin/animals/${item.id}`}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-[#8B6550] hover:text-[#2C1810] hover:bg-[#FFFCF8] transition-colors no-underline">
+                      ✏️ Upravit záznam
+                    </Link>
+                    <a href={`/admin/animals/${item.id}/qr`} target="_blank"
+                      className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#8B6550] hover:text-[#2C1810] hover:bg-[#FFFCF8] transition-colors no-underline">
+                      ▣ QR kód
+                    </a>
+                    <a href={`/admin/animals/${item.id}/pdf`} target="_blank"
+                      className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#8B6550] hover:text-[#2C1810] hover:bg-[#FFFCF8] transition-colors no-underline">
+                      📄 PDF
+                    </a>
+                  </div>
                 </div>
-                <Link href="/admin/animals" className="text-xs font-black hover:underline" style={{ color: '#E8634A', textDecoration: 'none' }}>
-                  Zrušit filtr ✕
-                </Link>
+              )
+            })}
+          </div>
+
+          {/* ── Desktop table ── */}
+          <div className="hidden md:block bg-white rounded-2xl border border-[#F0EDE8] overflow-hidden shadow-sm">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#F0EDE8] bg-[#FDFAF7]">
+                  <th className="text-left px-5 py-3 font-body text-[11px] font-bold text-[#8B6550] uppercase tracking-wider">
+                    {isShelter ? 'Zvíře' : 'Pacient'}
+                  </th>
+                  <th className="text-left px-5 py-3 font-body text-[11px] font-bold text-[#8B6550] uppercase tracking-wider">
+                    Druh / Věk
+                  </th>
+                  <th className="text-left px-5 py-3 font-body text-[11px] font-bold text-[#8B6550] uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="text-left px-5 py-3 font-body text-[11px] font-bold text-[#8B6550] uppercase tracking-wider">
+                    Přidáno
+                  </th>
+                  <th className="px-5 py-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item: any) => {
+                  const statusVal = isShelter ? item.adoption_status : item.status
+                  const age = isShelter
+                    ? computeAge(item.birth_year, item.birth_month)
+                    : item.estimated_age ?? null
+                  const primaryPhotoDesk = Array.isArray(item.photos) && item.photos.length > 0
+                    ? (typeof item.photos[0] === 'string' ? item.photos[0] : item.photos[0]?.url)
+                    : null
+                  return (
+                    <tr
+                      key={item.id}
+                      className="group border-b border-[#F0EDE8] last:border-0 hover:bg-[#FFFCF8] transition-colors"
+                    >
+                      {/* ZVÍŘE */}
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-[#F5E6D3] flex items-center justify-center text-lg">
+                            {primaryPhotoDesk
+                              ? <img src={primaryPhotoDesk} alt={item.name ?? ''} className="w-full h-full object-cover" />
+                              : (item.species?.icon ?? (isShelter ? '🐾' : '🦉'))
+                            }
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              {isShelter && item.urgent   && <span className="text-xs">🆘</span>}
+                              {item.in_quarantine          && <span className="text-xs" title="Karanténa">🚧</span>}
+                              {isShelter && item.in_foster && <span className="text-xs" title="Foster">🏠</span>}
+                              <span className="font-display font-bold text-sm text-[#2C1810]">
+                                {item.name ?? item.case_number ?? '—'}
+                              </span>
+                            </div>
+                            {isShelter && item.breed && (
+                              <div className="text-xs text-[#8B6550] mt-0.5">{item.breed}</div>
+                            )}
+                            {!isShelter && item.name && item.case_number && (
+                              <div className="text-xs text-[#8B6550] mt-0.5">{item.case_number}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* DRUH / VĚK */}
+                      <td className="px-5 py-3.5">
+                        <span className="text-sm text-[#2C1810] font-semibold">
+                          {item.species?.name_cs ?? '—'}
+                        </span>
+                        {age && (
+                          <span className="text-sm text-[#8B6550]"> · {age}</span>
+                        )}
+                      </td>
+
+                      {/* STATUS */}
+                      <td className="px-5 py-3.5">
+                        <Badge variant={statusVal} size="sm" />
+                      </td>
+
+                      {/* PŘIDÁNO */}
+                      <td className="px-5 py-3.5 text-sm text-[#8B6550] font-semibold whitespace-nowrap">
+                        {new Date(item.intake_date ?? item.created_at).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'numeric' })}
+                      </td>
+
+                      {/* AKCE — zobrazí se na hover */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {isArchive ? (
+                            <Link
+                              href={`/admin/animals/${item.id}`}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold text-[#8B6550] bg-[#F5E6D3] hover:bg-[#EDD8C0] transition-colors no-underline whitespace-nowrap"
+                            >
+                              Zobrazit detail
+                            </Link>
+                          ) : (
+                            <Link
+                              href={`/admin/animals/${item.id}`}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold text-[#6B4030] bg-[#F5E6D3] hover:bg-[#EDD8C0] transition-colors no-underline whitespace-nowrap"
+                            >
+                              ✏️ Upravit záznam
+                            </Link>
+                          )}
+                          <a
+                            href={`/admin/animals/${item.id}/qr`}
+                            target="_blank"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold text-[#6B4030] bg-[#F5E6D3] hover:bg-[#EDD8C0] transition-colors no-underline whitespace-nowrap"
+                          >
+                            ▣ QR kód
+                          </a>
+                          <a
+                            href={`/admin/animals/${item.id}/pdf`}
+                            target="_blank"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold text-[#6B4030] bg-[#F5E6D3] hover:bg-[#EDD8C0] transition-colors no-underline whitespace-nowrap"
+                          >
+                            📄 PDF
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-5 py-4 border-t border-[#F0EDE8]">
+                <span className="text-xs font-semibold text-[#8B6550]">
+                  Zobrazeno {offset + 1}–{Math.min(offset + PAGE_SIZE, filteredCount)} z {filteredCount} {isShelter ? 'zvířat' : 'případů'}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Link
+                    href={buildUrl({ page: page > 1 ? String(page - 1) : undefined })}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold border border-[#F0EDE8] transition-colors no-underline ${page <= 1 ? 'opacity-30 pointer-events-none' : 'text-[#2C1810] hover:bg-[#F5E6D3]'}`}
+                    aria-disabled={page <= 1}
+                  >
+                    ‹
+                  </Link>
+
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum: number
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (page <= 3) {
+                      pageNum = i + 1
+                    } else if (page >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = page - 2 + i
+                    }
+                    const isCurrentPage = pageNum === page
+                    return (
+                      <Link
+                        key={pageNum}
+                        href={buildUrl({ page: String(pageNum) })}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold no-underline transition-colors"
+                        style={isCurrentPage
+                          ? { backgroundColor: activeColor, color: 'white' }
+                          : { border: '1px solid #F0EDE8', color: '#2C1810' }
+                        }
+                      >
+                        {pageNum}
+                      </Link>
+                    )
+                  })}
+
+                  {totalPages > 5 && page < totalPages - 2 && (
+                    <span className="w-8 h-8 flex items-center justify-center text-xs text-[#8B6550]">…</span>
+                  )}
+
+                  {totalPages > 5 && page < totalPages - 2 && (
+                    <Link
+                      href={buildUrl({ page: String(totalPages) })}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold border border-[#F0EDE8] text-[#2C1810] hover:bg-[#F5E6D3] no-underline transition-colors"
+                    >
+                      {totalPages}
+                    </Link>
+                  )}
+
+                  <Link
+                    href={buildUrl({ page: page < totalPages ? String(page + 1) : undefined })}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold border border-[#F0EDE8] transition-colors no-underline ${page >= totalPages ? 'opacity-30 pointer-events-none' : 'text-[#2C1810] hover:bg-[#F5E6D3]'}`}
+                    aria-disabled={page >= totalPages}
+                  >
+                    ›
+                  </Link>
+                </div>
               </div>
             )}
+          </div>
 
-            {/* Animal rows */}
-            {animals.length === 0 ? (
-              <div className="text-center py-12 rounded-xl" style={{ background: 'white', border: '1px solid #F0EDE8', color: '#8B6550' }}>
-                <div style={{ fontSize: '40px', marginBottom: '12px' }}>🐾</div>
-                <div className="font-black text-sm">
-                  {isFiltered ? 'Žádná zvířata neodpovídají filtru' : 'Žádná zvířata v útulku'}
-                </div>
-                {!isFiltered && (
-                  <div className="text-xs mt-1" style={{ color: '#A09890' }}>Přijměte první zvíře pomocí tlačítka výše.</div>
+          {/* Mobile pagination */}
+          {totalPages > 1 && (
+            <div className="md:hidden flex items-center justify-between py-4">
+              <span className="text-xs font-semibold text-[#8B6550]">
+                {offset + 1}–{Math.min(offset + PAGE_SIZE, filteredCount)} z {filteredCount}
+              </span>
+              <div className="flex gap-2">
+                {page > 1 && (
+                  <Link
+                    href={buildUrl({ page: String(page - 1) })}
+                    className="px-4 py-2 rounded-xl text-xs font-bold border border-[#F0EDE8] text-[#2C1810] hover:bg-[#F5E6D3] no-underline"
+                  >
+                    ← Předchozí
+                  </Link>
+                )}
+                {page < totalPages && (
+                  <Link
+                    href={buildUrl({ page: String(page + 1) })}
+                    className="px-4 py-2 rounded-xl text-xs font-bold border border-[#F0EDE8] text-[#2C1810] hover:bg-[#F5E6D3] no-underline"
+                  >
+                    Další →
+                  </Link>
                 )}
               </div>
-            ) : (
-              animals.map(a => <AnimalRowEl key={String(a.id)} animal={a} />)
-            )}
-
-            {/* Legend */}
-            {!isFiltered && animals.length > 0 && (
-              <div className="mt-4 rounded-lg" style={{ padding: '14px', background: 'white', border: '1px solid #F0EDE8' }}>
-                <div className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#8B6550', letterSpacing: '.06em' }}>Legenda průběhu pobytu</div>
-                <div className="flex gap-4 flex-wrap text-xs mb-2">
-                  <LegendDot variant="done"   label="Dokončeno" />
-                  <LegendDot variant="active" label="Aktuální fáze" />
-                  <LegendDot variant="err"    label="Chybí zákonné záznamy" />
-                  <LegendDot variant="future" label="Budoucí" />
-                </div>
-                <div className="flex gap-2 flex-wrap text-xs" style={{ color: '#8B6550' }}>
-                  {['① 📥 Příjem','② 🔖 Identifikace','③ 🔒 Karanténa','④ 💊 Zdraví','⑤ 🏠 K adopci','⑥ ✅ Odchod'].map(l => (
-                    <span key={l}>{l}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ── Pravý sloupec — upomínky ── */}
-          <div className="w-full lg:w-[300px] flex-shrink-0">
-            <div className="rounded-xl overflow-hidden" style={{ background: 'white', border: '1px solid #F0EDE8' }}>
-              <div className="font-black text-xs uppercase tracking-widest px-4 py-3 border-b" style={{ color: '#8B6550', letterSpacing: '.06em', borderColor: '#F0EDE8' }}>
-                Upomínky
-              </div>
-
-              {redAlerts.length === 0 && warnAlerts.length === 0 ? (
-                <div className="px-4 py-6 text-center text-xs" style={{ color: '#A09890' }}>
-                  ✅ Vše v pořádku
-                </div>
-              ) : (
-                <div className="p-3 flex flex-col gap-2">
-                  {redAlerts.map(a => (
-                    <div key={String(a.id)} className="rounded-lg" style={{ background: '#FCEBEB', borderLeft: '3px solid #D83030', padding: '10px 12px' }}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="font-black text-xs" style={{ color: '#D83030' }}>
-                            🚨 {String(a.name)}
-                          </div>
-                          <div className="text-xs mt-0.5" style={{ color: '#993C1D' }}>
-                            Pobyt {getDays(a)} dní, chybí záznamy karantény
-                          </div>
-                        </div>
-                        <Link
-                          href={`/admin/animals/${String(a.id)}/edit?tab=quarantine`}
-                          className="flex-shrink-0 text-white font-black rounded text-xs"
-                          style={{ padding: '3px 8px', background: '#D83030', fontSize: '10px', textDecoration: 'none' }}
-                        >
-                          Doplnit
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-
-                  {warnAlerts.map(a => (
-                    <div key={`warn-${String(a.id)}`} className="rounded-lg" style={{ background: '#FFF3D6', borderLeft: '3px solid #f0a500', padding: '10px 12px' }}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="font-black text-xs" style={{ color: '#7a5800' }}>
-                            ⚠️ {String(a.name)}
-                          </div>
-                          <div className="text-xs mt-0.5" style={{ color: '#7a5800' }}>
-                            Vakcína expiruje za {a.vaccine_expiring_in} dní
-                          </div>
-                        </div>
-                        <Link
-                          href={`/admin/animals/${String(a.id)}/edit?tab=health`}
-                          className="flex-shrink-0 text-white font-black rounded text-xs"
-                          style={{ padding: '3px 8px', background: '#f0a500', fontSize: '10px', textDecoration: 'none' }}
-                        >
-                          Naplánovat
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-
-            {/* Statistiky */}
-            <div className="mt-3 rounded-xl" style={{ background: 'white', border: '1px solid #F0EDE8', padding: '14px' }}>
-              <div className="font-black text-xs uppercase tracking-widest mb-3" style={{ color: '#8B6550', letterSpacing: '.06em' }}>Přehled</div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: 'Aktivních',   value: activeAnimals.length,                                   color: '#E8634A' },
-                  { label: 'K adopci',    value: allAnimals.filter(a => a.adoption_status === 'available').length, color: '#993C1D' },
-                  { label: 'V léčbě',     value: allAnimals.filter(a => a.adoption_status === 'treatment').length, color: '#D83030' },
-                  { label: 'Rezervováno', value: allAnimals.filter(a => a.adoption_status === 'reserved').length,  color: '#7a5800' },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="rounded-lg text-center" style={{ padding: '10px 8px', background: '#F7F4F0' }}>
-                    <div className="font-black" style={{ fontSize: '22px', color }}>{value}</div>
-                    <div className="font-black text-xs mt-0.5" style={{ color: '#8B6550' }}>{label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <WorkflowBar active="list" />
-    </div>
-  )
-}
-
-/* ─── AnimalRow ──────────────────────────────────────────── */
-function AnimalRowEl({ animal: a }: { animal: AnimalRow }) {
-  const days       = getDays(a)
-  const statusKey  = String(a.adoption_status ?? 'intake')
-  const statusInfo = STATUS_COLORS[statusKey] ?? STATUS_COLORS.intake
-  const dots       = getPhaseDots(a)
-  const isExited   = Boolean(a.exit_type)
-  const isLong     = days > 30
-  const icon       = SPECIES_ICON[String(a.species ?? 'dog')] ?? '🐾'
-
-  const meta = [
-    a.breed ? String(a.breed) : null,
-    getSexLabel(a.sex) || null,
-    ageLabel(a) || null,
-    a.weight_kg != null ? `${a.weight_kg} kg` : null,
-  ].filter(Boolean).join(' · ')
-
-  return (
-    <Link
-      href={`/admin/animals/${String(a.id)}`}
-      className="flex items-center gap-3 rounded-lg mb-2 transition-all hover:border-[#E8634A]"
-      style={{ padding: '12px 14px', border: '2px solid #F0EDE8', background: 'white', opacity: isExited ? .7 : 1, textDecoration: 'none' }}
-    >
-      <div className="flex items-center justify-center rounded-lg flex-shrink-0" style={{ width: '40px', height: '40px', background: '#F0EDE8', fontSize: '20px' }}>
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-black text-sm truncate" style={{ color: '#2C1810' }}>{String(a.name ?? '—')}</div>
-        {meta && <div className="text-xs mt-0.5 truncate" style={{ color: '#8B6550' }}>{meta}</div>}
-      </div>
-      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-        <div className="flex items-center gap-1.5 flex-wrap justify-end">
-          <span className="inline-flex items-center rounded-full font-black px-2 py-0.5" style={{ fontSize: '11px', background: statusInfo.bg, color: statusInfo.text }}>
-            {statusInfo.label}
-          </span>
-          {a.evidence_number && (
-            <span className="font-black" style={{ fontSize: '10px', fontFamily: 'monospace', color: '#A09890' }}>
-              {String(a.evidence_number)}
-            </span>
           )}
-          {a.vaccine_expiring_in != null && (a.vaccine_expiring_in as number) < 14 && (
-            <span className="inline-flex items-center rounded-full font-black px-1.5 py-0.5" style={{ fontSize: '10px', background: '#FCEBEB', color: '#D83030' }}>⚠</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex gap-0.5 items-center">
-            {dots.map((d, i) => <PhaseDotEl key={i} variant={d} />)}
-          </div>
-          <DayBadgeSmall days={days} isExited={isExited} exitDate={String(a.exit_date ?? '')} isLong={isLong} />
-        </div>
-      </div>
-    </Link>
-  )
-}
-
-function PhaseDotEl({ variant }: { variant: PhaseDot }) {
-  const colors = { done: '#2D8A4E', active: '#E8634A', err: '#D83030', future: '#E8E4E0' }
-  return <div className="rounded-full" style={{ width: '9px', height: '9px', background: colors[variant] }} />
-}
-
-function LegendDot({ variant, label }: { variant: PhaseDot; label: string }) {
-  const colors = { done: '#2D8A4E', active: '#E8634A', err: '#D83030', future: '#E8E4E0' }
-  return (
-    <div className="flex items-center gap-1">
-      <div className="rounded-full" style={{ width: '9px', height: '9px', background: colors[variant] }} />
-      <span>{label}</span>
-    </div>
-  )
-}
-
-function DayBadgeSmall({ days, isExited, exitDate, isLong }: { days: number; isExited: boolean; exitDate: string; isLong: boolean }) {
-  if (isExited) {
-    return (
-      <div className="inline-flex flex-col items-center rounded-md" style={{ padding: '3px 7px', background: '#EAF3DE' }}>
-        <div className="font-black leading-none" style={{ fontSize: '13px', color: '#2D8A4E' }}>✓</div>
-        <div className="font-black uppercase tracking-wider" style={{ fontSize: '8px', color: '#2D8A4E' }}>
-          {exitDate ? exitDate.slice(5).replace('-', '.') + '.' : 'Exit'}
-        </div>
-      </div>
-    )
-  }
-  const bg   = isLong ? '#FCEBEB' : '#FDEAE6'
-  const text = isLong ? '#D83030' : '#E8634A'
-  return (
-    <div className="inline-flex flex-col items-center rounded-md" style={{ padding: '3px 7px', background: bg }}>
-      <div className="font-black leading-none" style={{ fontSize: '16px', color: text }}>{days}</div>
-      <div className="font-black uppercase tracking-wider" style={{ fontSize: '8px', color: text }}>dní</div>
+        </>
+      )}
     </div>
   )
 }
