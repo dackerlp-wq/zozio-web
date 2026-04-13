@@ -49,7 +49,8 @@ export interface Institution {
 
 /* ─── Constants ──────────────────────────────────────────── */
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string; dot?: string }> = {
-  intake:         { bg: '#E6F1FB', text: '#185FA5', label: 'V příjmu' },
+  not_for_adoption: { bg: '#E6F1FB', text: '#185FA5', label: 'V příjmu' },
+  intake:           { bg: '#E6F1FB', text: '#185FA5', label: 'V příjmu' },
   available:      { bg: '#FDEAE6', text: '#993C1D', label: 'K adopci', dot: '●' },
   reserved:       { bg: '#FFF3D6', text: '#7a5800', label: 'Rezervováno' },
   adopted:        { bg: '#EAF3DE', text: '#1a5e2e', label: 'Adoptováno' },
@@ -62,13 +63,12 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; label: string; d
 }
 
 const ORIGIN_LABELS: Record<string, string> = {
-  found:           'Nalezeno',
-  surrendered:     'Odevzdáno majitelem',
-  transferred:     'Přemístěno z jiného útulku',
-  born_in_shelter: 'Narozeno v útulku',
-  rescue:          'Záchrana',
-  confiscated:     'Konfiskace',
-  other:           'Jiné',
+  found:             'Nalezeno — nálezcem',
+  municipal_capture: 'Odchyceno obcí',
+  surrendered:       'Odevzdáno majitelem',
+  seized:            'Odebráno (SVS/Policie)',
+  transferred:       'Přemístěno z jiného útulku',
+  other:             'Jiné',
 }
 
 const SPECIES_ICON: Record<string, string> = {

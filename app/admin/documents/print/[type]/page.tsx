@@ -35,10 +35,67 @@ function exitTypeLabel(t: unknown): string {
 
 function intakeReasonLabel(r: unknown): string {
   const map: Record<string, string> = {
-    found: 'Nálezce', stray: 'Toulavé', surrender: 'Vzdání se', confiscated: 'Konfiskace',
-    transfer: 'Převod', other: 'Jiné',
+    found: 'Nálezce', stray: 'Toulavé', surrender: 'Vzdání se', surrendered: 'Předáno majitelem',
+    confiscated: 'Konfiskace', transfer: 'Převod', transferred: 'Přemístěno', municipal: 'Odchyt obcí',
+    born_here: 'Narozeno v útulku', other: 'Jiné',
   }
   return map[String(r ?? '')] ?? String(r ?? '—')
+}
+
+function healthStatusLabel(v: unknown): string {
+  const map: Record<string, string> = {
+    healthy: 'Zdravý', sick: 'Nemocný', injured: 'Zraněný',
+    recovering: 'Rekonvalescence', chronic: 'Chronické onemocnění',
+    good: 'Dobrý', fair: 'Uspokojivý', poor: 'Špatný',
+  }
+  return map[String(v ?? '')] ?? String(v ?? '—')
+}
+
+function adoptionStatusLabel(v: unknown): string {
+  const map: Record<string, string> = {
+    available: 'K adopci', reserved: 'Rezervováno', adopted: 'Adoptováno',
+    foster: 'Ve foster péči', not_for_adoption: 'Není k adopci',
+    intake: 'Příjem', treatment: 'Léčba', rehabilitation: 'Rehabilitace',
+    released: 'Propuštěn do přírody', deceased: 'Uhynul',
+  }
+  return map[String(v ?? '')] ?? String(v ?? '—')
+}
+
+function activityLabel(v: unknown): string {
+  const map: Record<string, string> = {
+    low: 'Nízká', medium: 'Střední', high: 'Vysoká', very_high: 'Velmi vysoká',
+  }
+  return map[String(v ?? '')] ?? String(v ?? '—')
+}
+
+function sizeLabel(v: unknown): string {
+  const map: Record<string, string> = {
+    small: 'Malý', medium: 'Střední', large: 'Velký', xlarge: 'Extra velký',
+  }
+  return map[String(v ?? '')] ?? String(v ?? '—')
+}
+
+function originLabel(v: unknown): string {
+  const map: Record<string, string> = {
+    found:             'Nalezeno — nálezcem',
+    municipal_capture: 'Odchyceno obcí',
+    surrendered:       'Odevzdáno majitelem',
+    seized:            'Odebráno (SVS/Policie)',
+    transferred:       'Přemístěno z jiného útulku',
+    other:             'Jiné',
+  }
+  return map[String(v ?? '')] ?? String(v ?? '—')
+}
+
+function goodWithAdultsLabel(v: unknown): string {
+  const map: Record<string, string> = {
+    friendly:    'Přátelský',
+    shy:         'Plachý',
+    fearful:     'Bojácný',
+    distrustful: 'Nedůvěřivý',
+    unknown:     'Neznámo',
+  }
+  return map[String(v ?? '')] ?? (v ? String(v) : '—')
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -247,7 +304,7 @@ function AnimalCard({ animal, inst }: { animal: Row; inst: string }) {
 
       <h2>Zdravotní stav</h2>
       <Fields items={[
-        ['Zdravotní stav', animal.health_status ?? '—'],
+        ['Zdravotní stav', healthStatusLabel(animal.health_status)],
         ['Vakcinován', yesNo(animal.vaccinated)],
         ['Kastrován / sterilizován', yesNo(animal.neutered)],
         ['Speciální potřeby', yesNo(animal.special_needs)],
@@ -267,7 +324,7 @@ function AnimalCard({ animal, inst }: { animal: Row; inst: string }) {
       <Fields cols={3} items={[
         ['Vhodný pro byt', yesNo(animal.suitable_for_flat)],
         ['Vhodný pro dům', yesNo(animal.suitable_for_house)],
-        ['Aktivita', animal.activity_level ?? '—'],
+        ['Aktivita', activityLabel(animal.activity_level)],
         ['Vychází s dětmi', yesNo(animal.good_with_kids)],
         ['Vychází se psy', yesNo(animal.good_with_dogs)],
         ['Vychází s kočkami', yesNo(animal.good_with_cats)],
@@ -282,7 +339,7 @@ function AnimalCard({ animal, inst }: { animal: Row; inst: string }) {
 
       <h2>Stav pobytu</h2>
       <Fields items={[
-        ['Status adopce', animal.adoption_status ?? '—'],
+        ['Status adopce', adoptionStatusLabel(animal.adoption_status)],
         ['Dočasná péče', yesNo(animal.in_foster)],
         ['Jméno dočasné pěstounky', animal.foster_name ?? '—'],
         ['Telefon dočasné pěstounky', animal.foster_phone ?? '—'],
@@ -346,7 +403,7 @@ function HandoverProtocol({ animal, inst }: { animal: Row; inst: string }) {
         ['Vakcinováno', yesNo(animal.vaccinated)],
         ['Kastrováno / sterilizováno', yesNo(animal.neutered)],
         ['Čipováno', yesNo(animal.chip_number)],
-        ['Zdravotní stav', animal.health_status ?? '—'],
+        ['Zdravotní stav', healthStatusLabel(animal.health_status)],
         ['Medikace', animal.medications ?? '—'],
         ['Speciální potřeby', animal.special_needs ? 'Ano' : 'Ne'],
       ]} />
@@ -773,7 +830,7 @@ function PatientCard({ animal, inst }: { animal: Row; inst: string }) {
       <Fields items={[
         ['Číslo čipu / kroužku', animal.chip_number ?? '—'],
         ['Číslo evidence', animal.evidence_number ?? '—'],
-        ['Původ nálezu', animal.origin ?? '—'],
+        ['Původ nálezu', originLabel(animal.origin)],
         ['Místo nálezu', animal.found_location ?? '—'],
         ['Datum nálezu', czDate(animal.found_date ?? animal.intake_date)],
         ['Nálezce', animal.intake_finder_name ?? animal.finder_name ?? '—'],
@@ -783,7 +840,7 @@ function PatientCard({ animal, inst }: { animal: Row; inst: string }) {
       <Fields items={[
         ['Datum příjmu', czDate(animal.intake_date)],
         ['Důvod příjmu', intakeReasonLabel(animal.intake_reason)],
-        ['Stav při příjmu', animal.intake_condition ?? animal.health_status ?? '—'],
+        ['Stav při příjmu', healthStatusLabel(animal.intake_condition ?? animal.health_status)],
         ['Příjmový pracovník', animal.intake_worker ?? '—'],
         ['Popis poranění', animal.intake_notes ?? '—'],
         ['', ''],
@@ -809,7 +866,7 @@ function PatientCard({ animal, inst }: { animal: Row; inst: string }) {
 
       <h2>Výsledek péče</h2>
       <Fields items={[
-        ['Výsledný stav', animal.health_status ?? '—'],
+        ['Výsledný stav', healthStatusLabel(animal.health_status)],
         ['Datum odchodu', czDate(animal.exit_date)],
         ['Typ odchodu', exitTypeLabel(animal.exit_type)],
         ['Prognóza při příjmu', animal.rescue_prognosis ?? '—'],

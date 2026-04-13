@@ -34,13 +34,6 @@ export default function WorkflowActions({ animalId }: WorkflowActionsProps) {
     }
   }
 
-  const STATUS_LABELS: Record<string, string> = {
-    reserved:       '📌 Označit rezervováno',
-    treatment:      '💊 Přesunout do léčby',
-    rehabilitation: '🏥 Rehabilitace',
-    foster:         '🏠 Dočasná péče',
-  }
-
   return (
     <>
       {error && (
@@ -65,17 +58,17 @@ export default function WorkflowActions({ animalId }: WorkflowActionsProps) {
           className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-black transition-colors"
           style={{ background: 'white', border: '2px solid #F0EDE8', color: '#6B4030', cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.6 : 1 }}
         >
-          {loading === 'reserved' ? '⏳ Ukládám…' : STATUS_LABELS.reserved}
+          {loading === 'reserved' ? '⏳ Ukládám…' : '📌 Označit rezervováno'}
         </button>
       </div>
       <div className="grid grid-cols-2 gap-2 mt-2">
         <button
-          onClick={() => updateStatus('treatment')}
+          onClick={() => updateStatus('foster')}
           disabled={!!loading}
           className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-black transition-colors"
           style={{ fontSize: '12px', background: 'white', border: '2px solid #F0EDE8', color: '#6B4030', cursor: loading ? 'wait' : 'pointer', opacity: loading ? 0.6 : 1 }}
         >
-          {loading === 'treatment' ? '⏳ Ukládám…' : STATUS_LABELS.treatment}
+          {loading === 'foster' ? '⏳ Ukládám…' : '🏠 Dočasná péče'}
         </button>
         <a
           href={`/admin/animals/${animalId}?exit=1&type=deceased`}

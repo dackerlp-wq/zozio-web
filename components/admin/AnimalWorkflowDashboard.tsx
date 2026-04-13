@@ -6,7 +6,8 @@ interface AnimalWorkflowDashboardProps {
 }
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  intake: { bg: '#E6F1FB', text: '#185FA5', label: 'V příjmu' },
+  not_for_adoption: { bg: '#E6F1FB', text: '#185FA5', label: 'V příjmu' },
+  intake:           { bg: '#E6F1FB', text: '#185FA5', label: 'V příjmu' },
   available: { bg: '#FDEAE6', text: '#E8634A', label: 'K adopci' },
   reserved: { bg: '#FFF3D6', text: '#7a5800', label: 'Rezervováno' },
   adopted: { bg: '#EAF3DE', text: '#2D8A4E', label: 'Adoptováno' },
@@ -18,13 +19,12 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }>
 }
 
 const ORIGIN_LABELS: Record<string, string> = {
-  found: 'Nalezeno',
-  surrendered: 'Odevzdáno majitelem',
-  transferred: 'Přestup z jiného útulku',
-  born_in_shelter: 'Narozeno v útulku',
-  rescue: 'Záchrana',
-  confiscated: 'Konfiskace',
-  other: 'Jiné',
+  found:             'Nalezeno — nálezcem',
+  municipal_capture: 'Odchyceno obcí',
+  surrendered:       'Odevzdáno majitelem',
+  seized:            'Odebráno (SVS/Policie)',
+  transferred:       'Přemístěno z jiného útulku',
+  other:             'Jiné',
 }
 
 type PhaseKey = 'prijem' | 'identifikace' | 'karantena' | 'zdravi' | 'kadopci' | 'odchod'

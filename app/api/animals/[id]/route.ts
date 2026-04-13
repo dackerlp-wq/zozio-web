@@ -80,7 +80,8 @@ function convertGoodWith(value: unknown): boolean | null {
   return null
 }
 
-const GOOD_WITH_COLS = ['good_with_kids', 'good_with_dogs', 'good_with_cats', 'good_with_other_animals', 'good_with_adults']
+// good_with_adults is TEXT ('friendly'|'shy'|'fearful'|'distrustful'|'unknown'), not boolean
+const GOOD_WITH_COLS = ['good_with_kids', 'good_with_dogs', 'good_with_cats', 'good_with_other_animals']
 
 function sanitizePayload(body: Record<string, unknown>): Record<string, unknown> {
   const payload: Record<string, unknown> = {}

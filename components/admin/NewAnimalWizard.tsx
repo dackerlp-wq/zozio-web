@@ -199,7 +199,7 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
         good_with_kids:      data.good_with_kids,
         good_with_dogs:      data.good_with_dogs,
         good_with_cats:      data.good_with_cats,
-        good_with_adults:    data.good_with_seniors,
+        good_with_adults:    data.good_with_seniors ? 'friendly' : null,
         published:           false, // wizard nikdy nepublikuje
       }
 
@@ -446,10 +446,10 @@ function Step1({ data, set, species }: { data: WizardData; set: (k: keyof Wizard
       <div>
         <div className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#8B6550', letterSpacing: '.05em' }}>Status při příjmu</div>
         <div className="grid grid-cols-4 gap-2">
-          <StatusCard value="intake"   label="V příjmu"    icon="📥" current={data.adoption_status} onClick={() => set('adoption_status', 'intake')} />
-          <StatusCard value="available" label="K adopci"   icon="🏠" current={data.adoption_status} onClick={() => set('adoption_status', 'available')} />
-          <StatusCard value="treatment" label="V léčbě"    icon="💊" current={data.adoption_status} onClick={() => set('adoption_status', 'treatment')} />
-          <StatusCard value="foster"   label="Dočasná péče" icon="🤲" current={data.adoption_status} onClick={() => set('adoption_status', 'foster')} />
+          <StatusCard value="intake"    label="V příjmu"     icon="📥" current={data.adoption_status} onClick={() => set('adoption_status', 'intake')} />
+          <StatusCard value="available" label="K adopci"    icon="🏠" current={data.adoption_status} onClick={() => set('adoption_status', 'available')} />
+          <StatusCard value="reserved"  label="Rezervováno" icon="⏳" current={data.adoption_status} onClick={() => set('adoption_status', 'reserved')} />
+          <StatusCard value="foster"    label="Dočasná péče" icon="🤲" current={data.adoption_status} onClick={() => set('adoption_status', 'foster')} />
         </div>
       </div>
 
@@ -485,7 +485,7 @@ function Step2({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
         <Field label="Způsob příjmu" lawTag>
           <select value={data.origin} onChange={e => set('origin', e.target.value)} style={inputStyle}>
             <option value="found">Nalezeno — nálezcem</option>
-            <option value="municipal">Odchyceno obcí</option>
+            <option value="municipal_capture">Odchyceno obcí</option>
             <option value="surrendered">Odevzdáno majitelem</option>
             <option value="confiscated">Odebráno (SVS/Policie)</option>
             <option value="transferred">Přemístěno z jiného útulku</option>
