@@ -26,3 +26,4 @@ export {
 // Aliasy pro zpětnou kompatibilitu
 export { sendAdoptionRequestConfirmedEmail as sendApplicationConfirmationEmail } from './send'
 export { sendApplicationStatusEmail } from './send'
+export { sendApplicationReviewingEmail } from './send'

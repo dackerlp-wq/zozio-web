@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { sendNewApplicationEmail, sendApplicationConfirmationEmail } from '@/lib/email'
 
@@ -25,6 +26,10 @@ function checkRateLimit(ip: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    // Volitelná autentizace — ulož user_id pokud je přihlášen
+    const supabaseAuth = await createClient()
+    const { data: { user: authUser } } = await supabaseAuth.auth.getUser()
+
     // ── FIX 4: Rate limiting ──────────────────────────────────────────────
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
       ?? request.headers.get('x-real-ip')
@@ -47,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     const { data: animal } = await supabase
       .from('animals')
-      .select('id, institution_id, adoption_status, name')
+      .select('id, institution_id, adoption_status, name, primary_photo, species:animal_species(name_cs, icon)')
       .eq('id', body.animal_id)
       .single()
 
@@ -98,24 +103,34 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('adoption_applications')
       .insert({
-        animal_id:       body.animal_id,
-        institution_id:  animal.institution_id,
-        applicant_name:  body.applicant_name,
-        applicant_email: body.applicant_email,
-        applicant_phone: body.applicant_phone ?? null,
-        housing_type:    body.housing_type    ?? null,
-        has_garden:      body.has_garden      ?? null,
-        has_children:    body.has_children    ?? null,
-        children_ages:   body.children_ages   ?? null,
-        other_pets:      body.other_pets      ?? null,
-        experience:      body.experience      ?? null,
-        motivation:      body.motivation,
-        status:          'pending',
+        animal_id:           body.animal_id,
+        institution_id:      animal.institution_id,
+        applicant_name:      body.applicant_name,
+        applicant_email:     body.applicant_email,
+        applicant_phone:     body.applicant_phone     ?? null,
+        housing_type:        body.housing_type        ?? null,
+        has_garden:          body.has_garden          ?? null,
+        has_children:        body.has_children        ?? null,
+        children_ages:       body.children_ages       ?? null,
+        other_pets:          body.other_pets          ?? null,
+        experience:          body.experience          ?? null,
+        motivation:          body.motivation,
+        application_message: body.application_message ?? null,
+        status:              'pending',
+        user_id:             authUser?.id ?? null,
       })
       .select('id')
       .single()
 
     if (error) throw error
+
+    // cancel_token načti zvlášť — odolné vůči chybějící migraci
+    const { data: tokenRow } = await supabase
+      .from('adoption_applications')
+      .select('cancel_token')
+      .eq('id', data.id)
+      .single()
+    const cancelToken: string | undefined = (tokenRow as any)?.cancel_token ?? undefined
 
     // E-maily
     try {
@@ -125,14 +140,24 @@ export async function POST(request: NextRequest) {
         .eq('id', animal.institution_id)
         .single()
 
+      const animalEmoji    = (animal as any).species?.icon ?? '🐾'
+      const animalSpecies  = (animal as any).species?.name_cs ?? 'zvíře'
+      const animalPhotoUrl = (animal as any).primary_photo ?? undefined
+
       if (institution?.email) {
         await sendNewApplicationEmail({
-          institutionEmail: institution.email,
-          institutionName:  institution.name,
-          animalName:       animal.name,
-          applicantName:    body.applicant_name,
-          applicantEmail:   body.applicant_email,
-          applicationId:    data.id,
+          institutionEmail:  institution.email,
+          institutionName:   institution.name,
+          animalName:        animal.name,
+          applicantName:     body.applicant_name,
+          applicantEmail:    body.applicant_email,
+          applicationId:     data.id,
+          applicantPhone:    body.applicant_phone  ?? undefined,
+          applicantCity:     body.applicant_city   ?? undefined,
+          applicantHasOtherAnimals: body.other_pets ? true : undefined,
+          animalEmoji,
+          animalSpecies,
+          applicationMessage: body.application_message ?? '',
         })
       }
 
@@ -141,6 +166,11 @@ export async function POST(request: NextRequest) {
         applicantName:   body.applicant_name,
         animalName:      animal.name,
         institutionName: institution?.name ?? '',
+        animalEmoji,
+        animalSpecies,
+        applicationId:   data.id,
+        animalPhotoUrl,
+        cancelToken:     cancelToken,
       })
     } catch (emailError) {
       console.error('Email error:', emailError)

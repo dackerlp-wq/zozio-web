@@ -3,8 +3,9 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createServiceClient } from '@/lib/supabase/service'
+import { createClient } from '@/lib/supabase/server'
 import { InstitutionTabs } from '@/components/public/InstitutionTabs'
-import { FavoriteButton } from '@/components/public/FavoriteButton'
+import { InstitutionActions } from '@/components/public/InstitutionActions'
 
 interface PageProps {
   params:       Promise<{ slug: string }>
@@ -34,12 +35,26 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
   const isShelter = i.type === 'shelter'
   const activeTab = tab ?? (isShelter ? 'animals' : 'rescue')
 
-  const [animals, rescueCases, fundraisers, articles, volunteers] = await Promise.all([
+  // Auth stav pro tlačítka
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const service = createServiceClient()
+
+  const [animals, rescueCases, fundraisers, articles, volunteers, favRow, volunteerRow] = await Promise.all([
     isShelter ? getAnimals(i.id)      : Promise.resolve([]),
     !isShelter ? getRescueCases(i.id) : Promise.resolve([]),
     getFundraisers(i.id),
     getArticles(i.id),
     getVolunteerCount(i.id),
+
+    user
+      ? service.from('institution_favorites').select('id').eq('user_id', user.id).eq('institution_id', i.id).maybeSingle()
+      : Promise.resolve({ data: null }),
+
+    user
+      ? service.from('volunteers').select('status').eq('user_id', user.id).eq('institution_id', i.id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ])
 
   const tabs = [
@@ -68,46 +83,56 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
         <div className="absolute inset-0"
           style={{ background: 'linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.55) 100%)' }} />
 
-        {/* ❤️ Favorite button vpravo nahoře */}
-        <div className="absolute top-4 right-4 md:right-10 z-10">
-          <FavoriteButton type="institution" id={i.id} />
-        </div>
-
-        {/* Název přímo v coveru dole */}
+        {/* Název + akce v coveru dole */}
         <div className="absolute bottom-0 left-0 right-0 px-5 md:px-10 pb-5 max-w-[1100px] mx-auto">
-          <div className="flex items-end gap-4">
-            {/* Logo */}
-            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl border-4 border-white flex-shrink-0 overflow-hidden flex items-center justify-center text-3xl shadow-lg"
-              style={{ background: isShelter ? 'var(--coral-tag-bg)' : 'var(--rescue-tag-bg)' }}>
-              {i.logo_url
-                ? <Image src={i.logo_url} alt={i.name} width={96} height={96} className="object-cover" />
-                : <span>{isShelter ? '🏠' : '🚑'}</span>
-              }
-            </div>
-            {/* Název na tmavém pozadí coveru */}
-            <div className="pb-1">
-              <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold"
-                  style={isShelter
-                    ? { background: 'rgba(232,99,74,0.25)', color: '#FFD4C2', border: '1px solid rgba(232,99,74,0.35)' }
-                    : { background: 'rgba(46,158,143,0.25)', color: '#A8F0E4', border: '1px solid rgba(46,158,143,0.35)' }}>
-                  {isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
-                </span>
-                {i.approval_status === 'approved' && (
+          <div className="flex items-end justify-between gap-3">
+
+            {/* Levá část — logo + název */}
+            <div className="flex items-end gap-4 min-w-0">
+              <div className="w-16 h-16 md:w-24 md:h-24 rounded-lg border-4 border-white flex-shrink-0 overflow-hidden flex items-center justify-center text-3xl shadow-lg"
+                style={{ background: isShelter ? '#FAECE7' : '#E1F5EE' }}>
+                {i.logo_url
+                  ? <Image src={i.logo_url} alt={i.name} width={96} height={96} className="object-cover" />
+                  : <span>{isShelter ? '🏠' : '🚑'}</span>
+                }
+              </div>
+              <div className="pb-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
-                    style={{ background: 'rgba(59,109,17,0.30)', color: '#AADDA8', border: '1px solid rgba(59,109,17,0.35)' }}>
-                    ✓ Ověřeno
+                    style={isShelter
+                      ? { background: 'rgba(232,99,74,0.25)', color: '#FFD4C2', border: '1px solid rgba(232,99,74,0.35)' }
+                      : { background: 'rgba(46,158,143,0.25)', color: '#A8F0E4', border: '1px solid rgba(46,158,143,0.35)' }}>
+                    {isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
                   </span>
+                  {i.approval_status === 'approved' && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
+                      style={{ background: 'rgba(59,109,17,0.30)', color: '#AADDA8', border: '1px solid rgba(59,109,17,0.35)' }}>
+                      ✓ Ověřeno
+                    </span>
+                  )}
+                </div>
+                <h1 className="font-display font-extrabold text-white leading-tight truncate"
+                  style={{ fontSize: 'clamp(16px, 3vw, 30px)', textShadow: '0 1px 4px rgba(0,0,0,0.4)' }}>
+                  {i.name}
+                </h1>
+                {i.city && (
+                  <p className="text-xs md:text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.92)' }}>📍 {i.city}</p>
                 )}
               </div>
-              <h1 className="font-display font-extrabold text-white leading-tight"
-                style={{ fontSize: 'clamp(18px, 3vw, 30px)', textShadow: '0 1px 4px rgba(0,0,0,0.4)' }}>
-                {i.name}
-              </h1>
-              {i.city && (
-                <p className="text-sm mt-0.5" style={{ color: 'rgba(255,255,255,0.92)' }}>📍 {i.city}</p>
-              )}
             </div>
+
+            {/* Pravá část — akční tlačítka */}
+            <div className="flex-shrink-0 pb-1">
+              <InstitutionActions
+                institution={{ id: i.id, name: i.name, slug: i.slug, type: i.type, city: i.city, logo_url: i.logo_url ?? null }}
+                initialFav={!!(favRow as any)?.data}
+                volunteerStatus={((volunteerRow as any)?.data?.status ?? 'none') as any}
+                isLoggedIn={!!user}
+                userEmail={user?.email ?? ''}
+                userName={user?.user_metadata?.full_name ?? user?.email?.split('@')[0] ?? ''}
+              />
+            </div>
+
           </div>
         </div>
       </div>

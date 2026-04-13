@@ -5,6 +5,37 @@ import { useState } from 'react'
 import { ZozLogo } from '@/components/ui/ZozLogo'
 import { cn } from '@/lib/utils'
 
+interface NavGroupProps {
+  icon: string
+  label: string
+  isActive: boolean
+  children: React.ReactNode
+  onClose: () => void
+}
+
+function NavGroup({ icon, label, isActive, children, onClose }: NavGroupProps) {
+  const [expanded, setExpanded] = useState(isActive)
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded(v => !v)}
+        className={cn(
+          'w-full flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all bg-transparent border-none cursor-pointer',
+          isActive ? 'text-white' : 'text-gray-light hover:bg-white/8 hover:text-white'
+        )}>
+        <span className="text-base w-5 text-center shrink-0">{icon}</span>
+        <span className="flex-1 text-left">{label}</span>
+        <span className={cn('text-[10px] transition-transform', expanded ? 'rotate-90' : '')}>▶</span>
+      </button>
+      {expanded && (
+        <div className="pl-8 mt-0.5 space-y-0.5">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface AdminSidebarProps {
   institution: {
     id: string
@@ -22,21 +53,35 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
   const isShelter = institution?.type === 'shelter'
   const [open, setOpen] = useState(false)
 
+  const isAdoptionActive  = pathname.startsWith('/admin/applications') || pathname.startsWith('/admin/calendar')
+  const isSettingsActive  = pathname.startsWith('/admin/settings')
+
   const navItems = [
-    { href: '/admin/dashboard',   icon: '📊', label: 'Dashboard' },
-    { href: '/admin/animals',     icon: isShelter ? '🐾' : '🦉', label: isShelter ? 'Zvířata' : 'Pacienti' },
-    ...(isShelter
-      ? [{ href: '/admin/applications', icon: '📋', label: 'Žádosti o adopci' }]
-      : [{ href: '/admin/cases',        icon: '🩺', label: 'Záznamy léčby' }]
+    { href: '/admin/dashboard',    icon: '📊', label: 'Dashboard' },
+    { href: '/admin/statistics',   icon: '📈', label: 'Statistiky' },
+    { href: '/admin/animals',      icon: isShelter ? '🐾' : '🦉', label: isShelter ? 'Zvířata' : 'Pacienti' },
+    ...(!isShelter
+      ? [{ href: '/admin/cases', icon: '🩺', label: 'Záznamy léčby' }]
+      : []
     ),
-    { href: '/admin/fundraisers', icon: '💛', label: 'Sbírky' },
-    { href: '/admin/volunteers',  icon: '🙋', label: 'Dobrovolníci' },
-    { href: '/admin/coverage',   icon: '🗺️', label: 'Dosah na mapě' },
-    { href: '/admin/articles',   icon: '📝', label: 'Články' },
-    { href: '/admin/newsletter', icon: '📬', label: 'Newsletter' },
-    { href: '/admin/widget',     icon: '🔗', label: 'Widget' },
-    { href: '/admin/settings',   icon: '⚙️', label: 'Nastavení' },
-    { href: '/admin/billing',    icon: '💳', label: 'Předplatné' },
+    { href: '/admin/fundraisers',  icon: '💛', label: 'Sbírky' },
+    { href: '/admin/volunteers',   icon: '🙋', label: 'Dobrovolníci' },
+    { href: '/admin/articles',     icon: '📝', label: 'Články' },
+    { href: '/admin/newsletter',   icon: '📬', label: 'Newsletter' },
+    { href: '/admin/billing',      icon: '💳', label: 'Předplatné' },
+  ]
+
+  const adoptionSubItems = [
+    { href: '/admin/applications', label: '📋 Žádosti o adopci' },
+    { href: '/admin/calendar',     label: '📅 Kalendář schůzek' },
+  ]
+
+  const settingsSubItems = [
+    { href: '/admin/settings/info',         label: '⚙️ Základní informace' },
+    { href: '/admin/settings/hours',        label: '🕐 Provozní doba' },
+    { href: '/admin/settings/coverage',     label: '🗺️ Dosah na mapě' },
+    { href: '/admin/settings/widget',       label: '🔗 Widget' },
+    { href: '/admin/settings/integrations', label: '🤝 Propojení' },
   ]
 
   const superadminItems = [
@@ -71,7 +116,8 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
       {/* Navigace */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <div className="space-y-1">
-          {navItems.map(({ href, icon, label }) => (
+          {/* Dashboard, Statistiky, Zvířata — první 3 položky jsou stejné pro oba typy */}
+          {navItems.slice(0, 3).map(({ href, icon, label }) => (
             <Link key={href} href={href} onClick={() => setOpen(false)}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all no-underline',
@@ -83,6 +129,66 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
               {label}
             </Link>
           ))}
+
+          {/* Adopce skupina (jen pro útulky) */}
+          {isShelter && (
+            <NavGroup icon="🏠" label="Adopce" isActive={isAdoptionActive} onClose={() => setOpen(false)}>
+              {adoptionSubItems.map(({ href, label }) => (
+                <Link key={href} href={href} onClick={() => setOpen(false)}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-md font-body text-sm font-semibold transition-all no-underline',
+                    pathname === href || pathname.startsWith(href + '/')
+                      ? 'bg-white/15 text-white'
+                      : 'text-gray-light hover:bg-white/8 hover:text-white'
+                  )}>
+                  {label}
+                </Link>
+              ))}
+            </NavGroup>
+          )}
+
+          {/* Záznamy léčby (jen pro záchranné stanice) — navItems[3] = cases */}
+          {!isShelter && navItems.slice(3, 4).map(({ href, icon, label }) => (
+            <Link key={href} href={href} onClick={() => setOpen(false)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all no-underline',
+                pathname === href || pathname.startsWith(href + '/')
+                  ? 'bg-white/15 text-white'
+                  : 'text-gray-light hover:bg-white/8 hover:text-white'
+              )}>
+              <span className="text-base w-5 text-center">{icon}</span>
+              {label}
+            </Link>
+          ))}
+
+          {/* Zbytek navigace — shelter: od index 3 (Sbírky…), rescue: od index 4 (Sbírky…) */}
+          {(isShelter ? navItems.slice(3) : navItems.slice(4)).map(({ href, icon, label }) => (
+            <Link key={href} href={href} onClick={() => setOpen(false)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all no-underline',
+                pathname === href || pathname.startsWith(href + '/')
+                  ? 'bg-white/15 text-white'
+                  : 'text-gray-light hover:bg-white/8 hover:text-white'
+              )}>
+              <span className="text-base w-5 text-center">{icon}</span>
+              {label}
+            </Link>
+          ))}
+
+          {/* Nastavení skupina */}
+          <NavGroup icon="⚙️" label="Nastavení" isActive={isSettingsActive} onClose={() => setOpen(false)}>
+            {settingsSubItems.map(({ href, label }) => (
+              <Link key={href} href={href} onClick={() => setOpen(false)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2 rounded-md font-body text-sm font-semibold transition-all no-underline',
+                  pathname === href
+                    ? 'bg-white/15 text-white'
+                    : 'text-gray-light hover:bg-white/8 hover:text-white'
+                )}>
+                {label}
+              </Link>
+            ))}
+          </NavGroup>
         </div>
 
         {isSuperadmin && (

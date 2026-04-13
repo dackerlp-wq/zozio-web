@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
@@ -41,23 +42,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Chybí povinná pole' }, { status: 400 })
     }
 
-    if (!EMAIL_RE.test(body.email)) {
-      return NextResponse.json({ error: 'Neplatný e-mail' }, { status: 400 })
-    }
+    // Zjisti přihlášeného uživatele (nepovinné — lze se přihlásit i bez účtu z profilu instituce)
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
     const service = createServiceClient()
 
-    // Zkontroluj duplicitu
-    const { data: existing } = await service
+    // Zkontroluj duplicitu (podle emailu nebo user_id)
+    let duplicateQuery = service
       .from('volunteers')
       .select('id')
       .eq('institution_id', body.institution_id)
-      .eq('email', body.email)
-      .single()
+
+    if (user) {
+      duplicateQuery = duplicateQuery.or(`email.eq.${body.email},user_id.eq.${user.id}`)
+    } else {
+      duplicateQuery = duplicateQuery.eq('email', body.email)
+    }
+
+    const { data: existing } = await duplicateQuery.maybeSingle()
 
     if (existing) {
       return NextResponse.json(
-        { error: 'Tento e-mail je již zaregistrován jako dobrovolník' },
+        { error: 'Přihláška pro tuto organizaci již existuje' },
         { status: 409 }
       )
     }
@@ -65,13 +72,15 @@ export async function POST(request: NextRequest) {
     const { data, error } = await service
       .from('volunteers')
       .insert({
-        institution_id: body.institution_id,
-        name:           body.name,
-        email:          body.email,
-        phone:          body.phone    || null,
-        activities:     body.activities ?? [],
-        message:        body.message  || null,
-        status:         'pending',
+        institution_id:    body.institution_id,
+        user_id:           user?.id ?? null,
+        name:              body.name,
+        email:             body.email,
+        phone:             body.phone     || null,
+        activities:        body.activities ?? [],
+        availability_data: body.availability_data ?? null,
+        message:           body.message   || null,
+        status:            'pending',
       })
       .select('id')
       .single()
