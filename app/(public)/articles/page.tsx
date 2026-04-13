@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { createServiceClient } from '@/lib/supabase/service'
+import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArticleInstitutionFilter } from '@/components/public/ArticleInstitutionFilter'
@@ -11,6 +11,19 @@ export const metadata: Metadata = {
 
 interface PageProps {
   searchParams: Promise<{ kategorie?: string; instituce?: string }>
+}
+
+interface ArticleRow {
+  id: string
+  title: string
+  slug: string
+  perex: string | null
+  cover_url: string | null
+  category: string | null
+  author_name: string | null
+  published_at: string | null
+  views: number
+  institution: unknown
 }
 
 const categoryLabel: Record<string, string> = {
@@ -146,7 +159,7 @@ export default async function ArticlesPage({ searchParams }: PageProps) {
         {items.length > 0 ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {items.map(article => {
+              {(items as ArticleRow[]).map((article) => {
                 const inst = article.institution as unknown as { id: string; name: string; slug: string; type: string; logo_url: string | null } | null
                 const isShelter = inst?.type === 'shelter'
 

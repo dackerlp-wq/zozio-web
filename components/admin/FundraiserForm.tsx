@@ -11,6 +11,7 @@ interface FundraiserFormProps {
   institutionType: string
   mode: 'create' | 'edit'
   fundraiser?: Partial<Fundraiser>
+  hasDarujmeCredentials?: boolean
 }
 
 export function FundraiserForm({
@@ -28,6 +29,9 @@ export function FundraiserForm({
     image_url:           fundraiser?.image_url           ?? '',
     darujme_project_id:  fundraiser?.darujme_project_id  ?? '',
     darujme_url:         fundraiser?.darujme_url         ?? '',
+    current_amount:      fundraiser?.current_amount      ?? 0,
+    animal_id:           fundraiser?.animal_id           ?? '',
+    rescue_case_id:      fundraiser?.rescue_case_id      ?? '',
   })
 
   const [imageUrl, setImageUrl]         = useState<string>(fundraiser?.image_url ?? '')
@@ -327,9 +331,9 @@ export function FundraiserForm({
                 🔄 Sync: {new Date(fundraiser.darujme_synced_at).toLocaleString('cs-CZ')}
               </p>
             )}
-            {fundraiser?.darujme_donors_count > 0 && (
+            {(fundraiser?.darujme_donors_count ?? 0) > 0 && (
               <p className="text-xs text-gray mt-1">
-                👥 {fundraiser.darujme_donors_count} dárců
+                👥 {fundraiser?.darujme_donors_count} dárců
               </p>
             )}
           </div>

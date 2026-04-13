@@ -23,6 +23,11 @@ export interface Institution {
   country: string
   lat: number | null
   lng: number | null
+  facebook_url: string | null
+  instagram_url: string | null
+  opening_hours: string | null
+  darujme_api_id: string | null
+  darujme_api_secret: string | null
   plan: SubscriptionPlan
   plan_expires_at: string | null
   approval_status: ApprovalStatus
@@ -144,6 +149,10 @@ export interface Fundraiser {
   deadline: string | null
   active: boolean
   image_url: string | null
+  darujme_project_id: string | null
+  darujme_url: string | null
+  darujme_synced_at: string | null
+  darujme_donors_count: number
   created_at: string
   updated_at: string
 }

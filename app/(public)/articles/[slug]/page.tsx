@@ -48,8 +48,6 @@ interface InstitutionPanelData {
   otherArticles?: OtherArticleItem[]
 }
 
-export const revalidate = 3600 // 1 hodina — fallback, primárně invaliduje revalidatePath v API
-
 interface PageProps {
   params: Promise<{ slug: string }>
 }
@@ -159,14 +157,13 @@ export default async function ArticleDetailPage({ params }: PageProps) {
 
             {/* Cover */}
             {article.cover_url && (
-              <div className="rounded-lg overflow-hidden mb-8 shadow-md">
+              <div className="rounded-2xl overflow-hidden mb-8 shadow-md">
                 <Image
                   src={article.cover_url}
                   alt={article.title}
                   width={740} height={420}
                   className="w-full object-cover"
                   style={{ maxHeight: '400px' }}
-                  priority
                 />
               </div>
             )}
@@ -280,7 +277,7 @@ function InstitutionPanel({ inst, isShelter }: { inst: InstitutionPanelData; isS
       </div>
       <Link href={`/institutions/${inst.slug}`} className="no-underline group block px-4 pb-4 pt-2 hover:opacity-90 transition-opacity">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-12 h-12 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center text-xl"
+          <div className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center text-xl"
             style={{ background: accentBg }}>
             {inst.logo_url
               ? <Image src={inst.logo_url} alt={inst.name} width={48} height={48} className="object-cover" />
@@ -301,32 +298,13 @@ function InstitutionPanel({ inst, isShelter }: { inst: InstitutionPanelData; isS
             {inst.short_description}
           </p>
         )}
-        <div className="py-2 rounded-lg text-center text-xs font-bold text-white"
+        <div className="py-2 rounded-xl text-center text-xs font-bold text-white"
           style={{ background: accent }}>
           Zobrazit profil →
         </div>
       </Link>
     </div>
   )
-}
-
-/* ── Další příběhy — async loader ── */
-async function OtherArticlesLoader({ institutionId, currentSlug, institutionName }: {
-  institutionId: string
-  currentSlug: string
-  institutionName: string
-}) {
-  const supabase = await createClient()
-  const { data: others } = await supabase
-    .from('articles')
-    .select('id, title, slug, cover_url')
-    .eq('institution_id', institutionId)
-    .eq('published', true)
-    .neq('slug', currentSlug)
-    .order('published_at', { ascending: false })
-    .limit(3)
-  if (!others?.length) return null
-  return <OtherArticles articles={others} institutionName={institutionName} />
 }
 
 /* ── Další příběhy ── */
