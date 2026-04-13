@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { WorkflowBar } from './AnimalWorkflowCard'
 
@@ -346,6 +346,18 @@ const STEP_SUBTITLES = [
 
 /* ─── Step 1 ─────────────────────────────────────────────── */
 function Step1({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean | string[]) => void }) {
+  const [breedSuggestions, setBreedSuggestions] = useState<string[]>([])
+
+  useEffect(() => {
+    fetch('/api/breeds')
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: { name_cs?: string }[]) => {
+        const names = rows.map(r => r.name_cs ?? '').filter(Boolean)
+        setBreedSuggestions(names)
+      })
+      .catch(() => {})
+  }, [])
+
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-3">
@@ -378,22 +390,8 @@ function Step1({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
             style={inputStyle}
           />
           <datalist id="breed-suggestions">
-            {data.species === 'dog' && <>
-              <option value="Kříženec" />
-              <option value="Labrador" />
-              <option value="Zlatý retriever" />
-              <option value="Německý ovčák" />
-              <option value="Bígl" />
-              <option value="Jezevčík" />
-              <option value="Boxer" />
-            </>}
-            {data.species === 'cat' && <>
-              <option value="Kříženec" />
-              <option value="Mainská mývalí" />
-              <option value="Perská" />
-              <option value="Siamská" />
-              <option value="Britská krátkosrstá" />
-            </>}
+            <option value="Kříženec" />
+            {breedSuggestions.map(b => <option key={b} value={b} />)}
           </datalist>
         </Field>
         <Field label="Věk (roky)">
