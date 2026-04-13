@@ -68,6 +68,7 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
     { href: '/admin/volunteers',   icon: '🙋', label: 'Dobrovolníci' },
     { href: '/admin/articles',     icon: '📝', label: 'Články' },
     { href: '/admin/newsletter',   icon: '📬', label: 'Newsletter' },
+    { href: '/admin/documents',    icon: '📄', label: 'Dokumenty' },
     { href: '/admin/billing',      icon: '💳', label: 'Předplatné' },
   ]
 
@@ -116,7 +117,7 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
       {/* Navigace */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <div className="space-y-1">
-          {/* Dashboard, Statistiky, Zvířata — první 3 položky jsou stejné pro oba typy */}
+          {/* Dashboard, Statistiky, Zvířata */}
           {navItems.slice(0, 3).map(({ href, icon, label }) => (
             <Link key={href} href={href} onClick={() => setOpen(false)}
               className={cn(
@@ -147,7 +148,7 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
             </NavGroup>
           )}
 
-          {/* Záznamy léčby (jen pro záchranné stanice) — navItems[3] = cases */}
+          {/* Záznamy léčby (jen pro záchranné stanice) */}
           {!isShelter && navItems.slice(3, 4).map(({ href, icon, label }) => (
             <Link key={href} href={href} onClick={() => setOpen(false)}
               className={cn(
@@ -161,7 +162,7 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
             </Link>
           ))}
 
-          {/* Zbytek navigace — shelter: od index 3 (Sbírky…), rescue: od index 4 (Sbírky…) */}
+          {/* Zbytek (Sbírky, Dobrovolníci, Články, Newsletter, Dokumenty, Billing) */}
           {(isShelter ? navItems.slice(3) : navItems.slice(4)).map(({ href, icon, label }) => (
             <Link key={href} href={href} onClick={() => setOpen(false)}
               className={cn(
