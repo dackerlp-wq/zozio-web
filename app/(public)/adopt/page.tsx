@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
 import { AnimalFilter } from '@/components/public/AnimalFilter'
 import { FavoriteButtonWrapper } from '@/components/public/FavoriteButtonWrapper'
 import type { InstitutionType } from '@/types/database'
@@ -56,19 +55,16 @@ interface PageProps {
   searchParams: Promise<{
     q?:             string
     species?:       string
-    breed?:         string
     city?:          string
-    lat?:           string
-    lng?:           string
     size?:          string
     urgent?:        string
     sort?:          string
     page?:          string
-    housing?:       string
-    kids?:          string
-    other_animals?: string
-    activity?:      string
-    difficulty?:    string
+    housing?:       string   // 'flat' | 'house'
+    kids?:          string   // 'yes' | 'no' | 'any'
+    other_animals?: string   // 'yes' | 'no' | 'any'
+    activity?:      string   // 'very_high' | 'high' | 'medium' | 'low'
+    difficulty?:    string   // 'easy' | 'medium' | 'demanding' | 'expert'
   }>
 }
 
@@ -76,10 +72,11 @@ export default async function AdoptPage({ searchParams }: PageProps) {
   const params = await searchParams
   const page   = Math.max(1, parseInt(params.page ?? '1'))
 
-  const [{ animals, total }, species, breeds] = await Promise.all([
+  const [animals, total, species, cities] = await Promise.all([
     getAnimals(params, page),
-    getActiveSpecies(),
-    getBreeds(params.species),
+    getTotal(params),
+    getSpecies(),
+    getCities(),
   ])
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
@@ -102,47 +99,25 @@ export default async function AdoptPage({ searchParams }: PageProps) {
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
-          {/* Filtry — desktop sidebar + mobilní floating button/sheet */}
-          <aside className="lg:w-64 flex-shrink-0">
-            <AnimalFilter
-              species={species}
-              breeds={breeds}
-              cityList={CITIES_SORTED}
-              params={params}
-              total={total}
-            />
+          {/* Filtry */}
+          <aside className="w-full lg:w-64 flex-shrink-0">
+            <AnimalFilter species={species} cities={cities} params={params} total={total} />
           </aside>
 
           {/* Výsledky */}
           <div className="flex-1 min-w-0">
-
-            {/* Location sort banner */}
-            {params.city && params.lat && (
-              <div className="flex items-center justify-between mb-4 px-3 py-2.5 rounded-lg gap-3"
-                style={{ background: '#F0EDE8', border: '1px solid #E0DDD8' }}>
-                <span className="text-sm font-semibold" style={{ color: '#1A0F0A' }}>
-                  📍 Seřazeno od nejbližšího k: <strong>{params.city}</strong>
-                </span>
-                <Link href={buildFilterUrl(params, { city: undefined, lat: undefined, lng: undefined, page: undefined })}
-                  className="text-xs font-bold no-underline flex-shrink-0"
-                  style={{ color: '#8B6550' }}>
-                  × Zrušit
-                </Link>
-              </div>
-            )}
 
             {/* Toolbar */}
             <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
               <p className="text-sm font-medium text-text-muted">
                 {total > 0 && totalPages > 1 && `Strana ${page} z ${totalPages}`}
               </p>
-              {!(params.city && params.lat) && <SortSelect current={params.sort} params={params} />}
+              <SortSelect current={params.sort} params={params} />
             </div>
 
             {/* Urgentní banner */}
             {hasUrgent && !params.urgent && (
-              <div role="status" aria-live="polite"
-                className="mb-5 p-3 rounded-lg flex items-center gap-3"
+              <div className="mb-5 p-3 rounded-xl flex items-center gap-3"
                 style={{ background: 'rgba(232,99,74,0.07)', border: '1px solid rgba(232,99,74,0.18)' }}>
                 <span className="text-lg">🆘</span>
                 <p className="text-sm font-semibold flex-1 text-coral-tag-text">
@@ -171,15 +146,6 @@ export default async function AdoptPage({ searchParams }: PageProps) {
             {totalPages > 1 && (
               <Pagination current={page} total={totalPages} params={params} />
             )}
-
-            {/* Archiv */}
-            <div className="mt-8 text-center">
-              <Link href="/adopt/archiv"
-                className="text-xs font-semibold px-3 py-2 rounded-lg border no-underline transition-all hover:opacity-80 inline-block"
-                style={{ borderColor: '#E0DDD8', color: '#8B6550', background: 'white' }}>
-                Archiv adoptovaných →
-              </Link>
-            </div>
           </div>
         </div>
       </div>
@@ -244,40 +210,7 @@ function AnimalCard({ animal }: { animal: AdoptAnimal }) {
     high:      { label: '🏃 Vysoká',       color: 'var(--coral-tag-text)', bg: 'var(--coral-tag-bg)' },
     very_high: { label: '⚡ Velmi vysoká', color: 'var(--coral-tag-text)', bg: 'var(--coral-tag-bg)' },
   }
-
-  // Náročnost — inflektováno podle pohlaví
-  const difficultyTag: Record<string, { label: string; bg: string; color: string }> = {
-    easy:      { label: isFemale ? '⭐ Nenáročná'      : '⭐ Nenáročný',       bg: '#EAF3DE', color: '#3B6D11' },
-    medium:    { label: isFemale ? '⭐⭐ Středně náročná' : '⭐⭐ Středně náročný', bg: '#FAEEDA', color: '#854F0B' },
-    demanding: { label: isFemale ? '⭐⭐⭐ Náročná'     : '⭐⭐⭐ Náročný',     bg: '#FFF5E6', color: '#7A4F00' },
-    expert:    { label: '⭐⭐⭐⭐ Pro odborníky',                               bg: '#FFF0E6', color: '#993C1D' },
-  }
-
-  const tags: { label: string; bg: string; color: string }[] = []
-
-  // 1. Děti
-  if (animal.good_with_kids === true)
-    tags.push({ label: isFemale ? '👶 Vhodná k dětem' : '👶 Vhodný k dětem', bg: '#EAF3DE', color: '#1D6A42' })
-  else if (animal.good_with_kids === false)
-    tags.push({ label: isFemale ? '👶 Nevhodná k dětem' : '👶 Nevhodný k dětem', bg: '#FFF5F2', color: '#993C1D' })
-
-  // 2. Aktivita
-  if (animal.activity_level && activityTag[animal.activity_level])
-    tags.push(activityTag[animal.activity_level])
-
-  // 3. Náročnost
-  if (animal.care_difficulty && difficultyTag[animal.care_difficulty])
-    tags.push(difficultyTag[animal.care_difficulty])
-
-  // 4. Jiná zvířata
-  if (animal.good_with_dogs || animal.good_with_cats || animal.good_with_other_animals)
-    tags.push({ label: '🐾 Vychází se zvířaty', bg: '#E8F4FD', color: '#1A5C8A' })
-
-  // 5. Typ bydlení
-  if (animal.suitable_for_flat && !animal.suitable_for_house)
-    tags.push({ label: '🏢 Do bytu', bg: '#F0EDE8', color: '#6B4030' })
-  else if (animal.suitable_for_house && !animal.suitable_for_flat)
-    tags.push({ label: '🏡 Do domu', bg: '#F0EDE8', color: '#6B4030' })
+  const activity = animal.activity_level ? activityLabel[animal.activity_level] : null
 
   return (
     <Link href={`/animals/${animal.id}`} className="no-underline group">
@@ -317,11 +250,8 @@ function AnimalCard({ animal }: { animal: AdoptAnimal }) {
             {activity              && <Pill label={activity.label} bg={activity.bg} color={activity.color} />}
           </div>
         </div>
-      </Link>
-      <div className="absolute top-2.5 right-2.5 z-10">
-        <FavoriteButtonWrapper type="animal" id={animal.id} size="sm" />
       </div>
-    </div>
+    </Link>
   )
 }
 
@@ -358,7 +288,7 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
 function Pagination({ current, total, params }: { current: number; total: number; params: FilterParams }) {
   const pages = getPaginationRange(current, total)
   return (
-    <nav aria-label="Stránkování" className="flex items-center justify-center gap-1.5 mt-10 flex-wrap">
+    <div className="flex items-center justify-center gap-1.5 mt-10 flex-wrap">
       {current > 1 && (
         <Link href={buildFilterUrl(params, { page: String(current - 1) })}
           className="w-9 h-9 rounded-lg flex items-center justify-center text-sm border no-underline transition-all hover:opacity-80"
@@ -369,9 +299,7 @@ function Pagination({ current, total, params }: { current: number; total: number
           <span key={`d${i}`} className="w-9 h-9 flex items-center justify-center text-sm text-text-muted">…</span>
         ) : (
           <Link key={p} href={buildFilterUrl(params, { page: String(p) })}
-            aria-label={`Stránka ${p}`}
-            aria-current={p === current ? 'page' : undefined}
-            className="min-w-[44px] h-11 rounded-lg flex items-center justify-center text-sm font-medium border no-underline transition-all"
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-medium border no-underline transition-all"
             style={p === current
               ? { background: 'var(--coral)', color: 'white', borderColor: 'var(--coral)' }
               : { background: 'white', color: 'var(--text-body)', borderColor: '#E0DDD8' }
@@ -383,7 +311,7 @@ function Pagination({ current, total, params }: { current: number; total: number
           className="w-9 h-9 rounded-lg flex items-center justify-center text-sm border no-underline transition-all hover:opacity-80"
           style={{ borderColor: '#E0DDD8', color: 'var(--text-body)', background: 'white' }}>→</Link>
       )}
-    </nav>
+    </div>
   )
 }
 
@@ -394,16 +322,6 @@ function getPaginationRange(current: number, total: number): (number | '...')[] 
   return [1, '...', current - 1, current, current + 1, '...', total]
 }
 
-/* ── Geo helpers ── */
-
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLng = (lng2 - lng1) * Math.PI / 180
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
-}
-
 /* ── Data ── */
 
 async function getAnimals(params: FilterParams, page: number) {
@@ -412,13 +330,13 @@ async function getAnimals(params: FilterParams, page: number) {
 
   let query = supabase
     .from('animals')
-    .select('id, name, sex, breed, birth_year, primary_photo, urgent, adoption_status, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, suitable_for_flat, suitable_for_house, activity_level, care_difficulty, species:animal_species(name_cs,icon), institution:institutions(name,city,type,lat,lng)', { count: 'exact' })
+    .select('id, name, breed, birth_year, primary_photo, urgent, adoption_status, vaccinated, neutered, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, suitable_for_flat, suitable_for_house, activity_level, care_difficulty, species:animal_species(name_cs,icon), institution:institutions(name,city,type)')
     .eq('published', true)
     .eq('adoption_status', 'available')
     .or('in_quarantine.is.null,in_quarantine.eq.false')
 
+  // Filtry
   if (params.species)  query = query.eq('species_id', params.species)
-  if (params.breed)    query = query.eq('breed', params.breed)
   if (params.size)     query = query.eq('size', params.size)
   if (params.urgent === 'true') query = query.eq('urgent', true)
   if (params.q)        query = query.or(`name.ilike.%${params.q}%,breed.ilike.%${params.q}%,description.ilike.%${params.q}%`)
@@ -431,6 +349,7 @@ async function getAnimals(params: FilterParams, page: number) {
   if (params.activity)    query = query.eq('activity_level', params.activity)
   if (params.difficulty)  query = query.eq('care_difficulty', params.difficulty)
 
+  // Řazení
   query = params.sort === 'name'
     ? query.order('name', { ascending: true })
     : query.order('urgent', { ascending: false }).order('created_at', { ascending: false })
