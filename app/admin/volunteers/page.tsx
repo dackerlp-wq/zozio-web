@@ -2,6 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import { VolunteerActions } from '@/components/admin/VolunteerActions'
+import type { Volunteer } from '@/types/database'
+
+type VolunteerRow = Volunteer & { activities?: string[]; message?: string | null }
 
 const activityLabel: Record<string, string> = {
   walking:   '🦮 Venčení',
@@ -47,7 +50,7 @@ export default async function AdminVolunteersPage() {
     .eq('institution_id', membership.institution_id)
     .order('created_at', { ascending: false })
 
-  const items = (volunteers ?? []) as any[]
+  const items = (volunteers ?? []) as VolunteerRow[]
   const pending = items.filter(v => v.status === 'pending').length
   const active  = items.filter(v => v.status === 'active').length
 
@@ -75,7 +78,7 @@ export default async function AdminVolunteersPage() {
         <>
           {/* Mobilní karty */}
           <div className="md:hidden space-y-3">
-            {items.map((v: any) => (
+            {items.map((v) => (
               <div key={v.id} className={`bg-white rounded-lg p-4 border shadow-sm ${v.status === 'pending' ? 'border-amber' : 'border-gray-pale'}`}>
                 <div className="flex items-start justify-between mb-2">
                   <div>
@@ -86,9 +89,9 @@ export default async function AdminVolunteersPage() {
                     {statusLabel[v.status] ?? v.status}
                   </span>
                 </div>
-                {v.activities?.length > 0 && (
+                {(v.activities?.length ?? 0) > 0 && (
                   <div className="flex flex-wrap gap-1 mb-3">
-                    {v.activities.map((a: string) => (
+                    {v.activities?.map((a: string) => (
                       <span key={a} className="inline-flex items-center px-2 py-0.5 bg-sand rounded-pill text-xs font-semibold text-brown">
                         {activityLabel[a] ?? a}
                       </span>
@@ -117,7 +120,7 @@ export default async function AdminVolunteersPage() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((v: any) => (
+                {items.map((v) => (
                   <tr key={v.id} className={`border-b border-gray-pale/50 hover:bg-sand/20 transition-colors ${v.status === 'pending' ? 'bg-amber-light/10' : ''}`}>
                     <td className="px-5 py-3.5">
                       <div className="font-display font-bold text-sm text-espresso">{v.name}</div>

@@ -9,6 +9,28 @@ import { ShareButtons } from '@/components/public/ShareButtons'
 import { formatBreed } from '@/lib/breed-label'
 import { StickyPanel } from '@/components/public/StickyPanel'
 import { FavoriteButton } from '@/components/public/FavoriteButton'
+import type { Animal, Institution, AnimalSpecies } from '@/types/database'
+
+/* ── Query-specific types ── */
+interface AnimalDetail extends Omit<Animal, 'institution' | 'species'> {
+  institution: Pick<Institution, 'id' | 'name' | 'city' | 'type' | 'slug' | 'email' | 'phone'> | null
+  species: Pick<AnimalSpecies, 'id' | 'name_cs' | 'icon'> | null
+}
+
+interface SimilarAnimal {
+  id: string
+  name: string
+  primary_photo: string | null
+  species: { icon: string | null } | null
+  institution: { city: string } | null
+}
+
+interface LinkedArticle {
+  id: string
+  title: string
+  slug: string
+  perex: string | null
+}
 
 const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://zozio.cz'
 
@@ -18,9 +40,8 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params
-  const animal  = await getAnimal(id)
-  if (!animal) return { title: 'Zvíře nenalezeno | Zozio' }
-  const a = animal as any
+  const a = await getAnimal(id)
+  if (!a) return { title: 'Zvíře nenalezeno | Zozio' }
   return {
     title:       `${a.name} — Adopce | Zozio`,
     description: a.description?.slice(0, 155) ?? `Adoptuj ${a.name} z útulku.`,
@@ -34,12 +55,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function AnimalDetailPage({ params }: PageProps) {
   const { id }  = await params
-  const animal  = await getAnimal(id)
-  if (!animal) notFound()
+  const a = await getAnimal(id)
+  if (!a) notFound()
 
-  const a           = animal as any
-  const institution = a.institution as any
-  const species     = a.species     as any
+  const institution = a.institution
+  const species     = a.species
+  const similar     = await getSimilarAnimals(id, a.species_id, a.institution_id)
+  const article     = await getLinkedArticle(id)
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -78,16 +100,16 @@ export default async function AnimalDetailPage({ params }: PageProps) {
   const status = statusConfig[a.adoption_status] ?? statusConfig.available
 
   return (
-    <main className="min-h-screen pt-20 md:pt-24" style={{ background: '#FFFCF8' }}>
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 md:px-10 pb-20">
+    <main className="min-h-screen pt-20 md:pt-24 bg-warm">
+      <div className="max-w-[1200px] mx-auto px-5 md:px-10 pb-20">
 
         {/* Breadcrumb */}
-        <nav aria-label="Navigační cesta" className="flex items-center gap-2 py-5 text-sm flex-wrap">
-          <Link href="/" className="no-underline hover:opacity-70 transition-opacity" style={{ color: '#6B4030' }}>Domů</Link>
-          <span aria-hidden="true" style={{ color: '#8B6550' }}>·</span>
-          <Link href="/adopt" className="no-underline hover:opacity-70 transition-opacity" style={{ color: '#6B4030' }}>Adopce</Link>
-          <span aria-hidden="true" style={{ color: '#8B6550' }}>·</span>
-          <span aria-current="page" className="font-semibold" style={{ color: '#1A0F0A' }}>{a.name}</span>
+        <nav className="flex items-center gap-2 py-5 text-sm text-text-muted">
+          <Link href="/" className="no-underline hover:opacity-70 transition-opacity text-text-muted">Domů</Link>
+          <span>·</span>
+          <Link href="/adopt" className="no-underline hover:opacity-70 transition-opacity text-text-muted">Adopce</Link>
+          <span>·</span>
+          <span className="font-semibold text-text-primary">{a.name}</span>
         </nav>
 
         {/* Hlavní grid */}
@@ -169,34 +191,44 @@ export default async function AnimalDetailPage({ params }: PageProps) {
             <CompatibilitySection a={a} />
 
             {/* Zdraví */}
-            <HealthSection a={a} />
-
-            {/* Požadavky na adoptanta */}
-            {a.adopter_requirements && (
-              <section className="mb-7">
-                <SectionTitle>Požadavky na adopci</SectionTitle>
-                <div className="p-4 rounded-lg border" style={{ background: '#FAFAF8', borderColor: '#E8D9C8' }}>
-                  <p className="text-sm leading-relaxed" style={{ color: '#4A2C1A', lineHeight: 1.8 }}>
-                    {a.adopter_requirements}
-                  </p>
-                </div>
-              </section>
-            )}
+            <section className="mb-8">
+              <SectionTitle>Zdraví a stav</SectionTitle>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { label: 'Očkovaný',    value: a.vaccinated },
+                  { label: 'Kastrovaný',  value: a.neutered },
+                  { label: 'Čipovaný',    value: a.microchipped },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border"
+                    style={{ borderColor: value ? '#BDE8D0' : 'var(--border)', background: value ? '#F0FBF5' : 'var(--warm-hover)' }}>
+                    <span className="text-base">{value ? '✓' : '—'}</span>
+                    <span className="text-sm font-medium" style={{ color: value ? '#1D6A42' : 'var(--text-muted)' }}>{label}</span>
+                  </div>
+                ))}
+                {a.special_needs && (
+                  <div className="col-span-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl border"
+                    style={{ borderColor: '#F5D8A0', background: '#FFFBEF' }}>
+                    <span>⚠️</span>
+                    <span className="text-sm font-medium" style={{ color: '#7A4F00' }}>{a.special_needs}</span>
+                  </div>
+                )}
+              </div>
+            </section>
 
             {/* Propojený článek */}
             {article && (
-              <section className="mb-7">
-                <SectionTitle>Příběh „{a.name}"</SectionTitle>
-                <Link href={`/articles/${(article as any).slug}`} className="no-underline group">
-                  <div className="flex items-start gap-4 p-4 rounded-lg border hover:-translate-y-0.5 transition-all"
-                    style={{ background: '#FAECE7', borderColor: 'rgba(232,99,74,0.20)' }}>
+              <section className="mb-8">
+                <SectionTitle>Příběh {a.name}</SectionTitle>
+                <Link href={`/articles/${article.slug}`} className="no-underline group">
+                  <div className="flex items-start gap-4 p-4 rounded-2xl border hover:-translate-y-0.5 transition-all"
+                    style={{ background: 'var(--coral-tag-bg)', borderColor: 'rgba(232,99,74,0.20)' }}>
                     <span className="text-3xl flex-shrink-0">📖</span>
                     <div>
-                      <div className="font-bold text-[#1A0F0A] mb-1">{(article as any).title}</div>
-                      {(article as any).perex && (
-                        <p className="text-sm line-clamp-2" style={{ color: '#6B4030' }}>{(article as any).perex}</p>
+                      <div className="font-bold text-text-primary mb-1">{article.title}</div>
+                      {article.perex && (
+                        <p className="text-sm line-clamp-2 text-text-body">{article.perex}</p>
                       )}
-                      <span className="text-xs font-bold mt-2 inline-block" style={{ color: '#E8634A' }}>
+                      <span className="text-xs font-bold mt-2 inline-block text-coral">
                         Přečíst celý příběh →
                       </span>
                     </div>
@@ -205,12 +237,37 @@ export default async function AnimalDetailPage({ params }: PageProps) {
               </section>
             )}
 
+            {/* Podobná zvířata */}
+            {similar.length > 0 && (
+              <section className="mb-8">
+                <SectionTitle>Podobná zvířata</SectionTitle>
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {similar.map((s: SimilarAnimal) => (
+                    <Link key={s.id} href={`/animals/${s.id}`} className="no-underline group flex-shrink-0">
+                      <div className="w-36 bg-white rounded-xl overflow-hidden border border-border hover:border-coral/40 transition-all">
+                        <div className="relative h-28 bg-coral-tag-bg flex items-center justify-center overflow-hidden">
+                          {s.primary_photo
+                            ? <Image src={s.primary_photo} alt={s.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                            : <span className="text-3xl">{s.species?.icon ?? '🐾'}</span>
+                          }
+                        </div>
+                        <div className="p-2.5">
+                          <div className="font-bold text-sm text-text-primary truncate">{s.name}</div>
+                          <div className="text-xs truncate text-text-muted">{s.institution?.city}</div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Adopční formulář — mobilní verze */}
             <div className="lg:hidden mb-7">
               {isAvailable && (
-                <div className="bg-white rounded-lg border border-[#F0EDE8] p-5">
-                  <h2 className="font-bold text-xl text-[#1A0F0A] mb-1">Chci adoptovat „{a.name}"</h2>
-                  <p className="text-sm mb-5" style={{ color: '#8B6550' }}>Vyplň žádost a útulek tě kontaktuje.</p>
+                <div className="bg-white rounded-2xl border border-border p-5">
+                  <h2 className="font-bold text-xl text-text-primary mb-1">Chci adoptovat {a.name}</h2>
+                  <p className="text-sm mb-5 text-text-muted">Vyplň žádost a útulok tě kontaktuje.</p>
                   <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
                 </div>
               )}
@@ -234,32 +291,23 @@ export default async function AnimalDetailPage({ params }: PageProps) {
           {/* ── Pravý sloupec — sticky ── */}
           <div className="hidden lg:block">
             <StickyPanel>
-              {/* Urgentní banner */}
-              {a.urgent && (
-                <div className="px-5 pt-4">
-                  <UrgentBanner />
-                </div>
-              )}
-
-              {/* Jméno + status */}
-              <div className="p-5 border-b border-[#F0EDE8]">
-                <AnimalNameBlock a={a} age={age} sexLabel={sexLabel} sizeLabel={sizeLabel} species={species} status={status} />
+              {/* Jméno + info */}
+              <div className="p-5 border-b border-border">
+                <AnimalHeader animal={a} age={age} sexLabel={sexLabel} sizeLabel={sizeLabel} species={species} institution={institution} />
               </div>
 
               {/* Útulek */}
               {institution && (
-                <div className="px-5 py-4 border-b border-[#F0EDE8]">
+                <div className="px-5 py-4 border-b border-border">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#8B6550' }}>
-                        {institution.type === 'shelter' ? 'Útulek' : 'Záchranná stanice'}
-                      </div>
-                      <div className="font-semibold text-sm text-[#1A0F0A]">{institution.name}</div>
-                      {institution.city && <div className="text-xs mt-0.5" style={{ color: '#8B6550' }}>📍 {institution.city}</div>}
+                      <div className="text-[11px] font-bold uppercase tracking-wider mb-1 text-text-muted">Útulok</div>
+                      <div className="font-semibold text-sm text-text-primary">{institution.name}</div>
+                      <div className="text-xs mt-0.5 text-text-muted">📍 {institution.city}</div>
                     </div>
                     <Link href={`/institutions/${institution.slug}`}
-                      className="text-xs font-bold no-underline px-3 py-1.5 rounded-lg border transition-all hover:opacity-80 flex-shrink-0"
-                      style={{ borderColor: '#E0DDD8', color: '#6B4030' }}>
+                      className="text-xs font-bold no-underline px-3 py-1.5 rounded-lg border transition-all hover:opacity-80"
+                      style={{ borderColor: '#E0DDD8', color: 'var(--text-body)' }}>
                       Profil →
                     </Link>
                   </div>
@@ -268,9 +316,9 @@ export default async function AnimalDetailPage({ params }: PageProps) {
 
               {/* Poplatek */}
               {a.adoption_fee > 0 && (
-                <div className="px-5 py-3 border-b border-[#F0EDE8] flex items-center justify-between">
-                  <span className="text-sm font-medium" style={{ color: '#6B4030' }}>Adopční poplatek</span>
-                  <span className="font-bold text-[#1A0F0A]">{a.adoption_fee.toLocaleString('cs-CZ')} Kč</span>
+                <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+                  <span className="text-sm font-medium text-text-body">Adopční poplatek</span>
+                  <span className="font-bold text-text-primary">{a.adoption_fee.toLocaleString('cs-CZ')} Kč</span>
                 </div>
               )}
 
@@ -278,15 +326,25 @@ export default async function AnimalDetailPage({ params }: PageProps) {
               <div className="p-5">
                 {isAvailable && (
                   <>
-                    <h3 className="font-bold text-base text-[#1A0F0A] mb-1">Adoptovat „{a.name}"</h3>
-                    <p className="text-xs mb-4" style={{ color: '#8B6550' }}>
-                      Vyplň žádost — útulek tě kontaktuje do 3 pracovních dní.
+                    <h3 className="font-bold text-base text-text-primary mb-1">Adoptovat {a.name}</h3>
+                    <p className="text-xs mb-4 text-text-muted">
+                      Vyplň žádost — útulok tě kontaktuje do 3 pracovních dní.
                     </p>
                     <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
                   </>
                 )}
                 {isReserved && <ReservedBanner name={a.name} />}
-                {!isAvailable && !isReserved && <AdoptedBanner name={a.name} />}
+                {!isAvailable && !isReserved && (
+                  <div className="text-center py-4">
+                    <div className="text-3xl mb-2">🏠</div>
+                    <p className="font-bold text-text-primary">{a.name} již byl adoptován!</p>
+                    <Link href="/adopt" className="mt-3 inline-block">
+                      <button className="px-5 py-2.5 rounded-xl font-bold text-sm text-white border-none cursor-pointer hover:opacity-90 bg-coral">
+                        Najít další zvíře →
+                      </button>
+                    </Link>
+                  </div>
+                )}
               </div>
             </StickyPanel>
           </div>
@@ -300,18 +358,34 @@ export default async function AnimalDetailPage({ params }: PageProps) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="font-bold text-lg text-[#1A0F0A] mb-4 pb-3 border-b border-[#F0EDE8]">
+    <h2 className="font-bold text-lg text-text-primary mb-4 pb-3 border-b border-border">
       {children}
     </h2>
   )
 }
 
-function AnimalNameBlock({ a, age, sexLabel, sizeLabel, species, status }: any) {
+function AnimalHeader({ animal: a, age, sexLabel, sizeLabel, species, institution }: {
+  animal: AnimalDetail
+  age: string | null
+  sexLabel: string | null
+  sizeLabel: Record<string, string>
+  species: Pick<AnimalSpecies, 'id' | 'name_cs' | 'icon'> | null
+  institution: Pick<Institution, 'id' | 'name' | 'city' | 'type' | 'slug' | 'email' | 'phone'> | null
+}) {
+  const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
+    available:        { label: 'K adopci',     bg: 'var(--success-tag-bg)', color: 'var(--success-tag-text)' },
+    reserved:         { label: 'Rezervováno',  bg: 'var(--warning-tag-bg)', color: 'var(--warning-tag-text)' },
+    adopted:          { label: 'Adoptováno',   bg: 'var(--border)', color: 'var(--text-neutral)' },
+    foster:           { label: 'Ve foster',    bg: 'var(--rescue-tag-bg)', color: 'var(--rescue-tag-text)' },
+    not_for_adoption: { label: 'Není k adopci', bg: 'var(--border)', color: 'var(--text-neutral)' },
+  }
+  const status = statusConfig[a.adoption_status] ?? statusConfig.available
+
   return (
     <div>
       <div className="flex items-start justify-between gap-3 mb-2">
-        <h1 className="font-display font-extrabold text-[#1A0F0A] leading-tight"
-          style={{ fontSize: 'clamp(24px, 4vw, 34px)' }}>
+        <h1 className="font-display font-extrabold text-text-primary leading-tight"
+          style={{ fontSize: 'clamp(26px, 4vw, 36px)' }}>
           {a.name}
         </h1>
         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold flex-shrink-0 mt-1"
@@ -319,7 +393,8 @@ function AnimalNameBlock({ a, age, sexLabel, sizeLabel, species, status }: any) 
           {status.label}
         </span>
       </div>
-      <p className="text-sm" style={{ color: '#8B6550' }}>
+
+      <p className="text-sm mb-4 text-text-muted">
         {[
           species?.name_cs,
           formatBreed(a.breed, a.is_crossbreed, a.breed2),
@@ -329,6 +404,14 @@ function AnimalNameBlock({ a, age, sexLabel, sizeLabel, species, status }: any) 
           a.weight_kg ? `${a.weight_kg} kg` : null,
         ].filter(Boolean).join(' · ')}
       </p>
+
+      {a.urgent && (
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg mb-3"
+          style={{ background: 'rgba(232,99,74,0.10)', border: '1px solid rgba(232,99,74,0.25)' }}>
+          <span className="w-2 h-2 rounded-full bg-coral animate-pulse" />
+          <span className="text-xs font-bold text-coral-tag-text">Urgentní adopce</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -431,13 +514,13 @@ function CompatCard({ icon, label, value }: { icon: string; label: string; value
   return (
     <div className="flex flex-col items-center gap-1.5 py-3 px-1 rounded-lg border text-center"
       style={{
-        borderColor: isYes ? '#BDE8D0' : isNo ? '#F5C4B3' : '#F0EDE8',
-        background:  isYes ? '#F0FBF5' : isNo ? '#FFF5F2' : '#FAFAF8',
+        borderColor: isYes ? '#BDE8D0' : isNo ? '#F5C4B3' : 'var(--border)',
+        background:  isYes ? '#F0FBF5' : isNo ? '#FFF5F2' : 'var(--warm-hover)',
       }}>
-      <span className="text-xl">{icon}</span>
-      <span className="text-xs font-semibold leading-tight" style={{ color: '#1A0F0A' }}>{label}</span>
-      <span className="text-[11px] font-bold"
-        style={{ color: isYes ? '#1D6A42' : isNo ? '#993C1D' : '#8B6550' }}>
+      <span className="text-2xl">{icon}</span>
+      <span className="text-sm font-semibold text-text-primary">{label}</span>
+      <span className="text-xs font-bold"
+        style={{ color: isYes ? '#1D6A42' : isNo ? 'var(--coral-tag-text)' : 'var(--text-muted)' }}>
         {isYes ? 'Ano' : isNo ? 'Ne' : 'Neznámo'}
       </span>
     </div>
@@ -521,13 +604,12 @@ function SimilarAnimalCard({ animal: s }: { animal: any }) {
 
 function ReservedBanner({ name }: { name: string }) {
   return (
-    <div className="text-center py-5 rounded-lg" style={{ background: '#FAEEDA' }}>
+    <div className="text-center py-4 rounded-xl bg-warning-tag-bg">
       <div className="text-3xl mb-2">⏳</div>
-      <p className="font-bold text-[#1A0F0A] mb-1">{name} je momentálně rezervovaný</p>
-      <p className="text-xs mb-3" style={{ color: '#8B6550' }}>Můžeš podat žádost a být na řadě.</p>
+      <p className="font-bold text-text-primary mb-1">{name} je momentálně rezervovaný</p>
+      <p className="text-xs mb-3 text-text-muted">Můžeš podat žádost a být na řadě.</p>
       <Link href="/adopt">
-        <button className="px-4 py-2 rounded-lg font-bold text-sm border-none cursor-pointer hover:opacity-90 text-white"
-          style={{ background: '#E8634A' }}>
+        <button className="px-4 py-2 rounded-lg font-bold text-sm border-none cursor-pointer hover:opacity-90 text-white bg-coral">
           Najít další zvíře
         </button>
       </Link>
@@ -553,7 +635,7 @@ function AdoptedBanner({ name }: { name: string }) {
 
 /* ── Data ── */
 
-async function getAnimal(id: string) {
+async function getAnimal(id: string): Promise<AnimalDetail | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('animals')
@@ -565,10 +647,11 @@ async function getAnimal(id: string) {
     .eq('id', id)
     .eq('published', true)
     .single()
-  return data
+  return data as AnimalDetail | null
 }
 
-async function getSimilarAnimals(id: string, speciesId: string, breed: string | null) {
+async function getSimilarAnimals(id: string, speciesId: string | null, institutionId: string): Promise<SimilarAnimal[]> {
+  if (!speciesId) return []
   const supabase = await createClient()
 
   // Nejdřív zkus stejnou rasu (max 3)
@@ -596,13 +679,12 @@ async function getSimilarAnimals(id: string, speciesId: string, breed: string | 
     .eq('published', true)
     .eq('adoption_status', 'available')
     .eq('species_id', speciesId)
-    .not('id', 'in', `(${excludeIds.join(',')})`)
-    .limit(remaining)
-
-  return [...sameBreed, ...(sameSpecies ?? [])]
+    .neq('id', id)
+    .limit(6)
+  return (data ?? []) as unknown as SimilarAnimal[]
 }
 
-async function getLinkedArticle(animalId: string) {
+async function getLinkedArticle(animalId: string): Promise<LinkedArticle | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('articles')
@@ -612,5 +694,5 @@ async function getLinkedArticle(animalId: string) {
     .order('published_at', { ascending: false })
     .limit(1)
     .single()
-  return data ?? null
+  return (data as LinkedArticle | null) ?? null
 }

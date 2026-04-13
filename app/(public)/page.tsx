@@ -7,6 +7,44 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Tag } from '@/components/ui/Tag'
 import { FavoriteButtonWrapper } from '@/components/public/FavoriteButtonWrapper'
+import type { InstitutionType } from '@/types/database'
+
+/* ── Query-specific types ── */
+interface FeaturedAnimal {
+  id: string
+  name: string
+  species: { name_cs: string; icon: string | null } | null
+  institution: { name: string; city: string; type: InstitutionType } | null
+  primary_photo: string | null
+  photos: string[]
+  urgent: boolean
+  adoption_status: string
+  birth_year: number | null
+  neutered: boolean
+  vaccinated: boolean
+  good_with_kids: boolean | null
+}
+
+interface FeaturedRescueCase {
+  id: string
+  name: string | null
+  case_number: string | null
+  species: { name_cs: string; icon: string | null } | null
+  institution: { name: string; city: string } | null
+  primary_photo: string | null
+  status: string
+  cause_of_injury: string | null
+}
+
+interface ActiveFundraiser {
+  id: string
+  title: string
+  goal_amount: number
+  current_amount: number
+  institution: { name: string; type: InstitutionType } | null
+  animal: { species: { icon: string | null } | null } | null
+  rescue_case: { species: { icon: string | null } | null } | null
+}
 
 export const revalidate = 300
 
@@ -38,11 +76,9 @@ export default async function HomePage() {
   )
 }
 
-/* ── ASYNC WRAPPERS ── */
-async function AnimalsSectionAsync() {
-  const animals = await getFeaturedAnimals()
-  return <AnimalsSection animals={animals} />
-}
+/* ── HERO ── */
+function HeroSection({ animals }: { animals: FeaturedAnimal[] }) {
+  const urgentCount = animals.filter(a => a.urgent).length
 
 async function HeroPhotosDesktopAsync() {
   const animals = await getFeaturedAnimals()
@@ -324,7 +360,7 @@ function StatsStrip({ stats }: { stats: { availableAnimals: number; adoptedTotal
 }
 
 /* ── ZVÍŘATA K ADOPCI ── */
-function AnimalsSection({ animals }: { animals: any[] }) {
+function AnimalsSection({ animals }: { animals: FeaturedAnimal[] }) {
   return (
     <section className="py-12 md:py-20 px-4 md:px-12 bg-warm">
       <div className="max-w-[1200px] mx-auto">
@@ -362,7 +398,7 @@ function AnimalsSection({ animals }: { animals: any[] }) {
   )
 }
 
-function AnimalCard({ animal }: { animal: any }) {
+function AnimalCard({ animal }: { animal: FeaturedAnimal }) {
   return (
     <Link href={`/animals/${animal.id}`} className="no-underline">
       <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-pale hover:-translate-y-1 hover:shadow-md transition-all duration-300 h-full flex flex-col">
@@ -398,7 +434,7 @@ function AnimalCard({ animal }: { animal: any }) {
 }
 
 /* ── ZÁCHRANNÉ STANICE + SBÍRKY ── */
-function RescueSection({ cases, fundraisers }: { cases: any[], fundraisers: any[] }) {
+function RescueSection({ cases, fundraisers }: { cases: FeaturedRescueCase[], fundraisers: ActiveFundraiser[] }) {
   return (
     <section className="py-12 md:py-20 px-4 md:px-12" style={{ background: '#F5F0EB' }}>
       <div className="max-w-[1200px] mx-auto">
@@ -641,10 +677,8 @@ function InstitutionsCta() {
 }
 
 /* ── DATA ── */
-// cache() deduplicates calls within one request — HeroPhotosDesktopAsync,
-// HeroMobileStripAsync and AnimalsSectionAsync all call this but trigger only 1 DB query.
-const getFeaturedAnimals = cache(async function getFeaturedAnimals() {
-  const supabase = createServiceClient()
+async function getFeaturedAnimals(): Promise<FeaturedAnimal[]> {
+  const supabase = await createClient()
   const { data } = await supabase
     .from('animals')
     .select('id, name, species:animal_species(name_cs,icon), institution:institutions(name,city,type), primary_photo, urgent, adoption_status, birth_year, neutered, vaccinated, good_with_kids')
@@ -653,11 +687,11 @@ const getFeaturedAnimals = cache(async function getFeaturedAnimals() {
     .order('urgent', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(8)
-  return data ?? []
-})
+  return (data ?? []) as unknown as FeaturedAnimal[]
+}
 
-async function getFeaturedRescueCases() {
-  const supabase = createServiceClient()
+async function getFeaturedRescueCases(): Promise<FeaturedRescueCase[]> {
+  const supabase = await createClient()
   const { data } = await supabase
     .from('rescue_cases')
     .select('id, name, case_number, species:animal_species(name_cs,icon), institution:institutions(name,city), primary_photo, status, cause_of_injury')
@@ -665,18 +699,18 @@ async function getFeaturedRescueCases() {
     .in('status', ['intake', 'treatment', 'rehabilitation'])
     .order('created_at', { ascending: false })
     .limit(3)
-  return data ?? []
+  return (data ?? []) as unknown as FeaturedRescueCase[]
 }
 
-async function getActiveFundraisers() {
-  const supabase = createServiceClient()
+async function getActiveFundraisers(): Promise<ActiveFundraiser[]> {
+  const supabase = await createClient()
   const { data } = await supabase
     .from('fundraisers')
     .select('id, title, goal_amount, current_amount, institution:institutions(name,type)')
     .eq('active', true)
     .order('created_at', { ascending: false })
     .limit(3)
-  return data ?? []
+  return (data ?? []) as unknown as ActiveFundraiser[]
 }
 
 async function getStats() {

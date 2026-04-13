@@ -10,7 +10,7 @@ interface RescueFilterProps {
   total:   number
 }
 
-function buildUrl(params: any, overrides: Record<string, string | undefined>) {
+function buildUrl(params: Record<string, string | undefined>, overrides: Record<string, string | undefined>) {
   const next = { ...params, ...overrides, page: undefined }
   const qs   = new URLSearchParams()
   Object.entries(next).forEach(([k, v]) => { if (v) qs.set(k, v as string) })
@@ -52,74 +52,22 @@ export function RescueFilter({ species, cities, params, total }: RescueFilterPro
   const chip = (active: boolean) =>
     `inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-all no-underline
     ${active
-      ? 'border-[#2E9E8F] text-[#0F6E56] bg-[#E1F5EE]'
-      : 'border-[#F0EDE8] text-[#6B4030] bg-white hover:border-[#2E9E8F]/40'}`
+      ? 'border-rescue text-rescue-tag-text bg-rescue-tag-bg'
+      : 'border-border text-text-body bg-white hover:border-rescue/40'}`
 
-  const divider = <div className="h-px bg-[#F0EDE8] my-4" />
+  const divider = <div className="h-px bg-border my-4" />
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div className="mb-4">
-      <span className="text-[10px] font-bold uppercase tracking-widest mb-2 block" style={{ color: '#8B6550' }}>
+      <span className="text-[10px] font-bold uppercase tracking-widest mb-2 block text-text-muted">
         {title}
       </span>
       {children}
     </div>
   )
 
-  const panelContent = (
-    <div>
-      {/* Oblast / poloha */}
-      <Section title="Oblast">
-        {/* GPS tlačítko — pouze mobil */}
-        <button
-          onClick={handleGps}
-          disabled={gpsLoading}
-          className="md:hidden w-full mb-3 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold border-none cursor-pointer transition-all"
-          style={{
-            background: hasLoc ? '#E1F5EE' : '#2E9E8F',
-            color:      hasLoc ? '#0F6E56' : 'white',
-            opacity:    gpsLoading ? 0.7 : 1,
-          }}>
-          {gpsLoading
-            ? '⏳ Zjišťuji polohu…'
-            : hasLoc
-              ? '📍 Z vašeho okolí ✓'
-              : '📍 Příběhy z mého okolí'}
-        </button>
-
-        {hasLoc ? (
-          <div className="flex items-center justify-between px-3 py-2 rounded-lg mb-2"
-            style={{ background: '#E1F5EE', border: '1px solid #BDE8D0' }}>
-            <span className="text-xs font-semibold" style={{ color: '#0F6E56' }}>
-              📍 {params.city ?? 'Vaše okolí'}
-            </span>
-            <Link
-              href={buildUrl(params, { lat: undefined, lng: undefined, city: undefined })}
-              className="text-xs font-bold no-underline"
-              style={{ color: '#2E9E8F' }}>
-              × Zrušit
-            </Link>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-0.5">
-            <Link href={buildUrl(params, { city: undefined })}
-              className={`text-left px-3 py-1.5 rounded-lg text-xs font-semibold no-underline transition-all
-                ${!params.city ? 'text-[#0F6E56] bg-[#E1F5EE]' : 'text-[#6B4030] hover:bg-[#F5FAF9]'}`}>
-              Celá ČR a SR
-            </Link>
-            {cities.map(city => (
-              <Link key={city}
-                href={buildUrl(params, { city: params.city === city ? undefined : city })}
-                className={`text-left px-3 py-1.5 rounded-lg text-xs font-semibold no-underline transition-all
-                  ${params.city === city ? 'text-[#0F6E56] bg-[#E1F5EE]' : 'text-[#6B4030] hover:bg-[#F5FAF9]'}`}>
-                {city}
-              </Link>
-            ))}
-          </div>
-        )}
-      </Section>
-
-      {divider}
+  const panel = (
+    <div className="bg-white rounded-2xl border border-border p-4">
 
       {/* Stav léčby */}
       <Section title="Stav léčby">
@@ -172,13 +120,35 @@ export function RescueFilter({ species, cities, params, total }: RescueFilterPro
         </>
       )}
 
-      {/* Zrušit filtry */}
+      {/* Město */}
+      {cities.length > 0 && (
+        <>
+          {divider}
+          <Section title="Město">
+            <div className="flex flex-col gap-0.5">
+              <Link href={buildUrl(params, { city: undefined })}
+                className={`text-left px-3 py-1.5 rounded-lg text-xs font-semibold no-underline transition-all
+                  ${!params.city ? 'text-rescue-tag-text bg-rescue-tag-bg' : 'text-text-body hover:bg-warm-hover'}`}>
+                Celá ČR a SR
+              </Link>
+              {cities.map(city => (
+                <Link key={city}
+                  href={buildUrl(params, { city: params.city === city ? undefined : city })}
+                  className={`text-left px-3 py-1.5 rounded-lg text-xs font-semibold no-underline transition-all
+                    ${params.city === city ? 'text-rescue-tag-text bg-rescue-tag-bg' : 'text-text-body hover:bg-warm-hover'}`}>
+                  {city}
+                </Link>
+              ))}
+            </div>
+          </Section>
+        </>
+      )}
+
+      {/* Zrušit */}
       {activeCount > 0 && (
         <>
           {divider}
-          <Link href="/rescue"
-            className="block w-full py-2.5 rounded-lg text-xs font-bold text-center no-underline hover:opacity-80 transition-all"
-            style={{ background: '#F0EDE8', color: '#6B4030' }}>
+          <Link href="/rescue" className="block w-full py-2.5 rounded-xl text-xs font-bold text-center no-underline hover:opacity-80 transition-all bg-border text-text-body">
             Zrušit filtry ({activeCount})
           </Link>
         </>
@@ -188,11 +158,23 @@ export function RescueFilter({ species, cities, params, total }: RescueFilterPro
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <div className="hidden lg:block sticky top-24">
-        <div className="bg-white rounded-lg border border-[#F0EDE8] p-4">
-          {panelContent}
-        </div>
+      <div className="hidden lg:block sticky top-24">{panel}</div>
+      <div className="lg:hidden">
+        <details className="group">
+          <summary className="flex items-center justify-between px-4 py-3 rounded-xl border font-semibold text-sm cursor-pointer list-none bg-white border-[#E0DDD8] text-text-primary">
+            <span className="flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              Filtry
+              {activeCount > 0 && (
+                <span className="w-5 h-5 rounded-full text-[10px] font-bold text-white flex items-center justify-center bg-rescue">{activeCount}</span>
+              )}
+            </span>
+            <span className="text-text-muted group-open:rotate-180 transition-transform">↓</span>
+          </summary>
+          <div className="mt-2">{panel}</div>
+        </details>
       </div>
 
       {/* Mobilní plovoucí tlačítko */}

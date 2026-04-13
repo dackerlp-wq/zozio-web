@@ -1,11 +1,22 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import Image from 'next/image'
-import { createServiceClient } from '@/lib/supabase/service'
-import { InstitutionGpsButton } from '@/components/public/InstitutionGpsButton'
-import { InstitutionSearch } from '@/components/public/InstitutionSearch'
+import { createClient } from '@/lib/supabase/server'
+import { NearbyInstitutions } from '@/components/public/NearbyInstitutions'
+import type { InstitutionType, ApprovalStatus } from '@/types/database'
 
-export const revalidate = 300
+/* ── Query-specific types ── */
+interface InstitutionListItem {
+  id: string
+  name: string
+  slug: string
+  type: InstitutionType
+  city: string
+  lat: number | null
+  lng: number | null
+  logo_url: string | null
+  cover_url: string | null
+  approval_status: ApprovalStatus
+}
 
 export const metadata: Metadata = {
   title: 'Útulky a záchranné stanice | Zozio',
@@ -44,27 +55,8 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
   ])
   // ────────────────────────────────────────────────────────────────────────────
 
-  // Odvodit z allLite (bez dalších dotazů)
-  const filtered = allLite.filter(i =>
-    (!params.q   || i.name.toLowerCase().includes(params.q.toLowerCase()) || i.city.toLowerCase().includes(params.q.toLowerCase())) &&
-    (!params.city || i.city === params.city)
-  )
-  const typeCounts = {
-    all:     filtered.length,
-    shelter: filtered.filter(i => i.type === 'shelter').length,
-    rescue:  filtered.filter(i => i.type === 'rescue_station').length,
-  }
-  const cities = [...new Set(allLite.map(i => i.city).filter(Boolean))].sort()
-
-  // Připojit stats ke stránkovaným institucím
-  const institutionsWithStats = institutions.map((inst: any) => ({
-    ...inst,
-    _animalCount:   animalCounts[inst.id] ?? 0,
-    _activeCount:   caseCounts[inst.id]?.active   ?? 0,
-    _releasedCount: caseCounts[inst.id]?.released ?? 0,
-  }))
-
-  const totalPages = Math.ceil(total / PAGE_SIZE)
+  const shelters = institutions.filter((i: InstitutionListItem) => i.type === 'shelter')
+  const rescues  = institutions.filter((i: InstitutionListItem) => i.type === 'rescue_station')
 
   const tabs = [
     { id: 'all',            label: 'Všechny',           count: typeCounts.all },
@@ -72,63 +64,62 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
     { id: 'rescue_station', label: 'Záchranné stanice', count: typeCounts.rescue },
   ]
 
-  function buildUrl(overrides: Record<string, string | undefined>) {
-    const next = { ...params, ...overrides }
-    const qs   = new URLSearchParams()
-    Object.entries(next).forEach(([k, v]) => { if (v) qs.set(k, v) })
-    const str = qs.toString()
-    return `/institutions${str ? `?${str}` : ''}`
-  }
+  const withGeo = institutions.filter((i: InstitutionListItem) => i.lat && i.lng).length
 
   return (
-    <main className="min-h-screen pt-20 md:pt-24" style={{ background: '#FFFCF8' }}>
-      <div className="max-w-[1200px] mx-auto px-5 md:px-10 pb-16">
+    <main className="min-h-screen pt-20 md:pt-24 bg-warm">
+      <div className="max-w-[1100px] mx-auto px-5 md:px-10 pb-16">
 
         {/* Header */}
         <div className="py-8 md:py-10">
-          <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#E8634A' }}>Adresář</p>
-          <h1 className="font-display font-extrabold text-[#1A0F0A] mb-4"
+          <p className="text-xs font-bold uppercase tracking-widest mb-2 text-coral">Adresář</p>
+          <h1 className="font-display font-extrabold text-text-primary mb-3"
             style={{ fontSize: 'clamp(28px, 4vw, 42px)' }}>
             Útulky a záchranné stanice
           </h1>
 
-          <div className="flex flex-wrap gap-2 max-w-[700px]">
-            <InstitutionSearch
-              suggestions={allLite}
-              cities={cities}
-              params={params}
-              defaultQ={params.q}
+          {/* Search */}
+          <form method="GET" action="/institutions" className="flex gap-2 max-w-[480px]">
+            {type !== 'all' && <input type="hidden" name="type" value={type} />}
+            <input
+              type="search" name="q"
+              defaultValue={params.q ?? ''}
+              placeholder="Hledat název, město..."
+              className="flex-1 px-4 py-2.5 rounded-xl border text-sm outline-none"
+              style={{ borderColor: '#E0DDD8', background: 'white', color: 'var(--text-primary)' }}
             />
-            {(params.q || params.city) && (
-              <Link href={buildUrl({ q: undefined, city: undefined, page: undefined })}
-                aria-label="Zrušit filtry"
-                className="px-3 py-2.5 rounded-lg font-bold text-sm border no-underline hover:opacity-80 flex items-center flex-shrink-0"
-                style={{ borderColor: '#E0DDD8', color: '#6B4030', background: 'white' }}>
-                ✕ Zrušit
+            <button type="submit"
+              className="px-5 py-2.5 rounded-xl font-bold text-sm text-white border-none cursor-pointer hover:opacity-90 bg-coral">
+              Hledat
+            </button>
+            {params.q && (
+              <Link href={`/institutions${type !== 'all' ? `?type=${type}` : ''}`}
+                className="px-3 py-2.5 rounded-xl font-bold text-sm border no-underline hover:opacity-80"
+                style={{ borderColor: '#E0DDD8', color: 'var(--text-body)', background: 'white' }}>
+                ✕
               </Link>
             )}
           </div>
         </div>
 
-        {/* Tabs */}
-        <nav aria-label="Filtr typu instituce"
-          className="flex gap-0 border-b mb-6 overflow-x-auto"
-          style={{ borderColor: '#F0EDE8', scrollbarWidth: 'none' } as any}>
+        {/* Taby */}
+        <div className="flex gap-0 border-b border-border mb-6 overflow-x-auto"
+          style={{ scrollbarWidth: 'none' } as React.CSSProperties}>
           {tabs.map(tab => (
             <Link key={tab.id}
               href={buildUrl({ type: tab.id, page: undefined })}
               aria-current={type === tab.id ? 'page' : undefined}
               className="no-underline flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition-all"
               style={type === tab.id
-                ? { color: '#E8634A', borderBottomColor: '#E8634A' }
-                : { color: '#6B4030', borderBottomColor: 'transparent' }
+                ? { color: 'var(--coral)', borderBottomColor: 'var(--coral)' }
+                : { color: 'var(--text-muted)', borderBottomColor: 'transparent' }
               }>
               {tab.label}
               <span aria-hidden="true"
                 className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1 rounded-full text-[10px] font-bold"
                 style={type === tab.id
-                  ? { background: '#E8634A', color: 'white' }
-                  : { background: '#F0EDE8', color: '#6B4030' }
+                  ? { background: 'var(--coral)', color: 'white' }
+                  : { background: 'var(--border)', color: 'var(--text-muted)' }
                 }>
                 {tab.count}
               </span>
@@ -152,52 +143,37 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
           />
         </div>
 
-        {/* Grid */}
-        {institutionsWithStats.length === 0 ? (
-          <div className="text-center py-24">
-            <div className="text-6xl mb-5">🏠</div>
-            <p className="font-bold text-xl text-[#1A0F0A] mb-2">Žádné instituce nenalezeny</p>
-            <p className="text-sm mb-6" style={{ color: '#8B6550' }}>Zkus jiné hledání nebo zrušit filtry.</p>
-            <Link href="/institutions"
-              className="inline-flex px-5 py-2.5 rounded-lg font-bold text-sm text-white no-underline"
-              style={{ background: '#E8634A' }}>
-              Zrušit filtry
+        {/* Filtry měst */}
+        {cities.length > 1 && (
+          <div className="flex flex-wrap gap-1.5 mb-6">
+            <Link href={`/institutions?type=${type}${params.q ? `&q=${params.q}` : ''}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold no-underline border transition-all
+                ${!params.city ? 'border-coral text-coral-tag-text bg-coral-tag-bg' : 'border-border text-text-body bg-white hover:border-coral/40'}`}>
+              Celá ČR/SR
             </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-            {institutionsWithStats.map((inst: any) => (
-              <InstitutionCard key={inst.id} inst={inst} />
+            {cities.map(city => (
+              <Link key={city}
+                href={`/institutions?type=${type}&city=${city}${params.q ? `&q=${params.q}` : ''}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold no-underline border transition-all
+                  ${params.city === city ? 'border-coral text-coral-tag-text bg-coral-tag-bg' : 'border-border text-text-body bg-white hover:border-coral/40'}`}>
+                {city}
+              </Link>
             ))}
           </div>
         )}
 
-        {/* Stránkování */}
-        {totalPages > 1 && (
-          <Pagination current={page} total={totalPages} buildUrl={buildUrl} />
+        {/* Hint pokud žádná instituce nemá souřadnice */}
+        {withGeo === 0 && institutions.length > 0 && (
+          <div className="mb-5 p-3 rounded-xl flex items-center gap-3"
+            style={{ background: 'var(--border)', border: '1px solid #E0DDD8' }}>
+            <span className="text-sm text-text-muted">
+              💡 Tip: Aby fungovalo řazení podle vzdálenosti, musí mít útulky vyplněné GPS souřadnice v nastavení.
+            </span>
+          </div>
         )}
 
-        {/* CTA */}
-        <div className="mt-14 p-6 md:p-8 rounded-xl text-center"
-          style={{ background: 'white', border: '1.5px dashed #E0DDD8' }}>
-          <div className="text-3xl mb-3">🏠</div>
-          <p className="font-bold text-lg text-[#1A0F0A] mb-1">Chybí zde vaše instituce?</p>
-          <p className="text-sm mb-5" style={{ color: '#8B6550' }}>
-            Registrace je zdarma a trvá 5 minut.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/auth/register?type=shelter"
-              className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg font-bold text-sm text-white no-underline hover:opacity-90 transition-all"
-              style={{ background: '#E8634A' }}>
-              Registrovat útulek →
-            </Link>
-            <Link href="/auth/register?type=rescue_station"
-              className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg font-bold text-sm no-underline border hover:opacity-80 transition-all"
-              style={{ background: 'white', color: '#1A0F0A', borderColor: '#E0DDD8' }}>
-              Záchrannou stanici →
-            </Link>
-          </div>
-        </div>
+        {/* Výsledky s geolokací */}
+        <NearbyInstitutions institutions={institutions as InstitutionListItem[]} />
       </div>
     </main>
   )
@@ -414,36 +390,5 @@ async function getAllInstitutionsLite() {
     .from('institutions')
     .select('name, slug, type, city')
     .eq('approval_status', 'approved')
-    .order('name', { ascending: true })
-  return (data ?? []) as { name: string; slug: string; type: string; city: string }[]
-}
-
-/** Počty dostupných zvířat per institution_id (útulky) */
-async function getAllAnimalCounts(): Promise<Record<string, number>> {
-  const supabase = createServiceClient()
-  const { data } = await supabase
-    .from('animals')
-    .select('institution_id')
-    .eq('published', true)
-    .eq('adoption_status', 'available')
-  const counts: Record<string, number> = {}
-  for (const a of data ?? []) counts[a.institution_id] = (counts[a.institution_id] ?? 0) + 1
-  return counts
-}
-
-/** Počty aktivních/propuštěných případů per institution_id (záchranné stanice) */
-async function getAllCaseCounts(): Promise<Record<string, { active: number; released: number }>> {
-  const supabase = createServiceClient()
-  const { data } = await supabase
-    .from('rescue_cases')
-    .select('institution_id, status')
-    .eq('published', true)
-    .not('status', 'in', '("deceased")')
-  const counts: Record<string, { active: number; released: number }> = {}
-  for (const c of data ?? []) {
-    if (!counts[c.institution_id]) counts[c.institution_id] = { active: 0, released: 0 }
-    if (c.status === 'released') counts[c.institution_id].released++
-    else counts[c.institution_id].active++
-  }
-  return counts
+  return [...new Set((data ?? []).map((d: { city: string }) => d.city).filter(Boolean))].sort() as string[]
 }

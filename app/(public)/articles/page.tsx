@@ -2,23 +2,16 @@ import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/service'
 import Link from 'next/link'
 import Image from 'next/image'
-
-export const revalidate = 300
+import { ArticleInstitutionFilter } from '@/components/public/ArticleInstitutionFilter'
 
 export const metadata: Metadata = {
   title: 'Příběhy adopcí a záchran | Zozio',
   description: 'Čtěte příběhy úspěšných adopcí a záchran zvířat z celé ČR a SR.',
 }
 
-const PAGE_SIZE = 12
-
-const CATEGORIES = [
-  { key: '',       label: 'Vše' },
-  { key: 'story',  label: '🐾 Příběhy' },
-  { key: 'rescue', label: '🦉 Záchranné' },
-  { key: 'tips',   label: '💡 Tipy' },
-  { key: 'news',   label: '📰 Novinky' },
-]
+interface PageProps {
+  searchParams: Promise<{ kategorie?: string; instituce?: string }>
+}
 
 const categoryLabel: Record<string, string> = {
   story:  '🐾 Příběh adopce',
@@ -27,59 +20,70 @@ const categoryLabel: Record<string, string> = {
   news:   '📰 Novinky',
 }
 
-interface PageProps {
-  searchParams: Promise<{ cat?: string; page?: string }>
+const categoryColor: Record<string, string> = {
+  story:  'bg-coral-light text-coral-dark',
+  rescue: 'bg-rescue-bg text-rescue-dark',
+  tips:   'bg-amber-light text-warning',
+  news:   'bg-sand text-brown-mid',
 }
 
 export default async function ArticlesPage({ searchParams }: PageProps) {
-  const { cat = '', page: pageStr = '1' } = await searchParams
-  const page = Math.max(1, parseInt(pageStr, 10) || 1)
-  const offset = (page - 1) * PAGE_SIZE
+  const { kategorie, instituce } = await searchParams
+  const supabase = await createClient()
 
-  const supabase = createServiceClient()
-
-  // Pinned hero + paginated list in parallel
-  const pinnedQuery = supabase
+  // Načti články s institucí
+  let query = supabase
     .from('articles')
-    .select('id, title, slug, perex, cover_url, category, published_at, institution:institutions(name, slug)')
-    .eq('published', true)
-    .eq('pinned', true)
-    .single()
-
-  let listQuery = supabase
-    .from('articles')
-    .select('id, title, slug, perex, cover_url, category, published_at, institution:institutions(name, slug)', { count: 'exact' })
+    .select(`
+      id, title, slug, perex, cover_url, category,
+      author_name, published_at, views,
+      institution:institutions(id, name, slug, type, logo_url)
+    `)
     .eq('published', true)
     .order('published_at', { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1)
+    .limit(24)
 
-  if (cat) listQuery = listQuery.eq('category', cat)
+  if (kategorie) query = query.eq('category', kategorie)
+  if (instituce)  query = query.eq('institution_id', instituce)
 
-  const [{ data: pinned }, { data: articlesRaw, count }] = await Promise.all([
-    pinnedQuery,
-    listQuery,
-  ])
+  const { data: articles } = await query
 
-  const articles = articlesRaw ?? []
-  const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE)
+  // Načti instituce pro filtr (jen ty co mají aspoň 1 publikovaný článek)
+  const { data: institutionsRaw } = await supabase
+    .from('articles')
+    .select('institution:institutions(id, name)')
+    .eq('published', true)
+    .not('institution_id', 'is', null)
 
-  function buildUrl(params: { cat?: string; page?: number }) {
-    const q = new URLSearchParams()
-    const c = params.cat !== undefined ? params.cat : cat
-    const p = params.page ?? 1
-    if (c) q.set('cat', c)
-    if (p > 1) q.set('page', String(p))
-    const qs = q.toString()
-    return `/articles${qs ? `?${qs}` : ''}`
+  // Deduplikuj instituce
+  const instMap = new Map<string, { id: string; name: string }>()
+  for (const row of institutionsRaw ?? []) {
+    const inst = row.institution as unknown as { id: string; name: string } | null
+    if (inst?.id) instMap.set(inst.id, inst)
+  }
+  const institutions = Array.from(instMap.values()).sort((a, b) => a.name.localeCompare(b.name, 'cs'))
+
+  const items = articles ?? []
+  const hasFilters = !!(kategorie || instituce)
+
+  // URL helper pro filtry
+  const filterUrl = (params: Record<string, string | undefined>) => {
+    const p = new URLSearchParams()
+    const merged = { kategorie, instituce, ...params }
+    for (const [k, v] of Object.entries(merged)) {
+      if (v) p.set(k, v)
+    }
+    const str = p.toString()
+    return `/articles${str ? `?${str}` : ''}`
   }
 
   return (
     <main className="min-h-screen bg-warm pt-20 md:pt-24 pb-16 md:pb-20">
       <div className="max-w-[1100px] mx-auto px-4 md:px-6">
 
-        {/* Header */}
-        <div className="mb-8 md:mb-10">
-          <span className="inline-flex items-center gap-1.5 bg-coral-light text-coral-dark font-body text-xs font-bold px-4 py-1.5 rounded-pill uppercase tracking-wider mb-3">
+        {/* Hero */}
+        <div className="text-center mb-8 md:mb-10">
+          <span className="inline-flex items-center gap-1.5 bg-coral-light text-coral-dark font-body text-xs font-bold px-4 py-1.5 rounded-pill uppercase tracking-wider mb-4">
             📖 Příběhy
           </span>
           <h1 className="font-display font-extrabold text-3xl md:text-4xl text-espresso mb-2 leading-tight">
@@ -90,125 +94,173 @@ export default async function ArticlesPage({ searchParams }: PageProps) {
           </p>
         </div>
 
-        {/* Pinned hero — show only on first page with no category filter */}
-        {pinned && !cat && page === 1 && (
-          <Link href={`/articles/${pinned.slug}`} className="no-underline block mb-10 group">
-            <div className="relative rounded-2xl overflow-hidden border border-amber/40 shadow-sm bg-white">
-              <div className="grid grid-cols-1 md:grid-cols-2">
-                {/* Image */}
-                <div className="relative h-56 md:h-auto md:min-h-[320px] bg-sand">
-                  {pinned.cover_url ? (
-                    <Image
-                      src={pinned.cover_url}
-                      alt={pinned.title}
-                      fill
-                      loading="eager"
-                      className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
-                      sizes="(max-width: 768px) 100vw, 550px"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-7xl bg-gradient-to-br from-sand to-coral-light">
-                      🐾
-                    </div>
-                  )}
-                  <div className="absolute top-4 left-4">
-                    <span className="bg-amber text-white text-xs font-bold px-3 py-1 rounded-pill">
-                      📌 Doporučujeme
-                    </span>
-                  </div>
-                </div>
+        {/* Filtry */}
+        <div className="flex flex-wrap gap-2 mb-8 items-center">
 
-                {/* Content */}
-                <div className="p-7 md:p-10 flex flex-col justify-center">
-                  <span className="inline-flex items-center text-xs font-bold text-coral-dark mb-3">
-                    {categoryLabel[pinned.category ?? 'story'] ?? '📖 Příběh'}
-                  </span>
-                  <h2 className="font-display font-extrabold text-2xl md:text-3xl text-espresso mb-3 leading-tight group-hover:text-coral transition-colors">
-                    {pinned.title}
-                  </h2>
-                  {pinned.perex && (
-                    <p className="text-sm md:text-base text-brown-mid leading-relaxed line-clamp-3 mb-4">
-                      {pinned.perex}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-3 text-xs text-gray">
-                    {(pinned.institution as any)?.name && (
-                      <span className="font-semibold text-espresso">{(pinned.institution as any).name}</span>
-                    )}
-                    {pinned.published_at && (
-                      <>
-                        <span>·</span>
-                        <span>{new Date(pinned.published_at).toLocaleDateString('cs-CZ')}</span>
-                      </>
-                    )}
-                  </div>
-                  <div className="mt-5">
-                    <span className="inline-flex items-center gap-1.5 text-sm font-bold text-coral group-hover:gap-3 transition-all">
-                      Číst příběh →
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Link>
-        )}
-
-        {/* Category tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1 mb-7 scrollbar-hide">
-          {CATEGORIES.map(c => (
-            <Link
-              key={c.key}
-              href={buildUrl({ cat: c.key, page: 1 })}
-              className={`no-underline flex-shrink-0 text-sm font-bold px-4 py-2 rounded-pill border transition-all
-                ${cat === c.key
+          {/* Kategorie */}
+          <div className="flex flex-wrap gap-1.5">
+            <Link href={filterUrl({ kategorie: undefined })}
+              className={`inline-flex items-center px-3 py-1.5 rounded-pill text-xs font-bold border transition-all no-underline ${
+                !kategorie
                   ? 'bg-espresso text-white border-espresso'
-                  : 'bg-white text-gray border-gray-pale hover:border-gray-light hover:text-espresso'
-                }`}
-            >
-              {c.label}
+                  : 'bg-white text-text-muted border-border hover:border-espresso hover:text-espresso'
+              }`}>
+              Vše
             </Link>
-          ))}
+            {Object.entries(categoryLabel).map(([key, label]) => (
+              <Link key={key} href={filterUrl({ kategorie: key })}
+                className={`inline-flex items-center px-3 py-1.5 rounded-pill text-xs font-bold border transition-all no-underline ${
+                  kategorie === key
+                    ? `${categoryColor[key]} border-transparent`
+                    : 'bg-white text-text-muted border-border hover:border-espresso hover:text-espresso'
+                }`}>
+                {label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Oddělovač */}
+          {institutions.length > 0 && (
+            <div className="w-px h-5 bg-border mx-1 hidden sm:block" />
+          )}
+
+          {/* Instituce */}
+          {institutions.length > 0 && (
+            <ArticleInstitutionFilter
+              institutions={institutions}
+              current={instituce}
+              kategorie={kategorie}
+            />
+          )}
+
+          {/* Zrušit filtry */}
+          {hasFilters && (
+            <Link href="/articles"
+              className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-coral transition-colors no-underline ml-auto">
+              × Zrušit filtry
+            </Link>
+          )}
         </div>
 
-        {/* Grid */}
-        {articles.length > 0 ? (
+        {/* Výsledky */}
+        {items.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-              {articles.map(article => (
-                <ArticleCard key={article.id} article={article} />
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {items.map(article => {
+                const inst = article.institution as unknown as { id: string; name: string; slug: string; type: string; logo_url: string | null } | null
+                const isShelter = inst?.type === 'shelter'
+
+                return (
+                  <article key={article.id} className="bg-white rounded-[var(--radius-lg)] overflow-hidden shadow-sm border border-border hover:-translate-y-1 hover:shadow-md transition-all flex flex-col">
+
+                    {/* Obrázek */}
+                    <Link href={`/articles/${article.slug}`} className="no-underline block">
+                      {article.cover_url ? (
+                        <div className="h-44 relative overflow-hidden">
+                          <Image
+                            src={article.cover_url}
+                            alt={article.title}
+                            fill
+                            className="object-cover hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                      ) : (
+                        <div className="h-44 bg-gradient-to-br from-sand to-coral-light flex items-center justify-center text-5xl">
+                          🐾
+                        </div>
+                      )}
+                    </Link>
+
+                    <div className="p-5 flex flex-col flex-1">
+                      {/* Kategorie */}
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-pill text-xs font-bold mb-3 self-start ${categoryColor[article.category ?? 'story'] ?? 'bg-sand text-gray'}`}>
+                        {categoryLabel[article.category ?? 'story'] ?? '📖 Příběh'}
+                      </span>
+
+                      {/* Název */}
+                      <Link href={`/articles/${article.slug}`} className="no-underline group flex-1">
+                        <h2 className="font-display font-extrabold text-lg text-espresso mb-2 leading-tight group-hover:text-coral transition-colors">
+                          {article.title}
+                        </h2>
+                        {article.perex && (
+                          <p className="text-sm text-text-body leading-relaxed line-clamp-2 mb-3">
+                            {article.perex}
+                          </p>
+                        )}
+                      </Link>
+
+                      {/* Footer — instituce + datum */}
+                      <div className="pt-3 mt-auto border-t border-border">
+                        <div className="flex items-center justify-between gap-2">
+
+                          {/* Instituce */}
+                          {inst ? (
+                            <Link href={`/institutions/${inst.slug}`}
+                              className="flex items-center gap-2 no-underline group min-w-0">
+                              <div className={`w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center text-xs overflow-hidden ${isShelter ? 'bg-coral-tag-bg' : 'bg-rescue-tag-bg'}`}>
+                                {inst.logo_url
+                                  ? <Image src={inst.logo_url} alt={inst.name} width={24} height={24} className="object-cover" />
+                                  : <span>{isShelter ? '🏠' : '🚑'}</span>
+                                }
+                              </div>
+                              <span className="text-xs font-semibold text-text-muted group-hover:text-coral transition-colors truncate">
+                                {inst.name}
+                              </span>
+                            </Link>
+                          ) : (
+                            <span className="text-xs text-text-muted">
+                              {article.author_name ?? 'Zozio'}
+                            </span>
+                          )}
+
+                          {/* Datum */}
+                          {article.published_at && (
+                            <span className="text-xs text-text-muted flex-shrink-0">
+                              {new Date(article.published_at).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Přečíst tlačítko */}
+                        <Link href={`/articles/${article.slug}`}
+                          className="mt-3 flex items-center gap-1 text-xs font-bold text-coral hover:text-coral-dark transition-colors no-underline group">
+                          Přečíst celý příběh
+                          <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                        </Link>
+                      </div>
+                    </div>
+                  </article>
+                )
+              })}
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-10">
-                {page > 1 && (
-                  <Link href={buildUrl({ page: page - 1 })}
-                    className="no-underline px-4 py-2 rounded-lg border border-gray-pale bg-white text-sm font-semibold text-gray hover:border-espresso hover:text-espresso transition-all">
-                    ← Předchozí
-                  </Link>
-                )}
-                <span className="text-sm text-gray px-3">
-                  {page} / {totalPages}
-                </span>
-                {page < totalPages && (
-                  <Link href={buildUrl({ page: page + 1 })}
-                    className="no-underline px-4 py-2 rounded-lg border border-gray-pale bg-white text-sm font-semibold text-gray hover:border-espresso hover:text-espresso transition-all">
-                    Další →
-                  </Link>
-                )}
-              </div>
-            )}
+            {/* Počet výsledků */}
+            <p className="text-center text-sm text-text-muted mt-8">
+              {items.length === 24 ? 'Zobrazeno prvních 24 příběhů' : `Celkem ${items.length} příběhů`}
+              {hasFilters && ' · '}
+              {hasFilters && <Link href="/articles" className="text-coral hover:underline">zobrazit vše</Link>}
+            </p>
           </>
         ) : (
-          <div className="text-center py-20 text-gray">
-            <div className="text-5xl mb-4">📭</div>
-            <p className="font-bold text-espresso mb-1">Žádné články v této kategorii</p>
-            <Link href="/articles" className="text-sm text-coral font-semibold no-underline hover:opacity-80">
-              Zobrazit vše
-            </Link>
+          <div className="text-center py-20">
+            <div className="text-6xl mb-4">📖</div>
+            <h2 className="font-display font-extrabold text-2xl text-espresso mb-2">
+              {hasFilters ? 'Žádné příběhy nenalezeny' : 'Zatím žádné příběhy'}
+            </h2>
+            <p className="text-text-muted mb-6">
+              {hasFilters
+                ? 'Zkus jiný filtr nebo zobraz všechny příběhy.'
+                : 'Brzy tu budou příběhy adopcí a záchran zvířat.'}
+            </p>
+            {hasFilters && (
+              <Link href="/articles"
+                className="inline-flex items-center gap-2 bg-coral text-white font-bold px-6 py-3 rounded-pill no-underline hover:bg-coral-dark transition-colors">
+                Zobrazit vše
+              </Link>
+            )}
           </div>
         )}
+
       </div>
     </main>
   )

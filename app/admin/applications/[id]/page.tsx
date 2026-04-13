@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { ApplicationActions } from '@/components/admin/ApplicationActions'
+import { MeetingScheduler } from '@/components/admin/MeetingScheduler'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -114,6 +115,16 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
             applicantEmail={app.applicant_email}
             applicantName={app.applicant_name}
           />
+
+          {['reviewing', 'approved', 'meeting_scheduled'].includes(app.status) && (
+            <MeetingScheduler
+              applicationId={app.id}
+              animalName={animal?.name ?? 'zvíře'}
+              applicantName={app.applicant_name}
+              applicantEmail={app.applicant_email}
+              currentMeetingAt={app.meeting_at}
+            />
+          )}
         </div>
       </div>
     </div>

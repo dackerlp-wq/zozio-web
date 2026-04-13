@@ -3,21 +3,24 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { NewsletterSubscribe } from './NewsletterSubscribe'
-import { FavoriteButton } from './FavoriteButton'
+import type { Institution, Animal, AnimalSpecies, RescueCase, Fundraiser, Article } from '@/types/database'
+import { InstitutionMap } from '@/components/public/InstitutionMap'
 
 interface Tab { id: string; label: string; count: number | null }
+
+type AnimalWithSpecies = Animal & { species?: AnimalSpecies }
+type RescueCaseWithSpecies = RescueCase & { species?: AnimalSpecies }
 
 interface InstitutionTabsProps {
   tabs:         Tab[]
   activeTab:    string
   slug:         string
-  institution:  any
+  institution:  Institution
   isShelter:    boolean
-  animals:      any[]
-  rescueCases:  any[]
-  fundraisers:  any[]
-  articles:     any[]
+  animals:      AnimalWithSpecies[]
+  rescueCases:  RescueCaseWithSpecies[]
+  fundraisers:  Fundraiser[]
+  articles:     Article[]
 }
 
 const RESCUE_STATUSES = [
@@ -43,44 +46,36 @@ export function InstitutionTabs({
 
   const setTab = (id: string) => router.push(`/institutions/${slug}?tab=${id}`, { scroll: false })
 
-  const filteredRescue = rescueFilter
-    ? rescueCases.filter(c => c.status === rescueFilter)
-    : rescueCases
+  const activeColor = isShelter ? 'var(--coral)' : 'var(--rescue)'
+  const activeBadgeBg = isShelter ? 'var(--coral)' : 'var(--rescue)'
 
   return (
     <div>
       {/* Tab navigace */}
-      <div className="relative mb-6 px-4 md:px-0">
-        <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as any}>
-          <div className="inline-flex md:flex gap-1.5 p-1.5 rounded-b-2xl min-w-full"
-            style={{ background: '#F0EDE8' }}>
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setTab(tab.id)}
-                className="flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 text-sm font-bold cursor-pointer border-none whitespace-nowrap transition-all rounded-xl flex-shrink-0 md:flex-1"
+      <div className="flex gap-0 border-b border-border mb-8 overflow-x-auto"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}>
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setTab(tab.id)}
+            className="flex items-center gap-1.5 px-4 py-3.5 text-sm font-semibold cursor-pointer border-none bg-transparent whitespace-nowrap transition-all border-b-2 -mb-px"
+            style={activeTab === tab.id
+              ? { color: activeColor, borderBottomColor: activeColor }
+              : { color: 'var(--text-muted)', borderBottomColor: 'transparent' }
+            }
+          >
+            {tab.label}
+            {tab.count !== null && tab.count > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold"
                 style={activeTab === tab.id
-                  ? { background: 'white', color: accent, boxShadow: '0 1px 4px rgba(0,0,0,0.10)' }
-                  : { background: 'transparent', color: '#8B6550' }
-                }
-              >
-                {tab.label}
-                {tab.count !== null && tab.count > 0 && (
-                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold"
-                    style={activeTab === tab.id
-                      ? { background: accent, color: 'white' }
-                      : { background: 'rgba(0,0,0,0.08)', color: '#8B6550' }
-                    }>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-        {/* Fade hint vpravo na mobilu */}
-        <div className="absolute right-4 top-0 bottom-0 w-8 pointer-events-none md:hidden"
-          style={{ background: 'linear-gradient(to right, transparent, #FFFCF8)' }} />
+                  ? { background: activeBadgeBg, color: 'white' }
+                  : { background: 'var(--border)', color: 'var(--text-muted)' }
+                }>
+                {tab.count}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       {/* Obsah tabů */}
@@ -92,44 +87,28 @@ export function InstitutionTabs({
           {animals.length === 0 ? (
             <EmptyTab icon="🐾" text="Zatím žádná zvířata k adopci." />
           ) : (
-            <>
-              {/* Filtry statusu */}
-              {(() => {
-                const statusCfg: Record<string, { label: string; bg: string; color: string }> = {
-                  available: { label: 'K adopci',    bg: '#EAF3DE', color: '#3B6D11' },
-                  reserved:  { label: 'Rezervováno', bg: '#FAEEDA', color: '#854F0B' },
-                  foster:    { label: 'Ve foster',   bg: '#E1F5EE', color: '#0F6E56' },
-                }
-                const presentStatuses = Object.keys(statusCfg).filter(s => animals.some(a => a.adoption_status === s))
-                return presentStatuses.length > 1 ? (
-                  <div className="flex gap-2 overflow-x-auto pb-1 mb-5" style={{ scrollbarWidth: 'none' }}>
-                    <button
-                      onClick={() => setAnimalStatusFilter('')}
-                      className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer"
-                      style={!animalStatusFilter
-                        ? { background: '#E8634A', color: 'white', borderColor: '#E8634A' }
-                        : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+              {animals.map(a => (
+                <Link key={a.id} href={`/animals/${a.id}`} className="no-underline group">
+                  <div className="bg-white rounded-2xl overflow-hidden border border-border hover:border-coral/40 hover:-translate-y-1 transition-all">
+                    <div className="relative h-36 overflow-hidden bg-coral-tag-bg">
+                      {a.primary_photo
+                        ? <Image src={a.primary_photo} alt={a.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                        : <div className="w-full h-full flex items-center justify-center text-4xl">{a.species?.icon ?? '🐾'}</div>
                       }
-                    >
-                      Vše ({animals.length})
-                    </button>
-                    {presentStatuses.map(s => {
-                      const cfg = statusCfg[s]
-                      const cnt = animals.filter(a => a.adoption_status === s).length
-                      return (
-                        <button
-                          key={s}
-                          onClick={() => setAnimalStatusFilter(s)}
-                          className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer"
-                          style={animalStatusFilter === s
-                            ? { background: '#E8634A', color: 'white', borderColor: '#E8634A' }
-                            : { background: cfg.bg, color: cfg.color, borderColor: 'transparent' }
-                          }
-                        >
-                          {cfg.label} ({cnt})
-                        </button>
-                      )
-                    })}
+                      {a.urgent && (
+                        <div className="absolute top-2 left-2 bg-coral text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Urgentní</div>
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <div className="flex items-center justify-between gap-2 mb-0.5">
+                        <div className="font-bold text-sm text-text-primary truncate">{a.name}</div>
+                        <StatusPill status={a.adoption_status} />
+                      </div>
+                      <div className="text-xs truncate text-text-muted">
+                        {[a.species?.name_cs, a.breed].filter(Boolean).join(' · ')}
+                      </div>
+                    </div>
                   </div>
                 ) : null
               })()}
@@ -284,20 +263,14 @@ export function InstitutionTabs({
           {rescueCases.length === 0 ? (
             <EmptyTab icon="🦉" text="Zatím žádné záchranné případy." />
           ) : (
-            <>
-              {/* Status filtry */}
-              <div className="flex gap-2 overflow-x-auto pb-1 mb-5" style={{ scrollbarWidth: 'none' }}>
-                {RESCUE_STATUSES.map(s => {
-                  const cnt = s.id ? rescueCases.filter(c => c.status === s.id).length : rescueCases.length
-                  if (s.id && cnt === 0) return null
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => setRescueFilter(s.id)}
-                      className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer"
-                      style={rescueFilter === s.id
-                        ? { background: accent, color: 'white', borderColor: accent }
-                        : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {rescueCases.map((c) => (
+                <Link key={c.id} href={`/rescue/${c.id}`} className="no-underline group">
+                  <div className="bg-white rounded-2xl overflow-hidden border border-border hover:border-rescue/40 hover:-translate-y-1 transition-all">
+                    <div className="relative h-40 overflow-hidden bg-rescue-tag-bg">
+                      {c.primary_photo
+                        ? <Image src={c.primary_photo} alt={c.name ?? ''} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                        : <div className="w-full h-full flex items-center justify-center text-5xl">{c.species?.icon ?? '🐾'}</div>
                       }
                     >
                       {s.label} {cnt > 0 && <span className="ml-1 opacity-70">({cnt})</span>}
@@ -338,11 +311,18 @@ export function InstitutionTabs({
                           )}
                         </div>
                       </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            </>
+                    </div>
+                    <div className="p-4">
+                      <div className="font-bold text-sm text-text-primary mb-1">{c.name ?? c.case_number}</div>
+                      <div className="text-xs text-text-muted">{c.species?.name_cs}</div>
+                      {c.cause_of_injury && (
+                        <div className="text-xs mt-1.5 line-clamp-1 text-text-body">{c.cause_of_injury}</div>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
           )}
         </div>
       )}
@@ -354,20 +334,19 @@ export function InstitutionTabs({
             <EmptyTab icon="💛" text="Zatím žádné sbírky." />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {fundraisers.map((f: any) => {
-                const pct         = f.goal_amount > 0 ? Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100) : 0
-                const isComplete  = pct >= 100
-                const hasDarujme  = !!f.darujme_url
-                const deadlineInfo = getDeadlineInfo(f.deadline)
-
+              {fundraisers.map((f) => {
+                const pct = Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100)
                 return (
-                  <Link key={f.id} href={`/fundraisers/${f.id}`} className="no-underline group">
-                    <div className="bg-white rounded-xl border border-[#F0EDE8] overflow-hidden hover:-translate-y-0.5 hover:shadow-md transition-all h-full flex flex-col">
-                      {/* Cover */}
-                      {f.image_url && (
-                        <div className="relative h-36 flex-shrink-0" style={{ background: '#F0EDE8' }}>
-                          <Image src={f.image_url} alt={f.title} fill className="object-cover group-hover:scale-[1.02] transition-transform duration-300" sizes="(max-width:640px) 100vw, 50vw" />
-                        </div>
+                  <div key={f.id} className="bg-white rounded-2xl border border-border p-5">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div>
+                        <div className="font-bold text-text-primary mb-1">{f.title}</div>
+                        {f.description && (
+                          <p className="text-sm line-clamp-2 text-text-muted">{f.description}</p>
+                        )}
+                      </div>
+                      {!f.active && (
+                        <span className="text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 bg-border text-text-muted">Ukončená</span>
                       )}
 
                       <div className="p-4 flex-1 flex flex-col">
@@ -410,7 +389,15 @@ export function InstitutionTabs({
                         </div>
                       </div>
                     </div>
-                  </Link>
+                    <div className="flex justify-between text-sm mb-1.5">
+                      <span className="font-bold text-text-primary">{f.current_amount.toLocaleString('cs-CZ')} Kč</span>
+                      <span className="text-text-muted">z {f.goal_amount.toLocaleString('cs-CZ')} Kč · {pct}%</span>
+                    </div>
+                    <div className="h-2 rounded-full overflow-hidden bg-border">
+                      <div className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, background: isShelter ? 'var(--coral)' : 'var(--rescue)' }} />
+                    </div>
+                  </div>
                 )
               })}
             </div>
@@ -424,22 +411,22 @@ export function InstitutionTabs({
           {articles.length === 0 ? (
             <EmptyTab icon="📖" text="Zatím žádné příběhy." />
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-              {articles.map((a: any) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {articles.map((a) => (
                 <Link key={a.id} href={`/articles/${a.slug}`} className="no-underline group">
-                  <div className="bg-white rounded-xl overflow-hidden border border-[#F0EDE8] hover:border-[#E8634A]/40 hover:-translate-y-1 transition-all h-full flex flex-col">
-                    <div className="h-36 relative overflow-hidden flex-shrink-0" style={{ background: '#FAECE7' }}>
+                  <div className="bg-white rounded-2xl overflow-hidden border border-border hover:border-coral/40 hover:-translate-y-1 transition-all h-full flex flex-col">
+                    <div className="h-40 relative overflow-hidden bg-coral-tag-bg">
                       {a.cover_url
                         ? <Image src={a.cover_url} alt={a.title} fill className="object-cover group-hover:scale-105 transition-transform" sizes="(max-width:640px) 50vw, 33vw" />
                         : <div className="w-full h-full flex items-center justify-center text-4xl">📖</div>
                       }
                     </div>
-                    <div className="p-3 flex-1 flex flex-col">
-                      <div className="font-bold text-sm text-[#1A0F0A] mb-1.5 leading-tight line-clamp-2 flex-1">{a.title}</div>
+                    <div className="p-4 flex-1 flex flex-col">
+                      <div className="font-bold text-text-primary mb-2 leading-tight">{a.title}</div>
                       {a.perex && (
-                        <p className="text-xs line-clamp-2 mb-2 hidden md:block" style={{ color: '#8B6550' }}>{a.perex}</p>
+                        <p className="text-xs line-clamp-3 flex-1 text-text-muted">{a.perex}</p>
                       )}
-                      <div className="text-xs font-bold mt-auto" style={{ color: accent }}>Přečíst →</div>
+                      <div className="mt-3 text-xs font-bold text-coral">Přečíst →</div>
                     </div>
                   </div>
                 </Link>
@@ -461,7 +448,7 @@ export function InstitutionTabs({
 
           {/* Popis */}
           {i.description ? (
-            <p className="text-base leading-relaxed text-[#4A2C1A] whitespace-pre-line" style={{ lineHeight: 1.8 }}>
+            <p className="text-base leading-relaxed text-espresso" style={{ lineHeight: 1.8 }}>
               {i.description}
             </p>
           ) : !i.short_description && (
@@ -508,7 +495,7 @@ export function InstitutionTabs({
 
           {/* Kontaktní info */}
           <div className="space-y-4">
-            <h2 className="font-bold text-xl text-[#1A0F0A] mb-5">Kontaktní údaje</h2>
+            <h2 className="font-bold text-xl text-text-primary mb-5">Kontaktní údaje</h2>
 
             {[
               { icon: '📍', label: 'Adresa',  value: [i.street, i.city, i.postal_code].filter(Boolean).join(', ') },
@@ -516,87 +503,38 @@ export function InstitutionTabs({
               { icon: '📞', label: 'Telefon', value: i.phone,   href: `tel:${i.phone}` },
               { icon: '🌐', label: 'Web',     value: i.website?.replace(/^https?:\/\//, ''), href: i.website },
             ].filter(c => c.value).map(({ icon, label, value, href }) => (
-              <div key={label} className="flex items-start gap-4 p-4 bg-white rounded-xl border border-[#F0EDE8]">
+              <div key={label} className="flex items-start gap-4 p-4 bg-white rounded-xl border border-border">
                 <span className="text-xl flex-shrink-0 mt-0.5">{icon}</span>
                 <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: '#8B6550' }}>{label}</div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider mb-1 text-text-muted">{label}</div>
                   {href ? (
                     <a href={href} target={href.startsWith('http') ? '_blank' : undefined}
                       className="text-sm font-medium no-underline hover:opacity-70 transition-opacity"
-                      style={{ color: accent }}>
+                      style={{ color: isShelter ? 'var(--coral)' : 'var(--rescue)' }}>
                       {value}
                     </a>
                   ) : (
-                    <div className="text-sm font-medium text-[#1A0F0A]">{value}</div>
+                    <div className="text-sm font-medium text-text-primary">{value}</div>
                   )}
                 </div>
               </div>
             ))}
-
-            {/* Sociální sítě */}
-            {(i.facebook_url || i.instagram_url) && (
-              <div className="flex flex-wrap gap-3 pt-1">
-                {i.facebook_url && (
-                  <a href={i.facebook_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#F0EDE8] bg-white text-sm font-bold no-underline hover:border-[#1877F2] hover:text-[#1877F2] transition-all"
-                    style={{ color: '#4A2C1A' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                    Facebook
-                  </a>
-                )}
-                {i.instagram_url && (
-                  <a href={i.instagram_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#F0EDE8] bg-white text-sm font-bold no-underline hover:border-[#E1306C] hover:text-[#E1306C] transition-all"
-                    style={{ color: '#4A2C1A' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#E1306C"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-                    Instagram
-                  </a>
-                )}
-              </div>
-            )}
-
-            {/* Google Maps odkaz */}
-            {i.lat && i.lng && (
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${i.lat},${i.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-sm text-white no-underline hover:opacity-90 transition-all"
-                style={{ background: accent }}
-              >
-                🗺️ Navigovat v Google Maps
-              </a>
-            )}
-
-            {/* Newsletter odběr */}
-            <div className="pt-2">
-              <NewsletterSubscribe
-                institutionId={i.id}
-                institutionName={i.name}
-                isShelter={isShelter}
-              />
-            </div>
           </div>
 
           {/* Mapa */}
           {i.lat && i.lng ? (
             <div>
-              <h2 className="font-bold text-xl text-[#1A0F0A] mb-5">Kde nás najdete</h2>
-              <div className="rounded-xl overflow-hidden border border-[#F0EDE8] shadow-sm">
-                <iframe
-                  src={`https://frame.mapy.cz/zakladni?x=${i.lng}&y=${i.lat}&z=15&source=coor&id=${i.lng}%2C${i.lat}`}
-                  width="100%"
-                  height="320"
-                  style={{ border: 'none', display: 'block' }}
-                  title={`Mapa — ${i.name}`}
-                  loading="lazy"
-                  allowFullScreen
-                />
-              </div>
+              <h2 className="font-bold text-xl text-text-primary mb-5">📍 Kde nás najdete</h2>
+              <InstitutionMap
+                lat={i.lat}
+                lng={i.lng}
+                name={i.name}
+                city={i.city}
+              />
             </div>
           ) : (
-            <div className="flex items-center justify-center h-48 rounded-xl border border-dashed border-[#E0DDD8]">
-              <p className="text-sm text-center" style={{ color: '#8B6550' }}>
+            <div className="flex items-center justify-center h-48 rounded-2xl border border-dashed border-border">
+              <p className="text-sm text-center text-text-muted">
                 Mapa není k dispozici.<br />
                 <span className="text-xs">Správce musí doplnit souřadnice.</span>
               </p>
@@ -625,16 +563,16 @@ function EmptyTab({ icon, text }: { icon: string; text: string }) {
   return (
     <div className="text-center py-16">
       <div className="text-5xl mb-4">{icon}</div>
-      <p className="text-sm" style={{ color: '#8B6550' }}>{text}</p>
+      <p className="text-sm text-text-muted">{text}</p>
     </div>
   )
 }
 
 function StatusPill({ status }: { status: string }) {
   const config: Record<string, { label: string; bg: string; color: string }> = {
-    available: { label: 'K adopci',    bg: '#EAF3DE', color: '#3B6D11' },
-    reserved:  { label: 'Rezervováno', bg: '#FAEEDA', color: '#854F0B' },
-    foster:    { label: 'Ve foster',   bg: '#E1F5EE', color: '#0F6E56' },
+    available: { label: 'K adopci',    bg: 'var(--success-tag-bg)', color: 'var(--success-tag-text)' },
+    reserved:  { label: 'Rezervováno', bg: 'var(--warning-tag-bg)', color: 'var(--warning-tag-text)' },
+    foster:    { label: 'Ve foster',   bg: 'var(--rescue-tag-bg)', color: 'var(--rescue-tag-text)' },
   }
   const c = config[status]
   if (!c) return null
@@ -664,11 +602,11 @@ function StatusPillPhoto({ status }: { status: string }) {
 
 function RescueStatusPill({ status }: { status: string }) {
   const config: Record<string, { label: string; bg: string; color: string }> = {
-    intake:         { label: 'Příjem',       bg: '#FAECE7', color: '#993C1D' },
-    treatment:      { label: 'Léčba',        bg: '#FAEEDA', color: '#854F0B' },
-    rehabilitation: { label: 'Rehabilitace', bg: '#E1F5EE', color: '#0F6E56' },
-    released:       { label: 'Propuštěn',    bg: '#EAF3DE', color: '#3B6D11' },
-    transferred:    { label: 'Přemístěn',    bg: '#F0EDE8', color: '#5F5E5A' },
+    intake:         { label: 'Příjem',        bg: 'var(--coral-tag-bg)', color: 'var(--coral-tag-text)' },
+    treatment:      { label: 'Léčba',         bg: 'var(--warning-tag-bg)', color: 'var(--warning-tag-text)' },
+    rehabilitation: { label: 'Rehabilitace',  bg: 'var(--rescue-tag-bg)', color: 'var(--rescue-tag-text)' },
+    released:       { label: 'Propuštěn',     bg: 'var(--success-tag-bg)', color: 'var(--success-tag-text)' },
+    transferred:    { label: 'Přemístěn',     bg: 'var(--border)', color: 'var(--text-neutral)' },
   }
   const c = config[status]
   if (!c) return null

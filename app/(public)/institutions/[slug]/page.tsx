@@ -54,13 +54,13 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
   ]
 
   return (
-    <main className="min-h-screen" style={{ background: '#FFFCF8' }}>
+    <main className="min-h-screen bg-warm">
 
       {/* ── Cover ── */}
       <div className="relative h-44 md:h-60 overflow-hidden"
         style={{ background: isShelter
-          ? 'linear-gradient(135deg, #2C1810 0%, #E8634A 100%)'
-          : 'linear-gradient(135deg, #1C2E28 0%, #2E9E8F 100%)' }}>
+          ? 'linear-gradient(135deg, var(--espresso) 0%, var(--coral) 100%)'
+          : 'linear-gradient(135deg, #1C2E28 0%, var(--rescue) 100%)' }}>
         {i.cover_url && (
           <Image src={i.cover_url} alt="" role="presentation" fill className="object-cover opacity-50" />
         )}
@@ -77,8 +77,8 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
         <div className="absolute bottom-0 left-0 right-0 px-5 md:px-10 pb-5 max-w-[1100px] mx-auto">
           <div className="flex items-end gap-4">
             {/* Logo */}
-            <div className="w-20 h-20 md:w-24 md:h-24 rounded-lg border-4 border-white flex-shrink-0 overflow-hidden flex items-center justify-center text-3xl shadow-lg"
-              style={{ background: isShelter ? '#FAECE7' : '#E1F5EE' }}>
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl border-4 border-white flex-shrink-0 overflow-hidden flex items-center justify-center text-3xl shadow-lg"
+              style={{ background: isShelter ? 'var(--coral-tag-bg)' : 'var(--rescue-tag-bg)' }}>
               {i.logo_url
                 ? <Image src={i.logo_url} alt={i.name} width={96} height={96} className="object-cover" />
                 : <span>{isShelter ? '🏠' : '🚑'}</span>
@@ -113,22 +113,22 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
       </div>
 
       {/* ── Statistiky ── */}
-      <div className="border-b border-[#F0EDE8] bg-white">
+      <div className="border-b border-border bg-white">
         <div className="max-w-[1100px] mx-auto px-5 md:px-10">
           <dl className="grid grid-cols-4">
             {[
               {
                 num:   isShelter ? (animals as any[]).length : (rescueCases as any[]).length,
                 label: isShelter ? 'zvířat' : 'záchranných případů',
-                color: isShelter ? '#E8634A' : '#2E9E8F',
+                color: isShelter ? 'var(--coral)' : 'var(--rescue)',
               },
-              { num: (fundraisers as any[]).filter((f: any) => f.active).length, label: 'aktivních sbírek', color: '#F0A500' },
-              { num: volunteers, label: 'dobrovolníků', color: '#6B4030' },
-              { num: (articles as any[]).length, label: 'příběhů', color: '#6B4030' },
+              { num: (fundraisers as any[]).filter((f: any) => f.active).length, label: 'aktivních sbírek', color: 'var(--amber)' },
+              { num: volunteers, label: 'dobrovolníků', color: 'var(--text-muted)' },
+              { num: (articles as any[]).length, label: 'příběhů', color: 'var(--text-muted)' },
             ].map(({ num, label, color }) => (
-              <div key={label} className="px-4 md:px-6 py-3 md:py-4 border-r border-[#F0EDE8] last:border-r-0 first:pl-0">
-                <dd className="font-display font-extrabold text-xl md:text-2xl" style={{ color }}>{num}</dd>
-                <dt className="text-[11px] md:text-xs font-medium mt-0.5 leading-tight" style={{ color: '#6B4030' }}>{label}</dt>
+              <div key={label} className="px-6 py-4 border-r border-border last:border-r-0 first:pl-0">
+                <div className="font-display font-extrabold text-2xl" style={{ color }}>{num}</div>
+                <div className="text-xs font-medium mt-0.5 text-text-muted">{label}</div>
               </div>
             ))}
           </dl>

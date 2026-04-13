@@ -46,9 +46,15 @@ export async function PUT(
     if (body.logo_url          !== undefined) payload.logo_url          = body.logo_url          || null
     if (body.cover_url         !== undefined) payload.cover_url         = body.cover_url         || null
 
-    // GPS souřadnice
-    if (body.lat !== undefined) payload.lat = body.lat ? parseFloat(body.lat) : null
-    if (body.lng !== undefined) payload.lng = body.lng ? parseFloat(body.lng) : null
+    // GPS souřadnice s validací rozsahu
+    if (body.lat !== undefined) {
+      const lat = body.lat ? parseFloat(body.lat) : NaN
+      payload.lat = !isNaN(lat) && lat >= -90 && lat <= 90 ? lat : null
+    }
+    if (body.lng !== undefined) {
+      const lng = body.lng ? parseFloat(body.lng) : NaN
+      payload.lng = !isNaN(lng) && lng >= -180 && lng <= 180 ? lng : null
+    }
 
     // Sociální sítě + provozní hodiny
     if (body.facebook_url   !== undefined) payload.facebook_url   = body.facebook_url   || null

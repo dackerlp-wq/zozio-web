@@ -146,83 +146,53 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
   const chip = (active: boolean) =>
     `inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-all
     ${active
-      ? 'border-[#E8634A] text-[#993C1D] bg-[#FAECE7]'
-      : 'border-[#F0EDE8] text-[#6B4030] bg-white hover:border-[#E8634A]/40'}`
+      ? 'border-coral text-coral-tag-text bg-coral-tag-bg'
+      : 'border-border text-text-body bg-white hover:border-coral/40'}`
 
-  const yesNoChip = (key: string, value: string, label: string, activeStyle?: React.CSSProperties) => {
+  const yesNoChip = (key: string, value: string, label: string, activeClassName?: string) => {
     const isActive = params[key] === value
     return (
       <button onClick={() => toggleFilter(key, value)}
-        className="flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center"
-        style={isActive
-          ? (activeStyle ?? { background: '#FAECE7', borderColor: '#E8634A', color: '#993C1D' })
-          : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
-        }>
+        className={`flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center ${
+          isActive
+            ? (activeClassName ?? 'bg-coral-tag-bg border-coral text-coral-tag-text')
+            : 'bg-white border-border text-text-body'
+        }`}>
         {label}
       </button>
     )
   }
 
-  const divider = <div className="h-px bg-[#F0EDE8] my-4" />
+  const divider = <div className="h-px bg-border my-4" />
 
-  // Filtered breed list
-  const filteredBreeds = breedSearch.trim().length > 0
-    ? breeds.filter(b => b.toLowerCase().includes(breedSearch.toLowerCase()))
-    : breeds
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="mb-4">
+      <span className="text-[10px] font-bold uppercase tracking-widest mb-2 block text-text-muted">
+        {title}
+      </span>
+      {children}
+    </div>
+  )
 
   const filterPanel = (
-    <div className="bg-white rounded-lg border border-[#F0EDE8] p-4">
+    <div className="bg-white rounded-2xl border border-border p-4">
 
-      {/* Poloha — první sekce */}
-      <Section title="Poloha">
-        <div ref={cityRef} className="relative mb-2">
-          <div className="flex gap-2">
-            <input
-              ref={cityInputRef}
-              type="text"
-              defaultValue={params.city ?? ''}
-              autoComplete="off"
-              onChange={e => handleCityInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') { e.preventDefault(); if (citySugg.length > 0) selectCity(citySugg[0]) }
-                if (e.key === 'Escape') setShowCitySugg(false)
-              }}
-              onFocus={() => citySugg.length > 0 && setShowCitySugg(true)}
-              placeholder="Zadej město..."
-              className="flex-1 px-3 py-2 text-xs rounded-lg border outline-none"
-              style={{ borderColor: '#E0DDD8', color: '#1A0F0A', background: '#FAFAF8', minWidth: 0 }}
-            />
-            {/* GPS tlačítko — pouze mobil/tablet */}
-            <button
-              onClick={handleGPS}
-              disabled={gpsLoading}
-              title="Zjistit moji polohu"
-              className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center border cursor-pointer transition-all flex-shrink-0 disabled:opacity-50"
-              style={{ borderColor: '#E0DDD8', background: 'white', color: '#6B4030' }}>
-              {gpsLoading
-                ? <span className="text-[10px]">...</span>
-                : (
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <circle cx="7" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
-                    <path d="M7 1v2M7 11v2M1 7h2M11 7h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                )
-              }
-            </button>
-          </div>
-          {/* City autocomplete dropdown */}
-          {showCitySugg && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#E0DDD8] rounded-lg shadow-lg z-50 overflow-hidden">
-              {citySugg.map(c => (
-                <button key={c.name}
-                  onMouseDown={e => { e.preventDefault(); selectCity(c) }}
-                  className="w-full text-left px-3 py-2 text-xs font-medium hover:bg-[#FAFAF8] border-b border-[#F5F2EE] last:border-0 cursor-pointer"
-                  style={{ color: '#1A0F0A' }}>
-                  📍 {c.name}
-                </button>
-              ))}
-            </div>
-          )}
+      {/* Search */}
+      <form onSubmit={handleSearch} className="mb-4">
+        <div className="flex items-center gap-0 border rounded-lg overflow-hidden border-border bg-warm-hover">
+          <input
+            type="search" value={q} onChange={e => setQ(e.target.value)}
+            placeholder="Jméno, plemeno..."
+            className="flex-1 px-3 py-2 text-sm outline-none bg-transparent text-text-primary"
+            style={{ minWidth: 0 }}
+          />
+          <button type="submit"
+            className="px-3 py-2 text-white text-sm border-none cursor-pointer hover:opacity-90 flex-shrink-0 bg-coral">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M10 10l2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
         </div>
         {params.city && (
           <button
@@ -289,11 +259,11 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
       {/* Urgentní */}
       <button
         onClick={() => toggleFilter('urgent', 'true')}
-        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-sm font-semibold cursor-pointer transition-all mb-4"
-        style={params.urgent === 'true'
-          ? { background: '#FAECE7', borderColor: '#E8634A', color: '#993C1D' }
-          : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
-        }>
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm font-semibold cursor-pointer transition-all mb-4 ${
+          params.urgent === 'true'
+            ? 'bg-coral-tag-bg border-coral text-coral-tag-text'
+            : 'bg-white border-border text-text-body'
+        }`}>
         <span>🆘</span>
         Urgentní adopce
         {params.urgent === 'true' && <span className="ml-auto text-[10px]">✓</span>}
@@ -358,19 +328,19 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
       <Section title="Vhodný pro">
         <div className="flex gap-2">
           <button onClick={() => toggleFilter('housing', 'flat')}
-            className="flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center"
-            style={params.housing === 'flat'
-              ? { background: '#FAECE7', borderColor: '#E8634A', color: '#993C1D' }
-              : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
-            }>
+            className={`flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center ${
+              params.housing === 'flat'
+                ? 'bg-coral-tag-bg border-coral text-coral-tag-text'
+                : 'bg-white border-border text-text-body'
+            }`}>
             🏢 Byt
           </button>
           <button onClick={() => toggleFilter('housing', 'house')}
-            className="flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center"
-            style={params.housing === 'house'
-              ? { background: '#FAECE7', borderColor: '#E8634A', color: '#993C1D' }
-              : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }
-            }>
+            className={`flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer border transition-all text-center ${
+              params.housing === 'house'
+                ? 'bg-coral-tag-bg border-coral text-coral-tag-text'
+                : 'bg-white border-border text-text-body'
+            }`}>
             🏡 Dům/zahrada
           </button>
         </div>
@@ -382,18 +352,18 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
       <Section title="Kompatibilita">
         <div className="space-y-2">
           <div>
-            <div className="text-[10px] font-medium mb-1.5" style={{ color: '#8B6550' }}>S dětmi</div>
+            <div className="text-[10px] font-medium mb-1.5 text-text-muted">S dětmi</div>
             <div className="flex gap-2">
-              {yesNoChip('kids', 'yes', '✓ Ano', { background: '#EAF3DE', borderColor: '#BDE8D0', color: '#1D6A42' })}
-              {yesNoChip('kids', 'no',  '✗ Ne',  { background: '#FAECE7', borderColor: '#F5C4B3', color: '#993C1D' })}
+              {yesNoChip('kids', 'yes', '✓ Ano', 'bg-success-tag-bg border-[#BDE8D0] text-[#1D6A42]')}
+              {yesNoChip('kids', 'no',  '✗ Ne',  'bg-coral-tag-bg border-[#F5C4B3] text-coral-tag-text')}
               {yesNoChip('kids', 'any', 'Nezáleží')}
             </div>
           </div>
           <div>
-            <div className="text-[10px] font-medium mb-1.5" style={{ color: '#8B6550' }}>S jinými zvířaty</div>
+            <div className="text-[10px] font-medium mb-1.5 text-text-muted">S jinými zvířaty</div>
             <div className="flex gap-2">
-              {yesNoChip('other_animals', 'yes', '✓ Ano', { background: '#EAF3DE', borderColor: '#BDE8D0', color: '#1D6A42' })}
-              {yesNoChip('other_animals', 'no',  '✗ Ne',  { background: '#FAECE7', borderColor: '#F5C4B3', color: '#993C1D' })}
+              {yesNoChip('other_animals', 'yes', '✓ Ano', 'bg-success-tag-bg border-[#BDE8D0] text-[#1D6A42]')}
+              {yesNoChip('other_animals', 'no',  '✗ Ne',  'bg-coral-tag-bg border-[#F5C4B3] text-coral-tag-text')}
               {yesNoChip('other_animals', 'any', 'Nezáleží')}
             </div>
           </div>
@@ -412,15 +382,15 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
             { value: 'very_high', label: '⚡ Velmi vysoká',  sub: 'Intenzivní sport' },
           ].map(({ value, label, sub }) => (
             <button key={value} onClick={() => toggleFilter('activity', value)}
-              className="text-left p-2.5 rounded-lg border cursor-pointer transition-all"
-              style={params.activity === value
-                ? { background: '#FAECE7', borderColor: '#E8634A' }
-                : { background: 'white', borderColor: '#F0EDE8' }
-              }>
-              <div className="text-xs font-bold" style={{ color: params.activity === value ? '#993C1D' : '#1A0F0A' }}>
+              className={`text-left p-2.5 rounded-xl border cursor-pointer transition-all ${
+                params.activity === value
+                  ? 'bg-coral-tag-bg border-coral'
+                  : 'bg-white border-border'
+              }`}>
+              <div className={`text-xs font-bold ${params.activity === value ? 'text-coral-tag-text' : 'text-text-primary'}`}>
                 {label}
               </div>
-              <div className="text-[10px] mt-0.5" style={{ color: '#8B6550' }}>{sub}</div>
+              <div className="text-[10px] mt-0.5 text-text-muted">{sub}</div>
             </button>
           ))}
         </div>
@@ -438,15 +408,15 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
             { value: 'expert',    label: '⭐⭐⭐⭐ Expert',  sub: 'Odborná péče' },
           ].map(({ value, label, sub }) => (
             <button key={value} onClick={() => toggleFilter('difficulty', value)}
-              className="text-left p-2.5 rounded-lg border cursor-pointer transition-all"
-              style={params.difficulty === value
-                ? { background: '#FAECE7', borderColor: '#E8634A' }
-                : { background: 'white', borderColor: '#F0EDE8' }
-              }>
-              <div className="text-xs font-bold" style={{ color: params.difficulty === value ? '#993C1D' : '#1A0F0A' }}>
+              className={`text-left p-2.5 rounded-xl border cursor-pointer transition-all ${
+                params.difficulty === value
+                  ? 'bg-coral-tag-bg border-coral'
+                  : 'bg-white border-border'
+              }`}>
+              <div className={`text-xs font-bold ${params.difficulty === value ? 'text-coral-tag-text' : 'text-text-primary'}`}>
                 {label}
               </div>
-              <div className="text-[10px] mt-0.5" style={{ color: '#8B6550' }}>{sub}</div>
+              <div className="text-[10px] mt-0.5 text-text-muted">{sub}</div>
             </button>
           ))}
         </div>
@@ -473,13 +443,34 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
         </div>
       </Section>
 
+      {divider}
+
+      {/* Město */}
+      {cities.length > 0 && (
+        <Section title="Město">
+          <div className="flex flex-col gap-0.5">
+            <button onClick={() => setFilter('city', undefined)}
+              className={`text-left px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all
+                ${!params.city ? 'text-coral-tag-text bg-coral-tag-bg' : 'text-text-body hover:bg-warm-hover'}`}>
+              Celá ČR a SR
+            </button>
+            {cities.map(city => (
+              <button key={city} onClick={() => setFilter('city', params.city === city ? undefined : city)}
+                className={`text-left px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all
+                  ${params.city === city ? 'text-coral-tag-text bg-coral-tag-bg' : 'text-text-body hover:bg-warm-hover'}`}>
+                {city}
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
+
       {/* Zrušit filtry */}
       {activeCount > 0 && (
         <>
           {divider}
           <button onClick={clearAll}
-            className="w-full py-2.5 rounded-lg text-xs font-bold cursor-pointer border-none transition-all hover:opacity-80"
-            style={{ background: '#F0EDE8', color: '#6B4030' }}>
+            className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all hover:opacity-80 bg-border text-text-body">
             Zrušit všechny filtry ({activeCount})
           </button>
         </>
@@ -504,88 +495,27 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
         {filterPanel}
       </div>
 
-      {/* Plovoucí tlačítko — pouze mobil */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        aria-label="Otevřít filtry"
-        className="lg:hidden fixed bottom-6 right-5 z-40 flex items-center gap-2.5 px-5 py-3.5 rounded-full text-white font-bold text-sm shadow-lg cursor-pointer border-none transition-transform active:scale-95"
-        style={{ background: '#E8634A', boxShadow: '0 4px 20px rgba(232,99,74,0.45)' }}
-      >
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-          <path d="M2 4.5h14M5 9h8M8 13.5h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
-        Filtry
-        {activeCount > 0 && (
-          <span className="w-5 h-5 rounded-full text-[10px] font-extrabold flex items-center justify-center flex-shrink-0"
-            style={{ background: 'white', color: '#E8634A' }}>
-            {activeCount}
-          </span>
-        )}
-      </button>
-
-      {/* Bottom sheet — mobilní overlay */}
-      {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0"
-            style={{ background: 'rgba(0,0,0,0.45)' }}
-            onClick={() => setMobileOpen(false)}
-            aria-hidden="true"
-          />
-
-          {/* Sheet */}
-          <div
-            className="relative flex flex-col rounded-t-2xl overflow-hidden"
-            style={{ background: '#FFFCF8', maxHeight: '88vh' }}
-          >
-            {/* Tažná lišta */}
-            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-              <div className="w-10 h-1 rounded-full" style={{ background: '#E0DDD8' }} />
-            </div>
-
-            {/* Hlavička */}
-            <div className="flex items-center justify-between px-5 py-3 border-b flex-shrink-0" style={{ borderColor: '#F0EDE8' }}>
-              <span className="font-display font-extrabold text-base" style={{ color: '#1A0F0A' }}>
-                Filtry
-                {activeCount > 0 && (
-                  <span className="ml-2 text-xs font-bold px-2 py-0.5 rounded-full"
-                    style={{ background: '#FAECE7', color: '#E8634A' }}>
-                    {activeCount} aktivní
-                  </span>
-                )}
+      {/* Mobilní collapsible */}
+      <div className="lg:hidden">
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border font-semibold text-sm cursor-pointer transition-all bg-white border-[#E0DDD8] text-text-primary"
+        >
+          <span className="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            Filtry
+            {activeCount > 0 && (
+              <span className="w-5 h-5 rounded-full text-[10px] font-bold text-white flex items-center justify-center bg-coral">
+                {activeCount}
               </span>
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer border-none transition-colors"
-                style={{ background: '#F0EDE8', color: '#6B4030' }}
-                aria-label="Zavřít filtry"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                  <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                </svg>
-              </button>
-            </div>
-
-            {/* Obsah — scrollovatelný */}
-            <div className="overflow-y-auto flex-1 px-4 py-4">
-              {filterPanel}
-            </div>
-
-            {/* Tlačítko Zobrazit výsledky */}
-            <div className="flex-shrink-0 px-4 py-4 border-t" style={{ borderColor: '#F0EDE8', background: '#FFFCF8' }}>
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="w-full py-3.5 rounded-xl font-bold text-sm text-white cursor-pointer border-none transition-opacity hover:opacity-90"
-                style={{ background: '#E8634A' }}
-              >
-                Zobrazit výsledky
-                {total > 0 && <span className="ml-2 opacity-80">({total})</span>}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            )}
+          </span>
+          <span className="text-text-muted">{mobileOpen ? '↑' : '↓'}</span>
+        </button>
+        {mobileOpen && <div className="mt-2">{filterPanel}</div>}
+      </div>
     </>
   )
 }

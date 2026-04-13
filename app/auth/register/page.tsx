@@ -8,12 +8,12 @@ import { Button } from '@/components/ui/Button'
 
 type Mode = 'visitor' | 'shelter' | 'rescue_station'
 
-const inputCls = 'w-full px-4 py-3 border-2 border-[#F0EDE8] rounded-xl text-sm outline-none focus:border-[#E8634A] transition-colors bg-white text-[#1A0F0A]'
+const inputCls = 'w-full px-4 py-3 border-2 border-border rounded-xl text-sm outline-none focus:border-coral transition-colors bg-white text-text-primary'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-bold uppercase tracking-wider" style={{ color: '#8B6550' }}>{label}</label>
+      <label className="text-xs font-bold uppercase tracking-wider text-text-muted">{label}</label>
       {children}
     </div>
   )
@@ -49,7 +49,7 @@ function RegisterForm() {
       options: {
         data: {
           full_name:        name,
-          role:             isInstitution ? 'institution' : 'visitor',
+          role:             isInstitution ? 'institution_admin' : 'public',
           institution_type: isInstitution ? mode : null,
         },
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${isInstitution ? '/admin/dashboard' : '/profil'}`,
@@ -79,17 +79,16 @@ function RegisterForm() {
 
   if (step === 'verify') {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-[#F0EDE8] p-8 text-center">
+      <div className="bg-white rounded-2xl shadow-sm border border-border p-8 text-center">
         <div className="text-5xl mb-5">📬</div>
-        <h2 className="font-display font-extrabold text-xl text-[#1A0F0A] mb-2">Zkontroluj e-mail</h2>
-        <p className="text-sm mb-1" style={{ color: '#8B6550' }}>Poslali jsme ověřovací odkaz na</p>
-        <p className="font-bold text-[#1A0F0A] mb-5">{email}</p>
-        <p className="text-sm mb-6" style={{ color: '#8B6550' }}>
+        <h2 className="font-display font-extrabold text-xl text-text-primary mb-2">Zkontroluj e-mail</h2>
+        <p className="text-sm mb-1 text-text-muted">Poslali jsme ověřovací odkaz na</p>
+        <p className="font-bold text-text-primary mb-5">{email}</p>
+        <p className="text-sm mb-6 text-text-muted">
           Klikni na odkaz v e-mailu a účet bude aktivován. Zkontroluj i spam.
         </p>
         <Link href="/auth/login"
-          className="inline-flex px-6 py-3 rounded-xl font-bold text-sm text-white no-underline"
-          style={{ background: '#E8634A' }}>
+          className="inline-flex px-6 py-3 rounded-xl font-bold text-sm text-white no-underline bg-coral">
           Zpět na přihlášení
         </Link>
       </div>
@@ -97,32 +96,30 @@ function RegisterForm() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-[#F0EDE8] p-8">
-      <h1 className="font-display font-extrabold text-2xl text-[#1A0F0A] mb-6">Registrace</h1>
+    <div className="bg-white rounded-2xl shadow-sm border border-border p-8">
+      <h1 className="font-display font-extrabold text-2xl text-text-primary mb-6">Registrace</h1>
 
       {/* Přepínač typu */}
-      <div className="grid grid-cols-3 gap-2 mb-6 p-1 rounded-xl" style={{ background: '#F5F0EC' }}>
+      <div className="grid grid-cols-3 gap-2 mb-6 p-1 rounded-xl bg-sand">
         {([
           { id: 'visitor',        label: '👤 Návštěvník' },
           { id: 'shelter',        label: '🏠 Útulek' },
           { id: 'rescue_station', label: '🚑 Záchranná' },
         ] as { id: Mode; label: string }[]).map(opt => (
           <button key={opt.id} onClick={() => setMode(opt.id)}
-            className="py-2 px-1 rounded-lg text-xs font-bold cursor-pointer border-none transition-all"
-            style={mode === opt.id
-              ? { background: 'white', color: '#1A0F0A', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }
-              : { background: 'transparent', color: '#8B6550' }
-            }>
+            className={`py-2 px-1 rounded-lg text-xs font-bold cursor-pointer border-none transition-all
+              ${mode === opt.id
+                ? 'bg-white text-text-primary shadow-sm'
+                : 'bg-transparent text-text-muted'
+              }`}>
             {opt.label}
           </button>
         ))}
       </div>
 
       {/* Popis */}
-      <div className="mb-5 px-3 py-2.5 rounded-xl text-xs" style={{
-        background: mode === 'visitor' ? '#F5F0EC' : mode === 'shelter' ? '#FAECE7' : '#E1F5EE',
-        color:      mode === 'visitor' ? '#6B4030' : mode === 'shelter' ? '#993C1D' : '#0F6E56',
-      }}>
+      <div className={`mb-5 px-3 py-2.5 rounded-xl text-xs
+        ${mode === 'visitor' ? 'bg-sand text-text-body' : mode === 'shelter' ? 'bg-coral-tag-bg text-coral-tag-text' : 'bg-rescue-tag-bg text-rescue-tag-text'}`}>
         {mode === 'visitor'        && 'Sleduj oblíbená zvířata, posílej žádosti o adopci a stávej se dobrovolníkem.'}
         {mode === 'shelter'        && 'Registruj útulek, spravuj zvířata, přijímej adopční žádosti a vytvářej sbírky.'}
         {mode === 'rescue_station' && 'Registruj záchrannou stanici, eviduj záchranné případy a přijímej dary.'}
@@ -158,8 +155,7 @@ function RegisterForm() {
         </label>
 
         {error && (
-          <div className="text-sm font-semibold px-4 py-3 rounded-xl"
-            style={{ background: '#FAECE7', color: '#993C1D' }}>
+          <div className="text-sm font-semibold px-4 py-3 rounded-xl bg-coral-tag-bg text-coral-tag-text">
             ⚠️ {error}
           </div>
         )}
@@ -168,18 +164,18 @@ function RegisterForm() {
           {isInstitution ? 'Zaregistrovat instituci →' : 'Vytvořit účet →'}
         </Button>
 
-        <p className="text-xs text-center" style={{ color: '#8B6550' }}>
+        <p className="text-xs text-center text-text-muted">
           Registrací souhlasíš s{' '}
-          <Link href="/podminky" className="underline" style={{ color: '#E8634A' }}>podmínkami použití</Link>
+          <Link href="/podminky" className="underline text-coral">podmínkami použití</Link>
           {' '}a{' '}
-          <Link href="/ochrana-dat" className="underline" style={{ color: '#E8634A' }}>ochranou osobních údajů</Link>.
+          <Link href="/ochrana-dat" className="underline text-coral">ochranou osobních údajů</Link>.
         </p>
       </div>
 
-      <div className="mt-6 pt-6 border-t border-[#F0EDE8] text-center">
-        <p className="text-sm" style={{ color: '#8B6550' }}>
+      <div className="mt-6 pt-6 border-t border-border text-center">
+        <p className="text-sm text-text-muted">
           Už máš účet?{' '}
-          <Link href="/auth/login" className="font-bold no-underline hover:opacity-70" style={{ color: '#E8634A' }}>
+          <Link href="/auth/login" className="font-bold no-underline hover:opacity-70 text-coral">
             Přihlásit se
           </Link>
         </p>
@@ -190,7 +186,7 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: '#FFFCF8' }}>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-warm">
       <div className="w-full max-w-[460px]">
 
         <div className="text-center mb-8">
@@ -200,16 +196,15 @@ export default function RegisterPage() {
         </div>
 
         <Suspense fallback={
-          <div className="bg-white rounded-2xl border border-[#F0EDE8] p-8 flex justify-center">
-            <div className="w-6 h-6 border-2 rounded-full animate-spin"
-              style={{ borderColor: '#E8634A', borderTopColor: 'transparent' }} />
+          <div className="bg-white rounded-2xl border border-border p-8 flex justify-center">
+            <div className="w-6 h-6 border-2 rounded-full animate-spin border-coral border-t-transparent" />
           </div>
         }>
           <RegisterForm />
         </Suspense>
 
         <p className="text-center text-xs mt-6">
-          <Link href="/" className="hover:opacity-70 no-underline" style={{ color: '#8B6550' }}>
+          <Link href="/" className="hover:opacity-70 no-underline text-text-muted">
             ← Zpět na web
           </Link>
         </p>

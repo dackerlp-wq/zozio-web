@@ -18,7 +18,7 @@ export function StickyPanel({ children }: StickyPanelProps) {
   return (
     <div
       ref={panelRef}
-      className="bg-white rounded-lg border border-[#F0EDE8] overflow-hidden"
+      className="bg-white rounded-2xl border border-border overflow-hidden"
       style={{
         position: 'sticky',
         top:      top,

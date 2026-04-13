@@ -31,10 +31,12 @@ export async function GET(request: NextRequest) {
   }
 
   // Seskup podle instituce
-  const byInstitution = new Map<string, { inst: any; animals: any[] }>()
+  interface LongStayInstitution { id: string; name: string; email: string }
+  interface LongStayAnimal { id: string; name: string; intake_date: string }
+  const byInstitution = new Map<string, { inst: LongStayInstitution; animals: LongStayAnimal[] }>()
 
   for (const animal of longStayAnimals) {
-    const inst = animal.institution as any
+    const inst = animal.institution as unknown as LongStayInstitution | null
     if (!inst?.email) continue
 
     const key = inst.id
@@ -94,7 +96,7 @@ export async function GET(request: NextRequest) {
         `,
       })
       sent++
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(`Email error for ${inst.email}:`, err)
     }
   }

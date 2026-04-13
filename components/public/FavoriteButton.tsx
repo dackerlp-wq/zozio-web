@@ -61,9 +61,9 @@ export function FavoriteButton({ type, id, initialFav = false, size = 'md', clas
         loading ? 'opacity-50' : 'hover:scale-110'
       } ${className}`}
       style={{
-        width:      isSmall ? 32 : 44,
-        height:     isSmall ? 32 : 44,
-        background: fav ? '#FAECE7' : 'rgba(255,255,255,0.9)',
+        width:      isSmall ? 32 : 38,
+        height:     isSmall ? 32 : 38,
+        background: fav ? 'var(--coral-tag-bg)' : 'rgba(255,255,255,0.9)',
         backdropFilter: 'blur(4px)',
         boxShadow:  '0 1px 4px rgba(0,0,0,0.12)',
       }}
@@ -72,8 +72,8 @@ export function FavoriteButton({ type, id, initialFav = false, size = 'md', clas
         width={isSmall ? 14 : 20}
         height={isSmall ? 14 : 20}
         viewBox="0 0 24 24"
-        fill={fav ? '#E8634A' : 'none'}
-        stroke={fav ? '#E8634A' : '#8B6550'}
+        fill={fav ? 'var(--coral)' : 'none'}
+        stroke={fav ? 'var(--coral)' : 'var(--text-muted)'}
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"

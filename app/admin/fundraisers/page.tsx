@@ -3,6 +3,12 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
+import type { Fundraiser, Animal, RescueCase } from '@/types/database'
+
+type FundraiserWithRelations = Fundraiser & {
+  animal?: Pick<Animal, 'name'> | null
+  rescue_case?: Pick<RescueCase, 'name' | 'case_number'> | null
+}
 
 export default async function AdminFundraisersPage() {
   const supabase = await createClient()
@@ -25,7 +31,7 @@ export default async function AdminFundraisersPage() {
     .eq('institution_id', membership.institution_id)
     .order('created_at', { ascending: false })
 
-  const items = (fundraisers ?? []) as any[]
+  const items = (fundraisers ?? []) as FundraiserWithRelations[]
   const active = items.filter(f => f.active).length
 
   return (
@@ -53,7 +59,7 @@ export default async function AdminFundraisersPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {items.map((f: any) => {
+          {items.map((f) => {
             const percent = Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100)
             const linked = f.animal?.name ?? f.rescue_case?.name ?? f.rescue_case?.case_number ?? null
 
