@@ -160,16 +160,19 @@ export default function NewAnimalWizard({ institutionId }: { institutionId: stri
   async function handleSubmit() {
     setSaving(true)
     try {
+      // Mapujeme pole wizardu na správné DB sloupce
+      const { age_years, energy_level, care_level, suitable_for, good_with_seniors, ...rest } = data
       const body = {
-        ...data,
-        institution_id: institutionId,
-        age_years:    data.age_years    ? Number(data.age_years)    : null,
-        weight_kg:    data.weight_kg    ? Number(data.weight_kg)    : null,
-        adoption_fee: data.adoption_fee ? Number(data.adoption_fee) : null,
-        energy_level:    data.energy_level    || null,
-        care_level:      data.care_level      || null,
-        suitable_for:    data.suitable_for.length > 0 ? data.suitable_for : null,
-        good_with_seniors: data.good_with_seniors,
+        ...rest,
+        institution_id:   institutionId,
+        birth_year:       age_years ? new Date().getFullYear() - Number(age_years) : null,
+        weight_kg:        data.weight_kg    ? Number(data.weight_kg)    : null,
+        adoption_fee:     data.adoption_fee ? Number(data.adoption_fee) : null,
+        activity_level:   energy_level  || null,
+        care_difficulty:  care_level    || null,
+        suitable_for_flat:   suitable_for.includes('flat'),
+        suitable_for_house:  suitable_for.includes('house'),
+        good_with_adults:    good_with_seniors || false,
       }
       const res = await fetch('/api/animals', {
         method: 'POST',
