@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { createServiceClient } from '@/lib/supabase/service'
+import { createClient } from '@/lib/supabase/server'
 import { RescueFilter } from '@/components/public/RescueFilter'
 import { FavoriteButton } from '@/components/public/FavoriteButton'
 import type { RescueCaseStatus } from '@/types/database'
@@ -28,8 +28,6 @@ interface RescueFilterParams {
   page?: string
 }
 
-export const revalidate = 300
-
 export const metadata: Metadata = {
   title: 'Záchranné stanice | Zozio',
   description: 'Zachraňme ohrožená volně žijící zvířata. Podpoř záchranné stanice po celé ČR a SR.',
@@ -38,24 +36,16 @@ export const metadata: Metadata = {
 const PAGE_SIZE = 18
 
 interface PageProps {
-  searchParams: Promise<{
-    species?: string
-    status?:  string
-    city?:    string
-    lat?:     string
-    lng?:     string
-    sex?:     string
-    page?:    string
-  }>
+  searchParams: Promise<{ species?: string; status?: string; city?: string; page?: string }>
 }
 
 export default async function RescuePage({ searchParams }: PageProps) {
   const params = await searchParams
   const page   = Math.max(1, parseInt(params.page ?? '1'))
-  const hasLoc = !!(params.lat && params.lng)
 
-  const [{ cases, total }, species, cities] = await Promise.all([
+  const [cases, total, species, cities] = await Promise.all([
     getRescueCases(params, page),
+    getTotal(params),
     getSpecies(),
     getCities(),
   ])
@@ -77,38 +67,10 @@ export default async function RescuePage({ searchParams }: PageProps) {
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
           <aside className="w-full lg:w-56 flex-shrink-0">
-            <RescueFilter species={species} cities={cities} params={params} total={total} />
+            <RescueFilter species={species} cities={cities} params={params} />
           </aside>
 
           <div className="flex-1 min-w-0">
-
-            {/* Lokační banner */}
-            {hasLoc && (
-              <div className="flex items-center justify-between mb-4 px-3 py-2.5 rounded-lg gap-3"
-                style={{ background: '#E1F5EE', border: '1px solid #BDE8D0' }}>
-                <span className="text-sm font-semibold" style={{ color: '#0F6E56' }}>
-                  📍 Záchranné příběhy z vašeho okolí
-                  {params.city && <> · <strong>{params.city}</strong></>}
-                </span>
-                <Link
-                  href={buildUrl(params, { lat: undefined, lng: undefined, city: undefined, page: undefined })}
-                  className="text-xs font-bold no-underline flex-shrink-0"
-                  style={{ color: '#2E9E8F' }}>
-                  × Zrušit
-                </Link>
-              </div>
-            )}
-
-            {/* Toolbar */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between mb-5 gap-3">
-                <p className="text-sm font-medium" style={{ color: '#8B6550' }}>
-                  Strana {page} z {totalPages}
-                </p>
-              </div>
-            )}
-
-            {/* Grid / prázdný stav */}
             {cases.length === 0 ? (
               <div className="text-center py-20">
                 <div className="text-5xl mb-4">🔍</div>
@@ -122,7 +84,6 @@ export default async function RescuePage({ searchParams }: PageProps) {
               </div>
             )}
 
-            {/* Stránkování */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-1.5 mt-10 flex-wrap">
                 {page > 1 && (
@@ -166,7 +127,7 @@ function RescueCard({ c }: { c: RescueListCase }) {
     released:       { label: '🌿 Propuštěno',   bg: 'var(--success-tag-bg)', color: 'var(--success-tag-text)' },
     transferred:    { label: '🚐 Přemístěno',   bg: 'var(--border)', color: 'var(--text-neutral)' },
   }
-  const status     = statusConfig[c.status] ?? statusConfig.intake
+  const status = statusConfig[c.status] ?? statusConfig.intake
   const isReleased = c.status === 'released'
 
   return (
@@ -177,22 +138,21 @@ function RescueCard({ c }: { c: RescueListCase }) {
 
           <div className="relative h-44 overflow-hidden flex-shrink-0 bg-rescue-tag-bg">
             {c.primary_photo
-              ? <Image src={c.primary_photo} alt={c.name ?? c.case_number ?? ''}
-                  fill sizes="(max-width:640px) 50vw,(max-width:1024px) 50vw,33vw"
+              ? <Image src={c.primary_photo} alt={c.name ?? c.case_number ?? ''} fill
+                  sizes="(max-width:640px) 100vw,(max-width:1024px) 50vw,33vw"
                   className="object-cover group-hover:scale-105 transition-transform duration-300" />
               : <div className="w-full h-full flex items-center justify-center text-5xl">
                   {species?.icon ?? '🐾'}
                 </div>
             }
-            <div className="absolute top-2.5 left-2.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
+            {/* Status badge */}
+            <div className="absolute top-3 left-3 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold"
               style={{ background: status.bg, color: status.color }}>
               {status.label}
             </div>
-            <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm rounded-full px-2 py-0.5">
-              <span className="text-[10px] font-bold text-[#1A0F0A]">
-                {institution?.city ?? ''}
-                {c._distance != null && ` · ${c._distance < 1 ? '< 1' : c._distance} km`}
-              </span>
+            {/* ❤️ Favorite button */}
+            <div className="absolute top-3 right-3">
+              <FavoriteButton type="animal" id={c.id} size="sm" />
             </div>
             {institution?.city && (
               <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-0.5">
@@ -208,11 +168,6 @@ function RescueCard({ c }: { c: RescueListCase }) {
             <div className="text-xs mb-2 truncate text-text-muted">
               {[species?.name_cs, c.estimated_age, intakeDate ? `od ${intakeDate}` : null].filter(Boolean).join(' · ')}
             </div>
-            {institution?.name && (
-              <div className="text-[11px] mb-2 truncate font-medium" style={{ color: '#8B6550' }}>
-                📍 {institution.name}
-              </div>
-            )}
             {c.cause_of_injury && (
               <div className="mb-3">
                 <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-semibold"
@@ -230,14 +185,11 @@ function RescueCard({ c }: { c: RescueListCase }) {
               <button className="w-full py-2.5 rounded-xl font-bold text-xs text-white border-none cursor-pointer hover:opacity-90 transition-all"
                 style={{ background: isReleased ? 'var(--success-tag-text)' : 'var(--rescue)' }}>
                 {isReleased ? '🎉 Příběh záchrany' : '💛 Podpořit léčbu'}
-              </div>
+              </button>
             </div>
           </div>
         </div>
       </Link>
-      <div className="absolute top-2.5 right-2.5 z-10">
-        <FavoriteButton type="animal" id={c.id} size="sm" />
-      </div>
     </div>
   )
 }
@@ -271,34 +223,27 @@ async function getTotal(params: RescueFilterParams) {
   const supabase = await createClient()
   let query = supabase
     .from('rescue_cases')
-    .select(
-      'id, name, case_number, status, sex, cause_of_injury, public_description, estimated_age, primary_photo, intake_date, species:animal_species(name_cs,icon), institution:institutions(name,city,slug)',
-      { count: 'exact' }
-    )
+    .select('id', { count: 'exact', head: true })
     .eq('published', true)
     .not('status', 'in', '("deceased")')
-
-  if (institutionIds) query = query.in('institution_id', institutionIds)
   if (params.species) query = query.eq('species_id', params.species)
   if (params.status)  query = query.eq('status', params.status)
-  if (params.sex)     query = query.eq('sex', params.sex)
-
-  query = query.order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1)
-
-  const { data, count } = await query
-  return { cases: (data ?? []) as any[], total: count ?? 0 }
+  const { count } = await query
+  return count ?? 0
 }
 
 async function getSpecies() {
-  const supabase = createServiceClient()
+  const supabase = await createClient()
   const { data } = await supabase
-    .from('animal_species').select('id, name_cs, icon')
-    .eq('category', 'wild').order('name_cs')
+    .from('animal_species')
+    .select('id, name_cs, icon')
+    .eq('category', 'wild')
+    .order('name_cs')
   return data ?? []
 }
 
 async function getCities() {
-  const supabase = createServiceClient()
+  const supabase = await createClient()
   const { data } = await supabase
     .from('institutions')
     .select('city')

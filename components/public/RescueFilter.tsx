@@ -1,13 +1,11 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 interface RescueFilterProps {
   species: { id: string; name_cs: string; icon: string | null }[]
   cities:  string[]
   params:  Record<string, string | undefined>
-  total:   number
 }
 
 function buildUrl(params: Record<string, string | undefined>, overrides: Record<string, string | undefined>) {
@@ -18,39 +16,11 @@ function buildUrl(params: Record<string, string | undefined>, overrides: Record<
   return `/rescue${str ? `?${str}` : ''}`
 }
 
-export function RescueFilter({ species, cities, params, total }: RescueFilterProps) {
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [gpsLoading, setGpsLoading] = useState(false)
-  const router = useRouter()
-
-  const hasLoc  = !!(params.lat && params.lng)
-  const activeCount = [params.status, params.sex, params.species, hasLoc ? 'loc' : params.city].filter(Boolean).length
-
-  useEffect(() => {
-    document.body.style.overflow = mobileOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
-  }, [mobileOpen])
-
-  const handleGps = () => {
-    if (!navigator.geolocation) return
-    setGpsLoading(true)
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        setGpsLoading(false)
-        setMobileOpen(false)
-        router.push(buildUrl(params, {
-          lat:  String(pos.coords.latitude.toFixed(4)),
-          lng:  String(pos.coords.longitude.toFixed(4)),
-          city: undefined,
-        }))
-      },
-      () => setGpsLoading(false),
-      { timeout: 8000 }
-    )
-  }
+export function RescueFilter({ species, cities, params }: RescueFilterProps) {
+  const activeCount = [params.species, params.status, params.city].filter(Boolean).length
 
   const chip = (active: boolean) =>
-    `inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-all no-underline
+    `inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-all
     ${active
       ? 'border-rescue text-rescue-tag-text bg-rescue-tag-bg'
       : 'border-border text-text-body bg-white hover:border-rescue/40'}`
@@ -72,7 +42,9 @@ export function RescueFilter({ species, cities, params, total }: RescueFilterPro
       {/* Stav léčby */}
       <Section title="Stav léčby">
         <div className="flex flex-wrap gap-1.5">
-          <Link href={buildUrl(params, { status: undefined })} className={chip(!params.status)}>Všechny</Link>
+          <Link href={buildUrl(params, { status: undefined })} className={`${chip(!params.status)} no-underline`}>
+            Všechny
+          </Link>
           {[
             { value: 'intake',         label: '🚑 Příjem' },
             { value: 'treatment',      label: '🩺 Léčba' },
@@ -81,37 +53,26 @@ export function RescueFilter({ species, cities, params, total }: RescueFilterPro
           ].map(({ value, label }) => (
             <Link key={value}
               href={buildUrl(params, { status: params.status === value ? undefined : value })}
-              className={chip(params.status === value)}>
+              className={`${chip(params.status === value)} no-underline`}>
               {label}
             </Link>
           ))}
         </div>
       </Section>
 
-      {divider}
-
-      {/* Pohlaví */}
-      <Section title="Pohlaví">
-        <div className="flex flex-wrap gap-1.5">
-          <Link href={buildUrl(params, { sex: undefined })} className={chip(!params.sex)}>Všechna</Link>
-          <Link href={buildUrl(params, { sex: params.sex === 'male' ? undefined : 'male' })}
-            className={chip(params.sex === 'male')}>♂ Samec</Link>
-          <Link href={buildUrl(params, { sex: params.sex === 'female' ? undefined : 'female' })}
-            className={chip(params.sex === 'female')}>♀ Samice</Link>
-        </div>
-      </Section>
-
-      {/* Druh zvířete */}
+      {/* Druh */}
       {species.length > 0 && (
         <>
           {divider}
           <Section title="Druh zvířete">
             <div className="flex flex-wrap gap-1.5">
-              <Link href={buildUrl(params, { species: undefined })} className={chip(!params.species)}>Všechna</Link>
+              <Link href={buildUrl(params, { species: undefined })} className={`${chip(!params.species)} no-underline`}>
+                Všechna
+              </Link>
               {species.map(s => (
                 <Link key={s.id}
                   href={buildUrl(params, { species: params.species === s.id ? undefined : s.id })}
-                  className={chip(params.species === s.id)}>
+                  className={`${chip(params.species === s.id)} no-underline`}>
                   {s.icon && <span>{s.icon}</span>}{s.name_cs}
                 </Link>
               ))}
@@ -176,69 +137,6 @@ export function RescueFilter({ species, cities, params, total }: RescueFilterPro
           <div className="mt-2">{panel}</div>
         </details>
       </div>
-
-      {/* Mobilní plovoucí tlačítko */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed bottom-6 right-5 z-40 flex items-center gap-2 px-4 py-3 rounded-full font-bold text-sm text-white border-none cursor-pointer"
-        style={{ background: '#2E9E8F', boxShadow: '0 4px 20px rgba(46,158,143,0.45)' }}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M2 4h12M4 8h8M6 12h4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-        Filtry
-        {activeCount > 0 && (
-          <span className="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
-            style={{ background: 'rgba(255,255,255,0.28)' }}>
-            {activeCount}
-          </span>
-        )}
-      </button>
-
-      {/* Mobilní bottom sheet */}
-      {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50" onClick={() => setMobileOpen(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div
-            className="absolute bottom-0 left-0 right-0 rounded-t-2xl max-h-[85vh] flex flex-col"
-            style={{ background: '#FFFCF8' }}
-            onClick={e => e.stopPropagation()}>
-
-            <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-              <div className="w-10 h-1 rounded-full" style={{ background: '#E0DDD8' }} />
-            </div>
-
-            <div className="flex items-center justify-between px-5 py-3 flex-shrink-0">
-              <span className="font-bold text-base text-[#1A0F0A]">
-                Filtry
-                {activeCount > 0 && (
-                  <span className="ml-2 text-sm font-semibold" style={{ color: '#2E9E8F' }}>
-                    ({activeCount})
-                  </span>
-                )}
-              </span>
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-sm border-none cursor-pointer"
-                style={{ background: '#F0EDE8', color: '#6B4030' }}>
-                ✕
-              </button>
-            </div>
-
-            <div className="overflow-y-auto flex-1 px-5 pb-4">
-              {panelContent}
-            </div>
-
-            <div className="px-5 py-4 flex-shrink-0" style={{ borderTop: '1px solid #F0EDE8' }}>
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="w-full py-3 rounded-lg font-bold text-sm text-white border-none cursor-pointer"
-                style={{ background: '#2E9E8F' }}>
-                Zobrazit výsledky ({total})
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }
