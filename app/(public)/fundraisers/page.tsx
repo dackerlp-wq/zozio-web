@@ -18,7 +18,7 @@ interface FundraiserListItem {
 
 export const metadata: Metadata = {
   title: 'Sbírky | Zozio',
-  description: 'Podpořte záchranné stanice a útulky. Přispějte konkrétnímu zvířeti nebo instituci.',
+  description: 'Podpořte útulky a záchranné stanice. Přispějte přímo institucím, které zachraňují zvířata.',
 }
 
 export default async function FundraisersPage() {
@@ -26,6 +26,10 @@ export default async function FundraisersPage() {
 
   const active   = fundraisers.filter((f) => f.active)
   const finished = fundraisers.filter((f) => !f.active)
+
+  const totalRaised = fundraisers.reduce((sum: number, f: any) => sum + (f.current_amount ?? 0), 0)
+  const totalGoal   = fundraisers.reduce((sum: number, f: any) => sum + (f.goal_amount   ?? 0), 0)
+  const totalDonors = fundraisers.reduce((sum: number, f: any) => sum + (f.darujme_donors_count ?? 0), 0)
 
   return (
     <main className="min-h-screen pt-20 md:pt-24 bg-warm">
@@ -40,6 +44,33 @@ export default async function FundraisersPage() {
           <p className="text-sm text-text-muted">
             {active.length} aktivních sbírek · {finished.length} ukončených
           </p>
+
+          {fundraisers.length > 0 && (
+            <div className="flex flex-wrap gap-3">
+              <div className="px-4 py-2.5 rounded-lg bg-white border border-[#F0EDE8]">
+                <span className="font-extrabold" style={{ color: '#E8634A' }}>{active.length}</span>
+                <span className="text-sm ml-1.5" style={{ color: '#8B6550' }}>aktivních sbírek</span>
+              </div>
+              {totalRaised > 0 && (
+                <div className="px-4 py-2.5 rounded-lg bg-white border border-[#F0EDE8]">
+                  <span className="font-extrabold text-[#1A0F0A]">{totalRaised.toLocaleString('cs-CZ')} Kč</span>
+                  <span className="text-sm ml-1.5" style={{ color: '#8B6550' }}>celkem vybráno</span>
+                </div>
+              )}
+              {totalDonors > 0 && (
+                <div className="px-4 py-2.5 rounded-lg bg-white border border-[#F0EDE8]">
+                  <span className="font-extrabold text-[#1A0F0A]">{totalDonors}</span>
+                  <span className="text-sm ml-1.5" style={{ color: '#8B6550' }}>dárců</span>
+                </div>
+              )}
+              {totalGoal > 0 && (
+                <div className="px-4 py-2.5 rounded-lg bg-white border border-[#F0EDE8]">
+                  <span className="font-extrabold text-[#1A0F0A]">{Math.round((totalRaised / totalGoal) * 100)}%</span>
+                  <span className="text-sm ml-1.5" style={{ color: '#8B6550' }}>průměrně splněno</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Aktivní sbírky */}
@@ -141,20 +172,61 @@ function FundraiserCard({ f, finished = false }: { f: FundraiserListItem; finish
           {finished && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-border text-text-neutral">Ukončena</span>}
         </div>
 
-        {/* CTA */}
-        {!finished && (
-          <button className="w-full mt-4 py-2.5 rounded-xl font-bold text-sm text-white cursor-pointer border-none hover:opacity-90 transition-all"
-            style={{ background: accent }}>
-            Přispět →
-          </button>
-        )}
+          <div className="font-bold text-[#1A0F0A] leading-tight mb-2 text-sm line-clamp-2">{f.title}</div>
+
+          {f.description && (
+            <p className="text-xs line-clamp-2 mb-3 leading-relaxed flex-1" style={{ color: '#8B6550' }}>
+              {f.description}
+            </p>
+          )}
+
+          <div className="mt-auto">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="font-bold text-[#1A0F0A]">{f.current_amount.toLocaleString('cs-CZ')} Kč</span>
+              <span style={{ color: '#8B6550' }}>z {f.goal_amount.toLocaleString('cs-CZ')} Kč</span>
+            </div>
+            <div className="h-1.5 rounded-full overflow-hidden mb-1.5" style={{ background: '#F0EDE8' }}>
+              <div className="h-full rounded-full" style={{
+                width: `${pct}%`,
+                background: isComplete ? '#16a34a' : isNearGoal ? '#F0A500' : accent,
+              }} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold" style={{
+                color: isComplete ? '#16a34a' : isNearGoal ? '#F0A500' : accent,
+              }}>
+                {isComplete ? '🎉 Cíl splněn!' : isNearGoal ? `🔥 ${pct}%` : `${pct}% vybráno`}
+              </span>
+              {finished && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: '#F0EDE8', color: '#5F5E5A' }}>Ukončena</span>
+              )}
+              {!finished && deadlineInfo && !deadlineInfo.urgent && (
+                <span className="text-[10px]" style={{ color: deadlineInfo.color }}>📅 {deadlineInfo.label}</span>
+              )}
+            </div>
+            {/* Donors */}
+            {(f.darujme_donors_count ?? 0) > 0 && (
+              <div className="text-[11px] mt-1" style={{ color: '#8B6550' }}>
+                👥 {f.darujme_donors_count} dárců
+              </div>
+            )}
+          </div>
+
+          {!finished && (
+            <div className="mt-3 py-2 rounded-lg font-bold text-xs text-white text-center"
+              style={{ background: accent }}>
+              {f.darujme_url ? 'Přispět na darujme.cz →' : 'Přispět →'}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </Link>
   )
 }
 
 async function getFundraisers() {
-  const supabase = await createClient()
+  const supabase = createServiceClient()
   const { data } = await supabase
     .from('fundraisers')
     .select('id, title, description, goal_amount, current_amount, active, image_url, institution:institutions(name, slug, type)')

@@ -73,13 +73,28 @@ export const HEALTH_STATUS_BADGE: Record<string, string> = {
   chronic:    'bg-rescue-bg text-rescue-dark',
 }
 
-// Důvod příjmu
+// Původ zvířete — hodnoty sloupce `origin` v DB
+export const ORIGIN_LABEL: Record<string, string> = {
+  found:             'Nalezeno nálezcem',
+  municipal_capture: 'Odchyceno obcí',
+  surrendered:       'Odevzdáno majitelem',
+  seized:            'Odebráno (SVS/Policie)',
+  transferred:       'Přemístěno z jiného útulku',
+  other:             'Jiné',
+}
+
+// Důvod příjmu — hodnoty sloupce `intake_reason` v DB
 export const INTAKE_REASON_LABEL: Record<string, string> = {
-  found:       'Nalezeno',
-  surrendered: 'Předáno majitelem',
-  confiscated: 'Konfiskace',
-  born_here:   'Narozeno v útulku',
-  other:       'Jiný důvod',
+  // původní hodnoty (text pole)
+  found:             'Nalezeno',
+  surrendered:       'Odevzdáno majitelem',
+  confiscated:       'Konfiskace',
+  born_here:         'Narozeno v útulku',
+  other:             'Jiný důvod',
+  // fallback — pokud intake_reason obsahuje origin klíč
+  municipal_capture: 'Odchyceno obcí',
+  seized:            'Odebráno (SVS/Policie)',
+  transferred:       'Přemístěno z jiného útulku',
 }
 
 // Pohlaví
