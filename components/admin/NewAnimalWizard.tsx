@@ -19,10 +19,10 @@ interface MedRecord {
 interface WizardData {
   // Step 1 — Základní info
   name: string
-  species_id: string
+  species_id: string       // UUID ze seznamu, nebo '__other__' pro vlastní
+  species_other: string    // vlastní druh, pokud species_id === '__other__'
   sex: string
   adoption_status: string
-  urgent: boolean
   breed: string
   age_years: string
   weight_kg: string
@@ -42,6 +42,8 @@ interface WizardData {
   // Step 3 — Identifikace
   chip_number: string
   crz_registered: boolean
+  crz_registry: string     // 'crz' | 'cmku' | 'other'
+  crz_reg_date: string
   passport_number: string
   // Step 4 — Karanténa & zdraví
   quarantine_start: string
@@ -54,12 +56,12 @@ interface WizardData {
 const TODAY = new Date().toISOString().slice(0, 10)
 
 const INITIAL: WizardData = {
-  name: '', species_id: '', sex: '', adoption_status: 'intake', urgent: false,
+  name: '', species_id: '', species_other: '', sex: '', adoption_status: 'intake',
   breed: '', age_years: '', weight_kg: '', color: '',
   intake_date: TODAY, intake_time: '', intake_worker: '',
   origin: 'found', found_location: '', found_date: '', box: '',
   finder_name: '', finder_phone: '', finder_email: '', finder_address: '',
-  chip_number: '', crz_registered: false, passport_number: '',
+  chip_number: '', crz_registered: false, crz_registry: 'crz', crz_reg_date: '', passport_number: '',
   quarantine_start: TODAY, quarantine_vet: '', health_status: '', weight_on_arrival: '',
   med_records: [],
 }
@@ -169,17 +171,22 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
         ? Number(data.weight_on_arrival)
         : (data.weight_kg ? Number(data.weight_kg) : null)
 
+      const isCustomSpecies = data.species_id === '__other__'
+      // Pokud je vlastní druh, zaznamenej do interních poznámek
+      const internalNotes = data.species_other
+        ? `[Druh: ${data.species_other.trim()}]`
+        : null
+
       const body: Record<string, unknown> = {
         institution_id:        institutionId,
         name:                  data.name.trim() || 'Nové zvíře',
-        species_id:            data.species_id || null,
+        species_id:            isCustomSpecies ? null : (data.species_id || null),
         sex:                   data.sex || null,
         breed:                 data.breed || null,
         color:                 data.color || null,
         birth_year:            data.age_years ? new Date().getFullYear() - Number(data.age_years) : null,
         weight_kg:             effectiveWeight,
         adoption_status:       data.adoption_status,
-        urgent:                data.urgent,
         intake_date:           data.intake_date || null,
         intake_time:           data.intake_time || null,
         intake_worker:         data.intake_worker || null,
@@ -193,10 +200,12 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
         chip_number:           data.chip_number || null,
         passport_number:       data.passport_number || null,
         crz_registered:        data.crz_registered,
+        crz_reg_date:          data.crz_reg_date || null,
         quarantine_start:      data.quarantine_start || null,
         quarantine_vet:        data.quarantine_vet || null,
         quarantine_box:        data.box || null,
         health_status:         data.health_status || null,
+        internal_notes:        internalNotes,
         published:             false,
       }
 
@@ -367,10 +376,11 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
 /* ─── Step 1 ─────────────────────────────────────────────── */
 function Step1({ data, set, species }: { data: WizardData; set: <K extends keyof WizardData>(k: K, v: WizardData[K]) => void; species: Species[] }) {
   const [breedSuggestions, setBreedSuggestions] = useState<string[]>([])
+  const isOtherSpecies = data.species_id === '__other__'
 
   useEffect(() => {
     const sid = data.species_id
-    if (!sid) return
+    if (!sid || sid === '__other__') return
     fetch(`/api/breeds?species_id=${sid}`)
       .then(r => r.ok ? r.json() : [])
       .then((rows: { name_cs?: string }[]) => setBreedSuggestions(rows.map(r => r.name_cs ?? '').filter(Boolean)))
@@ -387,6 +397,7 @@ function Step1({ data, set, species }: { data: WizardData; set: <K extends keyof
           <select value={data.species_id} onChange={e => set('species_id', e.target.value)} style={inputStyle}>
             <option value="">Vyberte druh…</option>
             {species.map(s => <option key={s.id} value={s.id}>{s.name_cs}</option>)}
+            <option value="__other__">Jiný druh…</option>
           </select>
         </Field>
         <Field label="Pohlaví">
@@ -397,6 +408,22 @@ function Step1({ data, set, species }: { data: WizardData; set: <K extends keyof
             <option value="unknown">Neznámé</option>
           </select>
         </Field>
+
+        {/* Vlastní druh — zobrazí se po výběru "Jiný druh" */}
+        {isOtherSpecies && (
+          <div className="col-span-3">
+            <Field label="Název druhu" hint="Zapíše se do interních poznámek zvířete">
+              <input
+                autoFocus
+                placeholder="Ježek, plch, fretka, had..."
+                value={data.species_other}
+                onChange={e => set('species_other', e.target.value)}
+                style={inputStyle}
+              />
+            </Field>
+          </div>
+        )}
+
         <Field label="Plemeno / rasa">
           <input value={data.breed} onChange={e => set('breed', e.target.value)} placeholder="Labrador mix" list="breed-suggestions" style={inputStyle} />
           <datalist id="breed-suggestions">
@@ -413,16 +440,15 @@ function Step1({ data, set, species }: { data: WizardData; set: <K extends keyof
       </div>
 
       <div>
-        <div className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#8B6550', letterSpacing: '.05em' }}>Status při příjmu</div>
-        <div className="grid grid-cols-4 gap-2">
-          <StatusCard value="intake"    label="V příjmu"     icon="📥" current={data.adoption_status} onClick={() => set('adoption_status', 'intake')} />
-          <StatusCard value="available" label="K adopci"     icon="🏠" current={data.adoption_status} onClick={() => set('adoption_status', 'available')} />
-          <StatusCard value="reserved"  label="Rezervováno" icon="⏳" current={data.adoption_status} onClick={() => set('adoption_status', 'reserved')} />
-          <StatusCard value="foster"    label="Dočasná péče" icon="🤲" current={data.adoption_status} onClick={() => set('adoption_status', 'foster')} />
+        <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: '#8B6550', letterSpacing: '.05em' }}>Status při příjmu</div>
+        <p className="text-xs mb-2" style={{ color: '#A09890' }}>
+          Zvíře v karanténě → <strong>V příjmu</strong>. Jde rovnou k pečovateli → <strong>Dočasná péče</strong>.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <StatusCard value="intake" label="V příjmu" icon="📥" current={data.adoption_status} onClick={() => set('adoption_status', 'intake')} />
+          <StatusCard value="foster" label="Dočasná péče" icon="🤲" current={data.adoption_status} onClick={() => set('adoption_status', 'foster')} />
         </div>
       </div>
-
-      <Toggle checked={data.urgent} onChange={() => set('urgent', !data.urgent)} label="Urgentní příjem" sub="Zvíře potřebuje okamžitou péči nebo je ve špatném stavu" />
     </div>
   )
 }
@@ -499,7 +525,7 @@ function Step3({ data, set }: { data: WizardData; set: <K extends keyof WizardDa
     <div className="flex flex-col gap-4">
       <div className="flex gap-2 rounded-lg text-xs font-semibold" style={{ padding: '12px 14px', background: '#EAF3DE', borderLeft: '3px solid #2D8A4E', color: '#1a5e2e' }}>
         <span style={{ fontSize: '15px', flexShrink: 0 }}>🔖</span>
-        <span>Čip umožňuje dohledání majitele. Registrace v CRZ je zákonná povinnost do 72 hodin.</span>
+        <span>Čip umožňuje dohledání majitele. Dohledání v ČMKU nebo jiném registru pomáhá ověřit původ.</span>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -511,7 +537,38 @@ function Step3({ data, set }: { data: WizardData; set: <K extends keyof WizardDa
         </Field>
       </div>
 
-      <Toggle checked={data.crz_registered} onChange={() => set('crz_registered', !data.crz_registered)} label="Zaregistrováno v CRZ" sub="Centrální registr zvířat — zákonná povinnost" />
+      <div className="flex flex-col gap-3">
+        <Toggle
+          checked={data.crz_registered}
+          onChange={() => set('crz_registered', !data.crz_registered)}
+          label="Registrováno v plemenné knize / registru"
+          sub="Pro psy zákonem povinné (CRZ/ČMKU) · pro ostatní druhy doporučeno"
+        />
+
+        {data.crz_registered && (
+          <div className="rounded-lg" style={{ padding: '14px', background: '#F7F4F0', border: '1px solid #F0EDE8' }}>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Registr" lawTag>
+                <select value={data.crz_registry} onChange={e => set('crz_registry', e.target.value)} style={inputStyle}>
+                  <option value="crz">CRZ — Centrální registr zvířat</option>
+                  <option value="cmku">ČMKU — Česká kynologická unie</option>
+                  <option value="upl">ÚPL — Ústřední plemenná kniha</option>
+                  <option value="other">Jiný registr</option>
+                </select>
+              </Field>
+              <Field label="Datum registrace">
+                <input type="date" value={data.crz_reg_date} onChange={e => set('crz_reg_date', e.target.value)} style={inputStyle} />
+              </Field>
+            </div>
+            {data.crz_registry === 'crz' && (
+              <div className="mt-2 text-[11px] font-semibold flex gap-1.5" style={{ color: '#185FA5' }}>
+                <span>⚖️</span>
+                <span>CRZ registrace psů je povinná dle §13 zák. 449/2001 Sb. a vyhl. 136/2004 Sb. Lhůta: do 72 h od příjmu nalezeného psa.</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

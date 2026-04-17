@@ -112,7 +112,7 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
 
   // Main query
   const selectFields = isShelter
-    ? 'id, name, breed, birth_year, birth_month, urgent, adoption_status, health_status, in_quarantine, in_foster, quarantine_start, quarantine_end, photos, species:animal_species(id, name_cs, icon), intake_date, created_at'
+    ? 'id, name, breed, birth_year, birth_month, urgent, adoption_status, health_status, in_quarantine, in_foster, quarantine_start, quarantine_end, origin, photos, species:animal_species(id, name_cs, icon), intake_date, created_at'
     : 'id, name, case_number, estimated_age, status, health_status, photos, species:animal_species(id, name_cs, icon), intake_date, created_at'
 
   let animalsQuery = service
@@ -295,6 +295,8 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                           animalId={item.id}
                           daysRemaining={qDays}
                           defaultExtendDate={isoDatePlusDays(14)}
+                          origin={item.origin ?? null}
+                          intakeDate={item.intake_date ?? null}
                         />
                       )}
                     </div>
@@ -390,6 +392,8 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                               animalId={item.id}
                               daysRemaining={qDaysDesk}
                               defaultExtendDate={isoDatePlusDays(14)}
+                              origin={item.origin ?? null}
+                              intakeDate={item.intake_date ?? null}
                             />
                           )}
                         </div>
