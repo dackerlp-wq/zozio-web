@@ -5,12 +5,32 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { AdminAnimalSearch } from '@/components/admin/AdminAnimalSearch'
+import { QuarantineChip } from '@/components/admin/QuarantineChip'
 
 interface PageProps {
   searchParams: Promise<{ q?: string; status?: string; species?: string; page?: string }>
 }
 
 const PAGE_SIZE = 20
+
+/** Vrátí počet zbývajících dní karantény (záporné = skončila, null = nemá karanténu) */
+function computeQuarantineDays(start: string | null, end: string | null): number | null {
+  if (!start) return null
+  const endDate = end
+    ? new Date(end)
+    : new Date(new Date(start).getTime() + 14 * 24 * 60 * 60 * 1000)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  endDate.setHours(0, 0, 0, 0)
+  return Math.ceil((endDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000))
+}
+
+/** ISO datum o N dní od dnes */
+function isoDatePlusDays(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
 
 function computeAge(birthYear: number | null, birthMonth: number | null): string | null {
   if (!birthYear) return null
@@ -92,7 +112,7 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
 
   // Main query
   const selectFields = isShelter
-    ? 'id, name, breed, birth_year, birth_month, urgent, adoption_status, health_status, in_quarantine, in_foster, photos, species:animal_species(id, name_cs, icon), intake_date, created_at'
+    ? 'id, name, breed, birth_year, birth_month, urgent, adoption_status, health_status, in_quarantine, in_foster, quarantine_start, quarantine_end, photos, species:animal_species(id, name_cs, icon), intake_date, created_at'
     : 'id, name, case_number, estimated_age, status, health_status, photos, species:animal_species(id, name_cs, icon), intake_date, created_at'
 
   let animalsQuery = service
@@ -240,6 +260,9 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                 age,
                 isShelter ? item.breed : item.case_number,
               ].filter(Boolean)
+              const qDays = isShelter
+                ? computeQuarantineDays(item.quarantine_start ?? null, item.quarantine_end ?? null)
+                : null
               return (
                 <Link
                   key={item.id}
@@ -257,7 +280,6 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-1">
                       {isShelter && item.urgent && <span aria-label="Urgentní" title="Urgentní">🆘</span>}
-                      {item.in_quarantine && <span aria-label="Karanténa" title="Karanténa">🚧</span>}
                       {isShelter && item.in_foster && <span aria-label="Foster" title="Foster">🏠</span>}
                       <span className="font-display font-bold text-[15px] text-espresso truncate">
                         {item.name ?? item.case_number ?? '—'}
@@ -266,7 +288,16 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                     <div className="text-xs text-[#8B6550] font-semibold truncate mb-1.5">
                       {metaParts.join(' · ') || '—'}
                     </div>
-                    <Badge variant={statusVal} size="sm" />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge variant={statusVal} size="sm" />
+                      {qDays !== null && (
+                        <QuarantineChip
+                          animalId={item.id}
+                          daysRemaining={qDays}
+                          defaultExtendDate={isoDatePlusDays(14)}
+                        />
+                      )}
+                    </div>
                   </div>
                   {/* Chevron */}
                   <span className="text-[#C4B8A8] text-lg shrink-0 pr-1" aria-hidden="true">›</span>
@@ -303,6 +334,9 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                     : item.estimated_age ?? null
                   const primaryPhotoDesk = Array.isArray(item.photos) && item.photos.length > 0
                     ? (typeof item.photos[0] === 'string' ? item.photos[0] : item.photos[0]?.url)
+                    : null
+                  const qDaysDesk = isShelter
+                    ? computeQuarantineDays(item.quarantine_start ?? null, item.quarantine_end ?? null)
                     : null
                   return (
                     <tr
@@ -349,7 +383,16 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
 
                       {/* STATUS */}
                       <td className="px-5 py-3.5">
-                        <Badge variant={statusVal} size="sm" />
+                        <div className="flex flex-col gap-1.5 items-start">
+                          <Badge variant={statusVal} size="sm" />
+                          {qDaysDesk !== null && (
+                            <QuarantineChip
+                              animalId={item.id}
+                              daysRemaining={qDaysDesk}
+                              defaultExtendDate={isoDatePlusDays(14)}
+                            />
+                          )}
+                        </div>
                       </td>
 
                       {/* PŘIDÁNO */}

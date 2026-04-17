@@ -7,6 +7,15 @@ import { HEALTH_STATUS_LABEL } from '@/lib/animal-labels'
 /* ─── Types ─────────────────────────────────────────────── */
 interface Species { id: string; name_cs: string }
 
+interface MedRecord {
+  _id: string
+  record_date: string
+  record_type: 'vaccination' | 'deworming' | 'medication' | 'exam' | 'treatment' | 'note'
+  title: string
+  description: string
+  vet_name: string
+}
+
 interface WizardData {
   // Step 1 — Základní info
   name: string
@@ -39,38 +48,43 @@ interface WizardData {
   quarantine_vet: string
   health_status: string
   weight_on_arrival: string
-  vaccination_notes: string
-  // Step 5 — Profil & fotky
-  story: string
-  good_with_kids: boolean
-  good_with_dogs: boolean
-  good_with_cats: boolean
-  published: boolean
-  adoption_fee: string
-  energy_level: string
-  care_level: string
-  suitable_for: string[]
-  good_with_seniors: boolean // jen UI — nemapuje se do DB
+  med_records: MedRecord[]
 }
+
+const TODAY = new Date().toISOString().slice(0, 10)
 
 const INITIAL: WizardData = {
   name: '', species_id: '', sex: '', adoption_status: 'intake', urgent: false,
   breed: '', age_years: '', weight_kg: '', color: '',
-  intake_date: new Date().toISOString().slice(0, 10), intake_time: '', intake_worker: '',
+  intake_date: TODAY, intake_time: '', intake_worker: '',
   origin: 'found', found_location: '', found_date: '', box: '',
   finder_name: '', finder_phone: '', finder_email: '', finder_address: '',
   chip_number: '', crz_registered: false, passport_number: '',
-  quarantine_start: new Date().toISOString().slice(0, 10), quarantine_vet: '', health_status: '', weight_on_arrival: '', vaccination_notes: '',
-  story: '', good_with_kids: false, good_with_dogs: false, good_with_cats: false, published: false, adoption_fee: '',
-  energy_level: '', care_level: '', suitable_for: [], good_with_seniors: false,
+  quarantine_start: TODAY, quarantine_vet: '', health_status: '', weight_on_arrival: '',
+  med_records: [],
 }
 
 const STEPS = [
-  { label: 'Základní\ninfo',   icon: '🐾' },
+  { label: 'Základní\ninfo',    icon: '🐾' },
   { label: 'Příjem &\nnálezce', icon: '📥' },
-  { label: 'Identifi-\nkace',  icon: '🔖' },
+  { label: 'Identifi-\nkace',   icon: '🔖' },
   { label: 'Karanténa\n& zdraví', icon: '🔒' },
-  { label: 'Profil &\nfotky',  icon: '📷' },
+  { label: 'Shrnutí',           icon: '📋' },
+]
+
+const STEP_TITLES = [
+  'Základní informace',
+  'Příjem a nálezce',
+  'Identifikace',
+  'Karanténa a zdraví',
+  'Shrnutí',
+]
+const STEP_SUBTITLES = [
+  'Druh, jméno, pohlaví a status zvířete',
+  'Zákonné záznamy o příjmu · §25b zák. 246/1992 Sb. — nelze přeskočit',
+  'Čip, CRZ registrace, cestovní pas',
+  'Zahájení karantény, zdravotní stav a záznamy',
+  'Přehled zadaných dat · po odeslání přejdeš na profil zvířete',
 ]
 
 const inputStyle: React.CSSProperties = {
@@ -103,10 +117,7 @@ function StatusCard({ value, label, icon, current, onClick }: { value: string; l
     <div
       onClick={onClick}
       className="flex flex-col items-center gap-1 rounded-lg cursor-pointer transition-all"
-      style={{
-        padding: '12px', border: `2px solid ${sel ? '#E8634A' : '#F0EDE8'}`,
-        background: sel ? '#FFF8F7' : 'white',
-      }}
+      style={{ padding: '12px', border: `2px solid ${sel ? '#E8634A' : '#F0EDE8'}`, background: sel ? '#FFF8F7' : 'white' }}
     >
       <span style={{ fontSize: '22px' }}>{icon}</span>
       <span className="font-black text-xs" style={{ color: sel ? '#E8634A' : '#6B4030' }}>{label}</span>
@@ -117,27 +128,19 @@ function StatusCard({ value, label, icon, current, onClick }: { value: string; l
 /* ─── Toggle ─────────────────────────────────────────────── */
 function Toggle({ checked, onChange, label, sub }: { checked: boolean; onChange: () => void; label: string; sub?: string }) {
   return (
-    <div
-      className="flex items-center justify-between rounded-lg"
-      style={{ padding: '11px 14px', border: '2px solid #F0EDE8', gap: '10px' }}
-    >
+    <div className="flex items-center justify-between rounded-lg" style={{ padding: '11px 14px', border: '2px solid #F0EDE8', gap: '10px' }}>
       <div>
         <div className="font-black text-sm">{label}</div>
         {sub && <div className="text-xs" style={{ color: '#8B6550' }}>{sub}</div>}
       </div>
       <button
-        type="button"
-        onClick={onChange}
+        type="button" onClick={onChange}
         className="relative flex-shrink-0 rounded-full transition-colors"
         style={{ width: '42px', height: '22px', background: checked ? '#2D8A4E' : '#D5CFC8', border: 'none', cursor: 'pointer' }}
       >
         <span
           className="absolute top-[3px] rounded-full transition-transform"
-          style={{
-            left: '3px', width: '16px', height: '16px', background: 'white',
-            boxShadow: '0 1px 3px rgba(0,0,0,.2)',
-            transform: checked ? 'translateX(20px)' : 'translateX(0)',
-          }}
+          style={{ left: '3px', width: '16px', height: '16px', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,.2)', transform: checked ? 'translateX(20px)' : 'translateX(0)' }}
         />
       </button>
     </div>
@@ -148,13 +151,13 @@ function Toggle({ checked, onChange, label, sub }: { checked: boolean; onChange:
    Main component
 ══════════════════════════════════════════════════════════ */
 export default function NewAnimalWizard({ institutionId, species }: { institutionId: string; species: Species[] }) {
-  const [step, setStep] = useState(0) // 0-indexed
+  const [step, setStep] = useState(0)
   const [data, setData] = useState<WizardData>(INITIAL)
   const [saving, setSaving] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const router = useRouter()
 
-  function set(field: keyof WizardData, value: string | boolean | string[]) {
+  function set<K extends keyof WizardData>(field: K, value: WizardData[K]) {
     setData(prev => ({ ...prev, [field]: value }))
   }
 
@@ -162,12 +165,10 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
     setSaving(true)
     setSubmitError(null)
     try {
-      // Váha: weight_on_arrival má přednost (pokud je vyplněná), jinak weight_kg ze Step 1
       const effectiveWeight = data.weight_on_arrival
         ? Number(data.weight_on_arrival)
         : (data.weight_kg ? Number(data.weight_kg) : null)
 
-      // Explicitní mapování — pouze existující DB sloupce
       const body: Record<string, unknown> = {
         institution_id:        institutionId,
         name:                  data.name.trim() || 'Nové zvíře',
@@ -196,19 +197,7 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
         quarantine_vet:        data.quarantine_vet || null,
         quarantine_box:        data.box || null,
         health_status:         data.health_status || null,
-        medical_notes:         data.vaccination_notes || null,
-        story:                 data.story || null,
-        adoption_fee:          data.adoption_fee ? Number(data.adoption_fee) : null,
-        activity_level:        data.energy_level || null,
-        care_difficulty:       data.care_level || null,
-        suitable_for_flat:     data.suitable_for.includes('flat'),
-        suitable_for_house:    data.suitable_for.includes('house'),
-        good_with_kids:        data.good_with_kids,
-        good_with_dogs:        data.good_with_dogs,
-        good_with_cats:        data.good_with_cats,
-        // POZN: good_with_seniors je jen UI příznak — DB sloupec good_with_adults
-        // je enum povahy (friendly/shy/fearful/...), ne vhodnost pro seniory.
-        published:             false, // wizard nikdy nepublikuje
+        published:             false,
       }
 
       const res = await fetch('/api/animals', {
@@ -220,17 +209,36 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
       const json = await res.json().catch(() => null) as { id?: string; error?: string } | null
 
       if (!res.ok) {
-        const msg = json?.error || `Uložení selhalo (HTTP ${res.status})`
-        setSubmitError(msg)
+        setSubmitError(json?.error || `Uložení selhalo (HTTP ${res.status})`)
         return
       }
 
-      if (json?.id) {
-        router.push(goToEdit ? `/admin/animals/${json.id}/edit` : `/admin/animals/${json.id}`)
+      const animalId = json?.id
+      if (!animalId) {
+        setSubmitError('Server nevrátil ID vytvořeného zvířete.')
         return
       }
 
-      setSubmitError('Server nevrátil ID vytvořeného zvířete.')
+      // Uložit zdravotní záznamy (neblokující selhání)
+      if (data.med_records.length > 0) {
+        await Promise.allSettled(
+          data.med_records.map(rec =>
+            fetch(`/api/animals/${animalId}/medical-records`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                record_date:  rec.record_date,
+                record_type:  rec.record_type,
+                title:        rec.title,
+                description:  rec.description || null,
+                vet_name:     rec.vet_name || null,
+              }),
+            })
+          )
+        )
+      }
+
+      router.push(goToEdit ? `/admin/animals/${animalId}/edit` : `/admin/animals/${animalId}`)
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Neočekávaná chyba při ukládání.')
     } finally {
@@ -252,7 +260,7 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
           <p className="text-sm mt-1" style={{ color: '#8B6550' }}>Zachyť minimum dat teď — detaily doplníš v plném formuláři na profilu zvířete.</p>
         </div>
 
-        {/* Steps stepper */}
+        {/* Stepper */}
         <div className="flex overflow-x-auto pb-1 mb-5" style={{ gap: 0 }}>
           {STEPS.map((s, i) => {
             const done   = i < step
@@ -260,33 +268,15 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
             return (
               <div key={i} className="flex flex-col items-center flex-1 relative" style={{ minWidth: '64px' }}>
                 {i < STEPS.length - 1 && (
-                  <div
-                    className="absolute z-0"
-                    style={{
-                      top: '13px',
-                      left: 'calc(50% + 14px)',
-                      right: 'calc(-50% + 14px)',
-                      height: '2px',
-                      background: done ? '#2D8A4E' : '#E8E4E0',
-                    }}
-                  />
+                  <div className="absolute z-0" style={{ top: '13px', left: 'calc(50% + 14px)', right: 'calc(-50% + 14px)', height: '2px', background: done ? '#2D8A4E' : '#E8E4E0' }} />
                 )}
                 <div
                   className="relative z-10 flex items-center justify-center rounded-full font-black"
-                  style={{
-                    width: '26px', height: '26px', fontSize: '10px',
-                    border: `2px solid ${done ? '#2D8A4E' : active ? '#E8634A' : '#D5CFC8'}`,
-                    background: done ? '#2D8A4E' : active ? '#E8634A' : 'white',
-                    color: done ? 'white' : active ? 'white' : '#B0A8A0',
-                    boxShadow: active ? '0 0 0 3px rgba(232,99,74,.2)' : undefined,
-                  }}
+                  style={{ width: '26px', height: '26px', fontSize: '10px', border: `2px solid ${done ? '#2D8A4E' : active ? '#E8634A' : '#D5CFC8'}`, background: done ? '#2D8A4E' : active ? '#E8634A' : 'white', color: done ? 'white' : active ? 'white' : '#B0A8A0', boxShadow: active ? '0 0 0 3px rgba(232,99,74,.2)' : undefined }}
                 >
                   {done ? '✓' : i + 1}
                 </div>
-                <div
-                  className="text-center font-black mt-1"
-                  style={{ fontSize: '10px', color: done ? '#2D8A4E' : active ? '#E8634A' : '#B0A8A0', lineHeight: 1.2 }}
-                >
+                <div className="text-center font-black mt-1" style={{ fontSize: '10px', color: done ? '#2D8A4E' : active ? '#E8634A' : '#B0A8A0', lineHeight: 1.2 }}>
                   {stepLabels[i].map((l, li) => <span key={li}>{l}{li < stepLabels[i].length - 1 && <br />}</span>)}
                 </div>
               </div>
@@ -296,7 +286,7 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
 
         {/* Step card */}
         <div className="rounded-xl overflow-hidden" style={{ background: 'white', border: '1px solid #F0EDE8' }}>
-          {/* wz-header */}
+          {/* Header */}
           <div className="flex items-center gap-3 border-b-2" style={{ padding: '16px 20px', borderColor: '#F0EDE8' }}>
             <div className="flex items-center justify-center rounded-xl flex-shrink-0" style={{ width: '38px', height: '38px', background: '#FDEAE6', fontSize: '20px' }}>
               {STEPS[step].icon}
@@ -307,28 +297,18 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
             </div>
           </div>
 
-          {/* wz-body */}
+          {/* Body */}
           <div style={{ padding: '20px' }}>
             {step === 0 && <Step1 data={data} set={set} species={species} />}
             {step === 1 && <Step2 data={data} set={set} />}
             {step === 2 && <Step3 data={data} set={set} />}
             {step === 3 && <Step4 data={data} set={set} />}
-            {step === 4 && <Step5 data={data} set={set} />}
+            {step === 4 && <Step5Summary data={data} species={species} />}
           </div>
 
-          {/* Chyba při ukládání */}
+          {/* Error */}
           {submitError && (
-            <div
-              className="flex items-start gap-2 text-xs font-semibold"
-              style={{
-                padding: '12px 20px',
-                background: '#FDEAE6',
-                borderTop: '2px solid #F0EDE8',
-                borderLeft: '3px solid #E8634A',
-                color: '#A0321F',
-              }}
-              role="alert"
-            >
+            <div className="flex items-start gap-2 text-xs font-semibold" style={{ padding: '12px 20px', background: '#FDEAE6', borderTop: '2px solid #F0EDE8', borderLeft: '3px solid #E8634A', color: '#A0321F' }} role="alert">
               <span style={{ fontSize: '15px', flexShrink: 0 }}>⚠️</span>
               <div>
                 <div className="font-black">Zvíře se nepodařilo uložit</div>
@@ -337,11 +317,8 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
             </div>
           )}
 
-          {/* wz-footer */}
-          <div
-            className="flex items-center justify-between gap-3 border-t-2"
-            style={{ padding: '14px 20px', borderColor: '#F0EDE8', background: '#FDFCFA' }}
-          >
+          {/* Footer */}
+          <div className="flex items-center justify-between gap-3 border-t-2" style={{ padding: '14px 20px', borderColor: '#F0EDE8', background: '#FDFCFA' }}>
             <div className="flex items-center gap-2 text-xs" style={{ color: '#8B6550' }}>
               <span>Krok {step + 1} z 5</span>
               <div style={{ width: '80px', height: '4px', background: '#F0EDE8', borderRadius: '2px' }}>
@@ -351,20 +328,12 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
             </div>
             <div className="flex gap-2">
               {step > 0 && (
-                <button
-                  onClick={() => setStep(s => s - 1)}
-                  className="font-black rounded-lg"
-                  style={{ padding: '6px 12px', fontSize: '12px', background: 'white', border: '2px solid #F0EDE8', color: '#6B4030', cursor: 'pointer' }}
-                >
+                <button onClick={() => setStep(s => s - 1)} className="font-black rounded-lg" style={{ padding: '6px 12px', fontSize: '12px', background: 'white', border: '2px solid #F0EDE8', color: '#6B4030', cursor: 'pointer' }}>
                   ← Zpět
                 </button>
               )}
               {step < 4 ? (
-                <button
-                  onClick={() => setStep(s => s + 1)}
-                  className="font-black rounded-lg text-white"
-                  style={{ padding: '6px 12px', fontSize: '12px', background: '#E8634A', border: 'none', cursor: 'pointer' }}
-                >
+                <button onClick={() => setStep(s => s + 1)} className="font-black rounded-lg text-white" style={{ padding: '6px 12px', fontSize: '12px', background: '#E8634A', border: 'none', cursor: 'pointer' }}>
                   Pokračovat: {STEPS[step + 1]?.label.split('\n')[0]} →
                 </button>
               ) : (
@@ -390,39 +359,13 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
             </div>
           </div>
         </div>
-
-        {/* Next steps hint */}
-        <div className="mt-3 rounded-lg" style={{ padding: '14px', background: 'white', border: '1px solid #F0EDE8' }}>
-          <div className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#8B6550', letterSpacing: '.06em' }}>Další kroky po dokončení</div>
-          <div className="flex gap-2 flex-wrap">
-            {['🔖 3. Čip + pas + CRZ', '🔒 4. Karanténa (auto-start)', '💊 4. Vakcíny + léky', '📷 5. Fotky + profil'].map(t => (
-              <span key={t} className="rounded-full text-xs font-black" style={{ padding: '5px 12px', background: '#F0EDE8', color: '#6B4030' }}>{t}</span>
-            ))}
-          </div>
-        </div>
       </div>
-
     </div>
   )
 }
 
-const STEP_TITLES = [
-  'Základní informace',
-  'Příjem a nálezce',
-  'Identifikace',
-  'Karanténa a zdraví',
-  'Profil a fotky',
-]
-const STEP_SUBTITLES = [
-  'Druh, jméno, pohlaví a status zvířete',
-  'Zákonné záznamy o příjmu · §25b zák. 246/1992 Sb. — nelze přeskočit',
-  'Čip, CRZ registrace, cestovní pas',
-  'Zahájení karantény a základní zdravotní stav',
-  'Příběh, fotky a zveřejnění profilu',
-]
-
 /* ─── Step 1 ─────────────────────────────────────────────── */
-function Step1({ data, set, species }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean | string[]) => void; species: Species[] }) {
+function Step1({ data, set, species }: { data: WizardData; set: <K extends keyof WizardData>(k: K, v: WizardData[K]) => void; species: Species[] }) {
   const [breedSuggestions, setBreedSuggestions] = useState<string[]>([])
 
   useEffect(() => {
@@ -430,10 +373,7 @@ function Step1({ data, set, species }: { data: WizardData; set: (k: keyof Wizard
     if (!sid) return
     fetch(`/api/breeds?species_id=${sid}`)
       .then(r => r.ok ? r.json() : [])
-      .then((rows: { name_cs?: string }[]) => {
-        const names = rows.map(r => r.name_cs ?? '').filter(Boolean)
-        setBreedSuggestions(names)
-      })
+      .then((rows: { name_cs?: string }[]) => setBreedSuggestions(rows.map(r => r.name_cs ?? '').filter(Boolean)))
       .catch(() => {})
   }, [data.species_id])
 
@@ -458,13 +398,7 @@ function Step1({ data, set, species }: { data: WizardData; set: (k: keyof Wizard
           </select>
         </Field>
         <Field label="Plemeno / rasa">
-          <input
-            value={data.breed}
-            onChange={e => set('breed', e.target.value)}
-            placeholder="Labrador mix"
-            list="breed-suggestions"
-            style={inputStyle}
-          />
+          <input value={data.breed} onChange={e => set('breed', e.target.value)} placeholder="Labrador mix" list="breed-suggestions" style={inputStyle} />
           <datalist id="breed-suggestions">
             <option value="Kříženec" />
             {breedSuggestions.map(b => <option key={b} value={b} />)}
@@ -482,24 +416,19 @@ function Step1({ data, set, species }: { data: WizardData; set: (k: keyof Wizard
         <div className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#8B6550', letterSpacing: '.05em' }}>Status při příjmu</div>
         <div className="grid grid-cols-4 gap-2">
           <StatusCard value="intake"    label="V příjmu"     icon="📥" current={data.adoption_status} onClick={() => set('adoption_status', 'intake')} />
-          <StatusCard value="available" label="K adopci"    icon="🏠" current={data.adoption_status} onClick={() => set('adoption_status', 'available')} />
+          <StatusCard value="available" label="K adopci"     icon="🏠" current={data.adoption_status} onClick={() => set('adoption_status', 'available')} />
           <StatusCard value="reserved"  label="Rezervováno" icon="⏳" current={data.adoption_status} onClick={() => set('adoption_status', 'reserved')} />
           <StatusCard value="foster"    label="Dočasná péče" icon="🤲" current={data.adoption_status} onClick={() => set('adoption_status', 'foster')} />
         </div>
       </div>
 
-      <Toggle
-        checked={data.urgent}
-        onChange={() => set('urgent', !data.urgent)}
-        label="Urgentní příjem"
-        sub="Zvíře potřebuje okamžitou péči nebo je ve špatném stavu"
-      />
+      <Toggle checked={data.urgent} onChange={() => set('urgent', !data.urgent)} label="Urgentní příjem" sub="Zvíře potřebuje okamžitou péči nebo je ve špatném stavu" />
     </div>
   )
 }
 
 /* ─── Step 2 ─────────────────────────────────────────────── */
-function Step2({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean | string[]) => void }) {
+function Step2({ data, set }: { data: WizardData; set: <K extends keyof WizardData>(k: K, v: WizardData[K]) => void }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2 rounded-lg text-xs font-semibold" style={{ padding: '12px 14px', background: '#E6F1FB', borderLeft: '3px solid #185FA5', color: '#185FA5' }}>
@@ -565,7 +494,7 @@ function Step2({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
 }
 
 /* ─── Step 3 ─────────────────────────────────────────────── */
-function Step3({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean | string[]) => void }) {
+function Step3({ data, set }: { data: WizardData; set: <K extends keyof WizardData>(k: K, v: WizardData[K]) => void }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2 rounded-lg text-xs font-semibold" style={{ padding: '12px 14px', background: '#EAF3DE', borderLeft: '3px solid #2D8A4E', color: '#1a5e2e' }}>
@@ -582,22 +511,161 @@ function Step3({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
         </Field>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Toggle
-          checked={data.crz_registered}
-          onChange={() => set('crz_registered', !data.crz_registered)}
-          label="Zaregistrováno v CRZ"
-          sub="Centrální registr zvířat — zákonná povinnost"
-        />
-      </div>
+      <Toggle checked={data.crz_registered} onChange={() => set('crz_registered', !data.crz_registered)} label="Zaregistrováno v CRZ" sub="Centrální registr zvířat — zákonná povinnost" />
+    </div>
+  )
+}
+
+/* ─── Med Records Editor (Step 4) ───────────────────────── */
+const MED_TYPES: { value: MedRecord['record_type']; label: string; icon: string }[] = [
+  { value: 'vaccination', label: 'Vakcína',     icon: '💉' },
+  { value: 'deworming',   label: 'Odčervení',   icon: '🐛' },
+  { value: 'medication',  label: 'Lék',         icon: '💊' },
+  { value: 'exam',        label: 'Vyšetření',   icon: '🔬' },
+  { value: 'treatment',   label: 'Ošetření',    icon: '🩺' },
+  { value: 'note',        label: 'Poznámka',    icon: '📝' },
+]
+
+const TYPE_SUGGESTIONS: Record<string, string[]> = {
+  vaccination: ['Vzteklina', 'Kombinovaná (DHLPP)', 'Bordetella', 'Leishmanióza', 'FeLV'],
+  deworming:   ['Milbemax', 'Drontal Plus', 'Advocate'],
+  medication:  [],
+  exam:        ['Vstupní veterinární vyšetření', 'Krevní testy', 'RTG'],
+  treatment:   ['Ošetření ran', 'Infuze', 'Obvaz'],
+  note:        [],
+}
+
+function MedRecordsEditor({
+  records,
+  onChange,
+}: {
+  records: MedRecord[]
+  onChange: (records: MedRecord[]) => void
+}) {
+  const [adding, setAdding] = useState(false)
+  const [draft, setDraft] = useState<Omit<MedRecord, '_id'>>({
+    record_date: TODAY,
+    record_type: 'vaccination',
+    title: '',
+    description: '',
+    vet_name: '',
+  })
+
+  function addRecord() {
+    if (!draft.title.trim()) return
+    onChange([...records, { ...draft, _id: crypto.randomUUID() }])
+    setDraft({ record_date: TODAY, record_type: 'vaccination', title: '', description: '', vet_name: '' })
+    setAdding(false)
+  }
+
+  function removeRecord(id: string) {
+    onChange(records.filter(r => r._id !== id))
+  }
+
+  const typeInfo = (t: string) => MED_TYPES.find(x => x.value === t)
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Existing records */}
+      {records.map(rec => {
+        const t = typeInfo(rec.record_type)
+        return (
+          <div key={rec._id} className="flex items-start gap-3 rounded-lg" style={{ padding: '10px 12px', background: '#F7F4F0', border: '1px solid #F0EDE8' }}>
+            <span style={{ fontSize: '18px', flexShrink: 0, marginTop: '2px' }}>{t?.icon ?? '📋'}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-black text-sm" style={{ color: '#2C1810' }}>{rec.title}</span>
+                <span className="text-[10px] font-bold rounded-full px-2 py-0.5" style={{ background: '#E8E4E0', color: '#6B4030' }}>{t?.label}</span>
+              </div>
+              {rec.description && <div className="text-xs mt-0.5" style={{ color: '#8B6550' }}>{rec.description}</div>}
+              <div className="flex gap-2 mt-1 text-[11px]" style={{ color: '#A09890' }}>
+                <span>📅 {new Date(rec.record_date).toLocaleDateString('cs-CZ')}</span>
+                {rec.vet_name && <span>· 👨‍⚕️ {rec.vet_name}</span>}
+              </div>
+            </div>
+            <button onClick={() => removeRecord(rec._id)} className="text-xs font-black flex-shrink-0" style={{ color: '#C4B8A8', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px' }}>✕</button>
+          </div>
+        )
+      })}
+
+      {/* Add form */}
+      {adding ? (
+        <div className="flex flex-col gap-3 rounded-lg" style={{ padding: '14px', background: '#FDFCFA', border: '2px solid #E8634A' }}>
+          {/* Type selector */}
+          <div className="flex flex-wrap gap-1.5">
+            {MED_TYPES.map(t => (
+              <button
+                key={t.value} type="button"
+                onClick={() => setDraft(d => ({ ...d, record_type: t.value, title: '' }))}
+                className="text-[11px] font-black rounded-full px-2.5 py-1"
+                style={{ border: `2px solid ${draft.record_type === t.value ? '#E8634A' : '#F0EDE8'}`, background: draft.record_type === t.value ? '#FDEAE6' : 'white', color: draft.record_type === t.value ? '#E8634A' : '#6B4030', cursor: 'pointer' }}
+              >
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Název / popis" req>
+              <input
+                placeholder={TYPE_SUGGESTIONS[draft.record_type]?.[0] ?? 'Název záznamu'}
+                value={draft.title}
+                onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
+                list="med-suggestions"
+                style={inputStyle}
+              />
+              <datalist id="med-suggestions">
+                {(TYPE_SUGGESTIONS[draft.record_type] ?? []).map(s => <option key={s} value={s} />)}
+              </datalist>
+            </Field>
+            <Field label="Datum">
+              <input type="date" value={draft.record_date} onChange={e => setDraft(d => ({ ...d, record_date: e.target.value }))} style={inputStyle} />
+            </Field>
+            <Field label="Veterinář">
+              <input placeholder="MVDr. Horáková" value={draft.vet_name} onChange={e => setDraft(d => ({ ...d, vet_name: e.target.value }))} style={inputStyle} />
+            </Field>
+            <Field label="Poznámka">
+              <input placeholder="Dávka, výrobce, reakce..." value={draft.description} onChange={e => setDraft(d => ({ ...d, description: e.target.value }))} style={inputStyle} />
+            </Field>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={addRecord}
+              disabled={!draft.title.trim()}
+              className="font-black text-xs text-white rounded-lg"
+              style={{ padding: '7px 16px', background: '#2D8A4E', border: 'none', cursor: draft.title.trim() ? 'pointer' : 'default', opacity: draft.title.trim() ? 1 : 0.5 }}
+            >
+              + Přidat záznam
+            </button>
+            <button
+              onClick={() => setAdding(false)}
+              className="font-black text-xs rounded-lg"
+              style={{ padding: '7px 12px', background: 'white', border: '2px solid #F0EDE8', color: '#8B6550', cursor: 'pointer' }}
+            >
+              Zrušit
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setAdding(true)}
+          className="flex items-center gap-2 rounded-lg font-bold text-sm"
+          style={{ padding: '11px 14px', border: '2px dashed #D5CFC8', background: 'white', color: '#8B6550', cursor: 'pointer', width: '100%' }}
+        >
+          <span style={{ fontSize: '16px' }}>+</span>
+          Přidat zdravotní záznam
+          <span className="text-xs font-semibold ml-auto" style={{ color: '#B0A8A0' }}>vakcína, odčervení, vyšetření…</span>
+        </button>
+      )}
     </div>
   )
 }
 
 /* ─── Step 4 ─────────────────────────────────────────────── */
-function Step4({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean | string[]) => void }) {
+function Step4({ data, set }: { data: WizardData; set: <K extends keyof WizardData>(k: K, v: WizardData[K]) => void }) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <div className="flex gap-2 rounded-lg text-xs font-semibold" style={{ padding: '12px 14px', background: '#E6F1FB', borderLeft: '3px solid #185FA5', color: '#185FA5' }}>
         <span style={{ fontSize: '15px', flexShrink: 0 }}>⚖️</span>
         <span>Karanténa trvá min. 14 dní dle §25 zák. 246/1992 Sb. Zdravotní záznamy jsou zákonně povinné.</span>
@@ -621,153 +689,135 @@ function Step4({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
         <Field label="Váha při příjmu (kg)">
           <input type="number" step={0.1} min={0} placeholder="22.5" value={data.weight_on_arrival} onChange={e => set('weight_on_arrival', e.target.value)} style={inputStyle} />
         </Field>
-        <div className="col-span-2">
-          <Field label="Poznámka k vakcínám / léčbě">
-            <input placeholder="Vakcína vzteklina: 15. 3. 2024..." value={data.vaccination_notes} onChange={e => set('vaccination_notes', e.target.value)} style={inputStyle} />
-          </Field>
+      </div>
+
+      <div>
+        <div className="font-black text-sm mb-3 flex items-center gap-2" style={{ color: '#2C1810' }}>
+          💊 Zdravotní záznamy
+          <span className="rounded font-black normal-case tracking-normal px-1.5 py-0.5" style={{ fontSize: '9px', background: '#E6F1FB', color: '#185FA5' }}>Zákon</span>
+          {data.med_records.length > 0 && (
+            <span className="text-xs font-bold rounded-full px-2 py-0.5 ml-1" style={{ background: '#EAF3DE', color: '#2D8A4E' }}>
+              {data.med_records.length} {data.med_records.length === 1 ? 'záznam' : data.med_records.length < 5 ? 'záznamy' : 'záznamů'}
+            </span>
+          )}
         </div>
+        <MedRecordsEditor records={data.med_records} onChange={recs => set('med_records', recs)} />
       </div>
     </div>
   )
 }
 
-/* ─── RadioPills helper ──────────────────────────────────── */
-function RadioPills({ label, options, value, onChange }: {
-  label: string
-  options: { value: string; label: string }[]
-  value: string
-  onChange: (v: string) => void
-}) {
+/* ─── Step 5 — Shrnutí ───────────────────────────────────── */
+const ORIGIN_LABEL: Record<string, string> = {
+  found:            'Nalezeno nálezcem',
+  municipal_capture:'Odchyceno obcí',
+  surrendered:      'Odevzdáno majitelem',
+  seized:           'Odebráno (SVS/Policie)',
+  transferred:      'Přemístěno z útulku',
+  other:            'Jiné',
+}
+
+function SummaryRow({ icon, label, value }: { icon: string; label: string; value: string | null | undefined }) {
+  if (!value) return null
   return (
-    <div className="flex flex-col gap-1">
-      <label className="font-black uppercase text-xs" style={{ color: '#8B6550', letterSpacing: '.06em' }}>{label}</label>
-      <div className="flex flex-wrap gap-2">
-        {options.map(opt => {
-          const sel = value === opt.value
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => onChange(opt.value)}
-              className="rounded-full text-xs font-black transition-colors"
-              style={{
-                padding: '5px 14px',
-                border: `2px solid ${sel ? '#E8634A' : '#F0EDE8'}`,
-                background: sel ? '#FDEAE6' : 'white',
-                color: sel ? '#E8634A' : '#6B4030',
-                cursor: 'pointer',
-              }}
-            >
-              {opt.label}
-            </button>
-          )
-        })}
-      </div>
+    <div className="flex items-start gap-2 py-1.5">
+      <span className="flex-shrink-0 w-5 text-center">{icon}</span>
+      <span className="text-xs font-semibold flex-shrink-0" style={{ color: '#8B6550', minWidth: '100px' }}>{label}</span>
+      <span className="text-xs font-black" style={{ color: '#2C1810' }}>{value}</span>
     </div>
   )
 }
 
-/* ─── Step 5 ─────────────────────────────────────────────── */
-function Step5({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: string | boolean | string[]) => void }) {
-  function toggleSuitableFor(val: string) {
-    const current = data.suitable_for
-    const next = current.includes(val)
-      ? current.filter(v => v !== val)
-      : [...current, val]
-    set('suitable_for', next)
-  }
+function Step5Summary({ data, species }: { data: WizardData; species: Species[] }) {
+  const speciesName  = species.find(s => s.id === data.species_id)?.name_cs
+  const sexLabel     = data.sex === 'male' ? 'Samec' : data.sex === 'female' ? 'Samice' : data.sex === 'unknown' ? 'Neznámé' : null
+  const statusLabels: Record<string, string> = { intake: 'V příjmu', available: 'K adopci', reserved: 'Rezervovaný', foster: 'Dočasná péče' }
+  const healthLabel  = data.health_status ? (HEALTH_STATUS_LABEL as Record<string, string>)[data.health_status] : null
+  const quarEnd      = data.quarantine_start
+    ? new Date(new Date(data.quarantine_start).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('cs-CZ')
+    : null
+
+  const nextSteps = [
+    { done: !!data.name,            label: 'Jméno zvířete' },
+    { done: !!data.species_id,      label: 'Druh zvířete' },
+    { done: !!data.intake_date,     label: 'Datum příjmu' },
+    { done: !!data.finder_name,     label: 'Nálezce / odevzdávající' },
+    { done: !!data.chip_number,     label: 'Číslo čipu' },
+    { done: data.crz_registered,    label: 'CRZ registrace' },
+    { done: !!data.quarantine_start,label: 'Zahájení karantény' },
+    { done: !!data.quarantine_vet,  label: 'Veterinář karantény' },
+    { done: !!data.health_status,   label: 'Zdravotní stav' },
+    { done: data.med_records.length > 0, label: 'Zdravotní záznamy' },
+  ]
 
   return (
-    <div className="flex flex-col gap-4">
-      <Field label="Příběh zvířete">
-        <textarea
-          rows={4}
-          placeholder="Bella byla nalezena v parku... Miluje procházky a hraní si s míčem..."
-          value={data.story}
-          onChange={e => set('story', e.target.value)}
-          style={{ ...inputStyle, resize: 'vertical', minHeight: '88px' }}
-        />
-      </Field>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Adopční poplatek (Kč)">
-          <input type="number" min={0} step={100} placeholder="3000" value={data.adoption_fee} onChange={e => set('adoption_fee', e.target.value)} style={inputStyle} />
-        </Field>
+    <div className="flex flex-col gap-5">
+      {/* Info */}
+      <div className="flex gap-2 rounded-lg text-xs font-semibold" style={{ padding: '12px 14px', background: '#EAF3DE', borderLeft: '3px solid #2D8A4E', color: '#1a5e2e' }}>
+        <span style={{ fontSize: '15px', flexShrink: 0 }}>✅</span>
+        <span>Vše připraveno. Stiskni <strong>Přijmout zvíře</strong> pro uložení záznamu — profil nebude zveřejněn.</span>
       </div>
 
-      <RadioPills
-        label="Aktivita (energy_level)"
-        options={[
-          { value: 'low',       label: 'Nízká' },
-          { value: 'medium',    label: 'Střední' },
-          { value: 'high',      label: 'Vysoká' },
-          { value: 'very_high', label: 'Velmi vysoká' },
-        ]}
-        value={data.energy_level}
-        onChange={v => set('energy_level', v)}
-      />
-
-      <RadioPills
-        label="Náročnost chovu (care_level)"
-        options={[
-          { value: 'easy',      label: 'Lehká' },
-          { value: 'medium',    label: 'Střední' },
-          { value: 'demanding', label: 'Náročná' },
-          { value: 'expert',    label: 'Expertní' },
-        ]}
-        value={data.care_level}
-        onChange={v => set('care_level', v)}
-      />
-
-      <div className="flex flex-col gap-1">
-        <label className="font-black uppercase text-xs" style={{ color: '#8B6550', letterSpacing: '.06em' }}>Vhodné bydlení</label>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { value: 'flat',    label: 'Byt' },
-            { value: 'house',   label: 'Dům se zahradou' },
-            { value: 'country', label: 'Venkov' },
-          ].map(opt => {
-            const sel = data.suitable_for.includes(opt.value)
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => toggleSuitableFor(opt.value)}
-                className="rounded-full text-xs font-black transition-colors"
-                style={{
-                  padding: '5px 14px',
-                  border: `2px solid ${sel ? '#E8634A' : '#F0EDE8'}`,
-                  background: sel ? '#FDEAE6' : 'white',
-                  color: sel ? '#E8634A' : '#6B4030',
-                  cursor: 'pointer',
-                }}
-              >
-                {sel ? '☑ ' : ''}{opt.label}
-              </button>
-            )
-          })}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Základní info */}
+        <div className="rounded-lg" style={{ padding: '14px', background: '#FDFCFA', border: '1px solid #F0EDE8' }}>
+          <div className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#8B6550', letterSpacing: '.06em' }}>🐾 Základní info</div>
+          <SummaryRow icon="" label="Jméno" value={data.name || '—'} />
+          <SummaryRow icon="" label="Druh" value={speciesName ?? null} />
+          <SummaryRow icon="" label="Pohlaví" value={sexLabel} />
+          <SummaryRow icon="" label="Plemeno" value={data.breed || null} />
+          <SummaryRow icon="" label="Věk" value={data.age_years ? `${data.age_years} r.` : null} />
+          <SummaryRow icon="" label="Váha" value={data.weight_on_arrival || data.weight_kg ? `${data.weight_on_arrival || data.weight_kg} kg` : null} />
+          <SummaryRow icon="" label="Status" value={statusLabels[data.adoption_status] ?? null} />
         </div>
-      </div>
 
-      <div className="flex flex-col gap-2">
-        <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: '#8B6550', letterSpacing: '.05em' }}>Kompatibilita</div>
-        <Toggle checked={data.good_with_kids}    onChange={() => set('good_with_kids',    !data.good_with_kids)}    label="Vhodné pro děti" />
-        <Toggle checked={data.good_with_seniors} onChange={() => set('good_with_seniors', !data.good_with_seniors)} label="Vhodné pro seniory" />
-        <Toggle checked={data.good_with_dogs}    onChange={() => set('good_with_dogs',    !data.good_with_dogs)}    label="Vychází se psy" />
-        <Toggle checked={data.good_with_cats}    onChange={() => set('good_with_cats',    !data.good_with_cats)}    label="Vychází s kočkami" />
-      </div>
-
-      <div className="rounded-lg" style={{ padding: '14px', background: '#F7F4F0', border: '1px solid #F0EDE8' }}>
-        <div className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#8B6550' }}>Fotky</div>
-        <div className="flex items-center justify-center rounded-lg text-sm font-semibold cursor-pointer hover:opacity-75" style={{ padding: '20px', border: '2px dashed #D5CFC8', color: '#8B6550', background: 'white' }}>
-          📷 Přetáhněte fotky sem nebo klikněte pro výběr
+        {/* Příjem */}
+        <div className="rounded-lg" style={{ padding: '14px', background: '#FDFCFA', border: '1px solid #F0EDE8' }}>
+          <div className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#8B6550', letterSpacing: '.06em' }}>📥 Příjem</div>
+          <SummaryRow icon="" label="Datum" value={data.intake_date ? new Date(data.intake_date).toLocaleDateString('cs-CZ') : null} />
+          <SummaryRow icon="" label="Pracovník" value={data.intake_worker || null} />
+          <SummaryRow icon="" label="Způsob" value={ORIGIN_LABEL[data.origin] ?? null} />
+          <SummaryRow icon="" label="Místo nálezu" value={data.found_location || null} />
+          <SummaryRow icon="" label="Nálezce" value={data.finder_name || null} />
+          <SummaryRow icon="" label="Box" value={data.box || null} />
         </div>
-        <p className="text-xs mt-2" style={{ color: '#A09890' }}>Fotky lze přidat i po vytvoření karty zvířete.</p>
-      </div>
 
-      <div className="rounded-lg flex gap-2 text-xs" style={{ padding: '12px 14px', background: '#E6F1FB', borderLeft: '3px solid #185FA5', color: '#185FA5' }}>
-        <span>ℹ️</span>
-        <span>Profil <strong>nebude zveřejněn</strong>. Zveřejnění provedeš ručně na profilu zvířete po doplnění fotek a popisu.</span>
+        {/* Karanténa & zdraví */}
+        <div className="rounded-lg" style={{ padding: '14px', background: '#FDFCFA', border: '1px solid #F0EDE8' }}>
+          <div className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#8B6550', letterSpacing: '.06em' }}>🔒 Karanténa a zdraví</div>
+          <SummaryRow icon="" label="Start karantény" value={data.quarantine_start ? new Date(data.quarantine_start).toLocaleDateString('cs-CZ') : null} />
+          <SummaryRow icon="" label="Konec (min. 14 d.)" value={quarEnd} />
+          <SummaryRow icon="" label="Veterinář" value={data.quarantine_vet || null} />
+          <SummaryRow icon="" label="Zdravotní stav" value={healthLabel} />
+          <SummaryRow icon="" label="Záznamy" value={data.med_records.length > 0 ? `${data.med_records.length} přidaných` : null} />
+        </div>
+
+        {/* Chybějící data */}
+        <div className="rounded-lg" style={{ padding: '14px', background: '#FDFCFA', border: '1px solid #F0EDE8' }}>
+          <div className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: '#8B6550', letterSpacing: '.06em' }}>📋 Co doplnit v profilu</div>
+          <div className="flex flex-col gap-1.5">
+            {nextSteps.map(s => (
+              <div key={s.label} className="flex items-center gap-2 text-xs">
+                <span style={{ width: '14px', height: '14px', flexShrink: 0, borderRadius: '3px', background: s.done ? '#2D8A4E' : '#F0EDE8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '9px', fontWeight: 900 }}>
+                  {s.done ? '✓' : ''}
+                </span>
+                <span style={{ color: s.done ? '#2D8A4E' : '#8B6550', textDecoration: s.done ? 'none' : 'none' }}>{s.label}</span>
+              </div>
+            ))}
+            <div className="flex items-center gap-2 text-xs mt-1 pt-1" style={{ borderTop: '1px solid #F0EDE8' }}>
+              <span style={{ width: '14px', height: '14px', flexShrink: 0, borderRadius: '3px', background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#185FA5', fontSize: '9px', fontWeight: 900 }}>→</span>
+              <span style={{ color: '#185FA5' }}>Fotky — po příjmu v profilu zvířete</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <span style={{ width: '14px', height: '14px', flexShrink: 0, borderRadius: '3px', background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#185FA5', fontSize: '9px', fontWeight: 900 }}>→</span>
+              <span style={{ color: '#185FA5' }}>Povaha a příběh — až zvíře poznáte</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <span style={{ width: '14px', height: '14px', flexShrink: 0, borderRadius: '3px', background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#185FA5', fontSize: '9px', fontWeight: 900 }}>→</span>
+              <span style={{ color: '#185FA5' }}>Po karanténě přepnout na K adopci</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
