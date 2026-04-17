@@ -3,15 +3,12 @@
   "configurations": [
     {
       "name": "Next.js Dev Server",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": [
+        "-c",
+        "export PATH=\"/opt/homebrew/bin:$PATH\" && exec node ./node_modules/next/dist/bin/next dev"
+      ],
       "port": 3000
-    },
-    {
-      "name": "React Email Preview",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["@react-email/preview-server"],
-      "port": 3001
     }
   ]
 }

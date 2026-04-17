@@ -151,19 +151,30 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
   return (
     <div>
       {/* Page header */}
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="font-display font-extrabold text-2xl md:text-3xl text-espresso">
+      <div className="flex items-center justify-between gap-3 mb-4 md:mb-5">
+        <h1 className="font-display font-extrabold text-xl md:text-3xl text-espresso truncate">
           {isShelter ? '🐾 Všechna zvířata' : '🦉 Všichni pacienti'}
         </h1>
-        <Link href="/admin/animals/new">
-          <Button variant={isShelter ? 'primary' : 'rescue'} size="sm">
-            + {isShelter ? 'Přidat' : 'Nový pacient'}
-          </Button>
+        <Link href="/admin/animals/new" className="shrink-0">
+          {/* Mobile: ikonové tlačítko */}
+          <span
+            className="md:hidden flex items-center justify-center w-10 h-10 rounded-full text-white font-bold text-xl shadow-sm"
+            style={{ backgroundColor: activeColor }}
+            aria-label={isShelter ? 'Přidat zvíře' : 'Nový pacient'}
+          >
+            +
+          </span>
+          {/* Desktop: plné tlačítko */}
+          <span className="hidden md:inline-block">
+            <Button variant={isShelter ? 'primary' : 'rescue'} size="sm">
+              + {isShelter ? 'Přidat' : 'Nový pacient'}
+            </Button>
+          </span>
         </Link>
       </div>
 
       {/* Status tabs */}
-      <div className="flex gap-0 border-b border-[#F0EDE8] mb-5 overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0">
+      <div className="flex gap-0 border-b border-[#F0EDE8] mb-4 md:mb-5 overflow-x-auto -mx-4 md:mx-0 px-4 md:px-0 no-scrollbar">
         {tabs.map((tab: any) => {
           const isActive = (filterStatus ?? '') === tab.value
           const isMuted  = tab.muted && !isActive
@@ -171,7 +182,7 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
             <Link
               key={tab.value}
               href={buildUrl({ status: tab.value || undefined, page: undefined })}
-              className={`flex items-center gap-1.5 px-3 md:px-4 py-2.5 font-bold text-sm whitespace-nowrap border-b-2 transition-colors no-underline shrink-0`}
+              className="flex items-center gap-1.5 px-3 md:px-4 py-3 md:py-2.5 font-bold text-sm whitespace-nowrap border-b-2 transition-colors no-underline shrink-0"
               style={{
                 borderColor: isActive ? (tab.muted ? '#8B6550' : activeColor) : 'transparent',
                 color: isActive ? (tab.muted ? '#8B6550' : activeColor) : (isMuted ? '#A09890' : '#8B6550'),
@@ -215,7 +226,7 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
       ) : (
         <>
           {/* ── Mobile cards ── */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden space-y-2.5">
             {items.map((item: any) => {
               const statusVal = isShelter ? item.adoption_status : item.status
               const age = isShelter
@@ -224,51 +235,42 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
               const primaryPhoto = Array.isArray(item.photos) && item.photos.length > 0
                 ? (typeof item.photos[0] === 'string' ? item.photos[0] : item.photos[0]?.url)
                 : null
+              const metaParts = [
+                item.species?.name_cs,
+                age,
+                isShelter ? item.breed : item.case_number,
+              ].filter(Boolean)
               return (
-                <div key={item.id} className="bg-white rounded-lg border border-[#F0EDE8] shadow-sm overflow-hidden">
-                  <div className="flex items-center gap-3 p-4">
-                    {/* Foto nebo ikona */}
-                    <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-[#F5E6D3] flex items-center justify-center text-xl">
-                      {primaryPhoto
-                        ? <img src={primaryPhoto} alt={item.name ?? ''} className="w-full h-full object-cover" />
-                        : (item.species?.icon ?? (isShelter ? '🐾' : '🦉'))
-                      }
+                <Link
+                  key={item.id}
+                  href={`/admin/animals/${item.id}`}
+                  className="flex items-center gap-3 bg-white rounded-xl border border-[#F0EDE8] shadow-sm active:bg-[#FFFCF8] active:scale-[0.99] transition-all p-3 no-underline"
+                >
+                  {/* Foto nebo ikona */}
+                  <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-[#F5E6D3] flex items-center justify-center text-2xl">
+                    {primaryPhoto
+                      ? <img src={primaryPhoto} alt={item.name ?? ''} className="w-full h-full object-cover" />
+                      : (item.species?.icon ?? (isShelter ? '🐾' : '🦉'))
+                    }
+                  </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      {isShelter && item.urgent && <span aria-label="Urgentní" title="Urgentní">🆘</span>}
+                      {item.in_quarantine && <span aria-label="Karanténa" title="Karanténa">🚧</span>}
+                      {isShelter && item.in_foster && <span aria-label="Foster" title="Foster">🏠</span>}
+                      <span className="font-display font-bold text-[15px] text-espresso truncate">
+                        {item.name ?? item.case_number ?? '—'}
+                      </span>
                     </div>
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        {isShelter && item.urgent && <span className="text-xs">🆘</span>}
-                        {item.in_quarantine          && <span className="text-xs" title="Karanténa">🚧</span>}
-                        {isShelter && item.in_foster  && <span className="text-xs" title="Foster">🏠</span>}
-                        <span className="font-display font-bold text-sm text-espresso truncate">
-                          {item.name ?? item.case_number ?? '—'}
-                        </span>
-                      </div>
-                      <div className="text-xs text-[#8B6550] font-semibold">
-                        {item.species?.name_cs ?? '—'}
-                        {age ? ` · ${age}` : ''}
-                        {isShelter && item.breed ? ` · ${item.breed}` : ''}
-                      </div>
+                    <div className="text-xs text-[#8B6550] font-semibold truncate mb-1.5">
+                      {metaParts.join(' · ') || '—'}
                     </div>
-                    {/* Status badge */}
                     <Badge variant={statusVal} size="sm" />
                   </div>
-                  {/* Akce */}
-                  <div className="flex border-t border-[#F0EDE8] divide-x divide-[#F0EDE8]">
-                    <Link href={`/admin/animals/${item.id}`}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-[#8B6550] hover:text-[#2C1810] hover:bg-[#FFFCF8] transition-colors no-underline">
-                      ✏️ Upravit záznam
-                    </Link>
-                    <a href={`/admin/animals/${item.id}/qr`} target="_blank"
-                      className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#8B6550] hover:text-[#2C1810] hover:bg-[#FFFCF8] transition-colors no-underline">
-                      ▣ QR kód
-                    </a>
-                    <a href={`/admin/animals/${item.id}/pdf`} target="_blank"
-                      className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-[#8B6550] hover:text-[#2C1810] hover:bg-[#FFFCF8] transition-colors no-underline">
-                      📄 PDF
-                    </a>
-                  </div>
-                </div>
+                  {/* Chevron */}
+                  <span className="text-[#C4B8A8] text-lg shrink-0 pr-1" aria-hidden="true">›</span>
+                </Link>
               )
             })}
           </div>

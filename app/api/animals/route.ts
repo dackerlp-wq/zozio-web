@@ -3,16 +3,104 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
+// Whitelist povolených sloupců pro POST /api/animals.
+// Bezpečnostní bariéra proti pass-through `insert(body)` —
+// klient nesmí nastavit libovolný sloupec (např. `published`, `evidence_number`, staré cizí FK).
+const ALLOWED_COLUMNS = new Set<string>([
+  // identifikace
+  'institution_id',
+  'species_id',
+  'name',
+  'breed',
+  'color',
+  // základní údaje
+  'sex',
+  'birth_year',
+  'birth_month',
+  'age_months',
+  'size',
+  'weight_kg',
+  // status
+  'adoption_status',
+  'urgent',
+  'published',
+  'adoption_fee',
+  // příjem
+  'intake_date',
+  'intake_time',
+  'intake_worker',
+  'intake_reason',
+  'intake_notes',
+  'origin',
+  'found_date',
+  'found_location',
+  'intake_finder_name',
+  'intake_finder_phone',
+  'intake_finder_email',
+  'intake_finder_address',
+  // identifikace zvířete
+  'chip_number',
+  'passport_number',
+  'crz_registered',
+  // zdraví
+  'health_status',
+  'vaccinated',
+  'neutered',
+  'microchipped',
+  'special_needs',
+  'medical_notes',
+  'medications',
+  // karanténa
+  'in_quarantine',
+  'quarantine_start',
+  'quarantine_end',
+  'quarantine_vet',
+  'quarantine_box',
+  'quarantine_reason',
+  // povaha / doporučení
+  'good_with_kids',
+  'good_with_dogs',
+  'good_with_cats',
+  'good_with_adults',
+  'good_with_other_animals',
+  'suitable_for_flat',
+  'suitable_for_house',
+  'activity_level',
+  'care_difficulty',
+  'adopter_requirements',
+  // obsah
+  'description',
+  'story',
+  'primary_photo',
+  'photos',
+  // interní
+  'internal_notes',
+  'staff_assigned',
+])
+
+function pickAllowed(input: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const key of Object.keys(input)) {
+    if (ALLOWED_COLUMNS.has(key)) {
+      out[key] = input[key]
+    }
+  }
+  return out
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Nepřihlášen' }, { status: 401 })
 
-    const body = await request.json()
-    if (!body.name || !body.institution_id) {
-      return NextResponse.json({ error: 'Chybí povinná pole' }, { status: 400 })
+    const rawBody = await request.json() as Record<string, unknown>
+
+    if (!rawBody.name || !rawBody.institution_id) {
+      return NextResponse.json({ error: 'Chybí povinná pole (name, institution_id)' }, { status: 400 })
     }
+
+    const institutionId = String(rawBody.institution_id)
 
     const service = createServiceClient()
 
@@ -21,18 +109,24 @@ export async function POST(request: NextRequest) {
       .from('institution_members')
       .select('role')
       .eq('user_id', user.id)
-      .eq('institution_id', body.institution_id)
+      .eq('institution_id', institutionId)
       .single()
 
-    if (!membership) return NextResponse.json({ error: 'Nemáš přístup' }, { status: 403 })
+    if (!membership) return NextResponse.json({ error: 'Nemáš přístup k této instituci' }, { status: 403 })
+
+    // Whitelist — odfiltruj sloupce, které klient nesmí ovlivnit
+    const payload = pickAllowed(rawBody)
 
     const { data, error } = await service
       .from('animals')
-      .insert(body)
+      .insert(payload)
       .select('id')
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('POST /api/animals insert error:', error)
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
 
     revalidatePath('/adopt')
     revalidatePath('/rescue')
@@ -41,6 +135,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('POST /api/animals error:', error)
-    return NextResponse.json({ error: 'Interní chyba' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Interní chyba'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

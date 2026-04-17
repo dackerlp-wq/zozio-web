@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { WorkflowBar } from './AnimalWorkflowCard'
+import { HEALTH_STATUS_LABEL } from '@/lib/animal-labels'
 
 /* ─── Types ─────────────────────────────────────────────── */
 interface Species { id: string; name_cs: string }
@@ -26,7 +26,6 @@ interface WizardData {
   found_location: string
   found_date: string
   box: string
-  municipality: string
   finder_name: string
   finder_phone: string
   finder_email: string
@@ -35,7 +34,6 @@ interface WizardData {
   chip_number: string
   crz_registered: boolean
   passport_number: string
-  passport_in_shelter: boolean
   // Step 4 — Karanténa & zdraví
   quarantine_start: string
   quarantine_vet: string
@@ -52,16 +50,16 @@ interface WizardData {
   energy_level: string
   care_level: string
   suitable_for: string[]
-  good_with_seniors: boolean
+  good_with_seniors: boolean // jen UI — nemapuje se do DB
 }
 
 const INITIAL: WizardData = {
   name: '', species_id: '', sex: '', adoption_status: 'intake', urgent: false,
   breed: '', age_years: '', weight_kg: '', color: '',
   intake_date: new Date().toISOString().slice(0, 10), intake_time: '', intake_worker: '',
-  origin: 'found', found_location: '', found_date: '', box: '', municipality: '',
+  origin: 'found', found_location: '', found_date: '', box: '',
   finder_name: '', finder_phone: '', finder_email: '', finder_address: '',
-  chip_number: '', crz_registered: false, passport_number: '', passport_in_shelter: false,
+  chip_number: '', crz_registered: false, passport_number: '',
   quarantine_start: new Date().toISOString().slice(0, 10), quarantine_vet: '', health_status: '', weight_on_arrival: '', vaccination_notes: '',
   story: '', good_with_kids: false, good_with_dogs: false, good_with_cats: false, published: false, adoption_fee: '',
   energy_level: '', care_level: '', suitable_for: [], good_with_seniors: false,
@@ -153,6 +151,7 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
   const [step, setStep] = useState(0) // 0-indexed
   const [data, setData] = useState<WizardData>(INITIAL)
   const [saving, setSaving] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const router = useRouter()
 
   function set(field: keyof WizardData, value: string | boolean | string[]) {
@@ -161,46 +160,55 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
 
   async function handleSubmit(goToEdit = false) {
     setSaving(true)
+    setSubmitError(null)
     try {
+      // Váha: weight_on_arrival má přednost (pokud je vyplněná), jinak weight_kg ze Step 1
+      const effectiveWeight = data.weight_on_arrival
+        ? Number(data.weight_on_arrival)
+        : (data.weight_kg ? Number(data.weight_kg) : null)
+
       // Explicitní mapování — pouze existující DB sloupce
       const body: Record<string, unknown> = {
-        institution_id:      institutionId,
-        name:                data.name.trim() || 'Nové zvíře',
-        species_id:          data.species_id || null,
-        sex:                 data.sex || null,
-        breed:               data.breed || null,
-        color:               data.color || null,
-        birth_year:          data.age_years ? new Date().getFullYear() - Number(data.age_years) : null,
-        weight_kg:           data.weight_kg ? Number(data.weight_kg) : null,
-        adoption_status:     data.adoption_status,
-        urgent:              data.urgent,
-        intake_date:         data.intake_date || null,
-        intake_time:         data.intake_time || null,
-        intake_worker:       data.intake_worker || null,
-        origin:              data.origin || null,
-        found_location:      data.found_location || null,
-        found_date:          data.found_date || null,
-        intake_finder_name:  data.finder_name || null,
-        intake_finder_phone: data.finder_phone || null,
-        intake_finder_email: data.finder_email || null,
+        institution_id:        institutionId,
+        name:                  data.name.trim() || 'Nové zvíře',
+        species_id:            data.species_id || null,
+        sex:                   data.sex || null,
+        breed:                 data.breed || null,
+        color:                 data.color || null,
+        birth_year:            data.age_years ? new Date().getFullYear() - Number(data.age_years) : null,
+        weight_kg:             effectiveWeight,
+        adoption_status:       data.adoption_status,
+        urgent:                data.urgent,
+        intake_date:           data.intake_date || null,
+        intake_time:           data.intake_time || null,
+        intake_worker:         data.intake_worker || null,
+        origin:                data.origin || null,
+        found_location:        data.found_location || null,
+        found_date:            data.found_date || null,
+        intake_finder_name:    data.finder_name || null,
+        intake_finder_phone:   data.finder_phone || null,
+        intake_finder_email:   data.finder_email || null,
         intake_finder_address: data.finder_address || null,
-        chip_number:         data.chip_number || null,
-        passport_number:     data.passport_number || null,
-        crz_registered:      data.crz_registered,
-        quarantine_start:    data.quarantine_start || null,
-        quarantine_vet:      data.quarantine_vet || null,
-        health_status:       data.health_status || null,
-        story:               data.story || null,
-        adoption_fee:        data.adoption_fee ? Number(data.adoption_fee) : null,
-        activity_level:      data.energy_level || null,
-        care_difficulty:     data.care_level || null,
-        suitable_for_flat:   data.suitable_for.includes('flat'),
-        suitable_for_house:  data.suitable_for.includes('house'),
-        good_with_kids:      data.good_with_kids,
-        good_with_dogs:      data.good_with_dogs,
-        good_with_cats:      data.good_with_cats,
-        good_with_adults:    data.good_with_seniors ? 'friendly' : null,
-        published:           false, // wizard nikdy nepublikuje
+        chip_number:           data.chip_number || null,
+        passport_number:       data.passport_number || null,
+        crz_registered:        data.crz_registered,
+        quarantine_start:      data.quarantine_start || null,
+        quarantine_vet:        data.quarantine_vet || null,
+        quarantine_box:        data.box || null,
+        health_status:         data.health_status || null,
+        medical_notes:         data.vaccination_notes || null,
+        story:                 data.story || null,
+        adoption_fee:          data.adoption_fee ? Number(data.adoption_fee) : null,
+        activity_level:        data.energy_level || null,
+        care_difficulty:       data.care_level || null,
+        suitable_for_flat:     data.suitable_for.includes('flat'),
+        suitable_for_house:    data.suitable_for.includes('house'),
+        good_with_kids:        data.good_with_kids,
+        good_with_dogs:        data.good_with_dogs,
+        good_with_cats:        data.good_with_cats,
+        // POZN: good_with_seniors je jen UI příznak — DB sloupec good_with_adults
+        // je enum povahy (friendly/shy/fearful/...), ne vhodnost pro seniory.
+        published:             false, // wizard nikdy nepublikuje
       }
 
       const res = await fetch('/api/animals', {
@@ -208,16 +216,23 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      if (res.ok) {
-        const json = await res.json() as { id?: string; error?: string }
-        if (json.id) {
-          router.push(goToEdit ? `/admin/animals/${json.id}/edit` : `/admin/animals/${json.id}`)
-          return
-        }
+
+      const json = await res.json().catch(() => null) as { id?: string; error?: string } | null
+
+      if (!res.ok) {
+        const msg = json?.error || `Uložení selhalo (HTTP ${res.status})`
+        setSubmitError(msg)
+        return
       }
-      router.push('/admin/animals')
-    } catch {
-      router.push('/admin/animals')
+
+      if (json?.id) {
+        router.push(goToEdit ? `/admin/animals/${json.id}/edit` : `/admin/animals/${json.id}`)
+        return
+      }
+
+      setSubmitError('Server nevrátil ID vytvořeného zvířete.')
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Neočekávaná chyba při ukládání.')
     } finally {
       setSaving(false)
     }
@@ -301,6 +316,27 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
             {step === 4 && <Step5 data={data} set={set} />}
           </div>
 
+          {/* Chyba při ukládání */}
+          {submitError && (
+            <div
+              className="flex items-start gap-2 text-xs font-semibold"
+              style={{
+                padding: '12px 20px',
+                background: '#FDEAE6',
+                borderTop: '2px solid #F0EDE8',
+                borderLeft: '3px solid #E8634A',
+                color: '#A0321F',
+              }}
+              role="alert"
+            >
+              <span style={{ fontSize: '15px', flexShrink: 0 }}>⚠️</span>
+              <div>
+                <div className="font-black">Zvíře se nepodařilo uložit</div>
+                <div className="mt-0.5">{submitError}</div>
+              </div>
+            </div>
+          )}
+
           {/* wz-footer */}
           <div
             className="flex items-center justify-between gap-3 border-t-2"
@@ -366,7 +402,6 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
         </div>
       </div>
 
-      <WorkflowBar active="new" />
     </div>
   )
 }
@@ -487,8 +522,9 @@ function Step2({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
             <option value="found">Nalezeno — nálezcem</option>
             <option value="municipal_capture">Odchyceno obcí</option>
             <option value="surrendered">Odevzdáno majitelem</option>
-            <option value="confiscated">Odebráno (SVS/Policie)</option>
+            <option value="seized">Odebráno (SVS/Policie)</option>
             <option value="transferred">Přemístěno z jiného útulku</option>
+            <option value="other">Jiné</option>
           </select>
         </Field>
         <Field label="Místo nálezu" lawTag>
@@ -499,9 +535,6 @@ function Step2({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
         </Field>
         <Field label="Box / výběh">
           <input placeholder="B-12, K-4..." value={data.box} onChange={e => set('box', e.target.value)} style={inputStyle} />
-        </Field>
-        <Field label="Obec / plátce">
-          <input placeholder="Město Praha..." value={data.municipality} onChange={e => set('municipality', e.target.value)} style={inputStyle} />
         </Field>
       </div>
 
@@ -556,12 +589,6 @@ function Step3({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
           label="Zaregistrováno v CRZ"
           sub="Centrální registr zvířat — zákonná povinnost"
         />
-        <Toggle
-          checked={data.passport_in_shelter}
-          onChange={() => set('passport_in_shelter', !data.passport_in_shelter)}
-          label="Pas je v útulku"
-          sub="Cestovní pas zvířete byl předán útulku"
-        />
       </div>
     </div>
   )
@@ -586,11 +613,9 @@ function Step4({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
         <Field label="Zdravotní stav" lawTag>
           <select value={data.health_status} onChange={e => set('health_status', e.target.value)} style={inputStyle}>
             <option value="">Vyberte...</option>
-            <option value="good">Dobrý</option>
-            <option value="fair">Uspokojivý</option>
-            <option value="poor">Špatný</option>
-            <option value="critical">Kritický</option>
-            <option value="unknown">Neznámý</option>
+            {Object.entries(HEALTH_STATUS_LABEL).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
           </select>
         </Field>
         <Field label="Váha při příjmu (kg)">
@@ -685,9 +710,10 @@ function Step5({ data, set }: { data: WizardData; set: (k: keyof WizardData, v: 
       <RadioPills
         label="Náročnost chovu (care_level)"
         options={[
-          { value: 'easy',   label: 'Lehká' },
-          { value: 'medium', label: 'Střední' },
-          { value: 'hard',   label: 'Náročná' },
+          { value: 'easy',      label: 'Lehká' },
+          { value: 'medium',    label: 'Střední' },
+          { value: 'demanding', label: 'Náročná' },
+          { value: 'expert',    label: 'Expertní' },
         ]}
         value={data.care_level}
         onChange={v => set('care_level', v)}

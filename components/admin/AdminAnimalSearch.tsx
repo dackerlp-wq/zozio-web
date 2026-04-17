@@ -152,7 +152,7 @@ export function AdminAnimalSearch({
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row gap-2 mb-5">
+      <div className="flex flex-row gap-2 mb-4 md:mb-5">
 
         {/* ── Vyhledávání s našeptávačem ── */}
         <div ref={containerRef} className="relative flex flex-1 min-w-0">
@@ -181,10 +181,14 @@ export function AdminAnimalSearch({
             </div>
             <button
               type="submit"
-              className="shrink-0 px-4 py-2.5 rounded-r-lg font-bold text-sm text-white transition-colors cursor-pointer border-none"
+              aria-label="Hledat"
+              className="shrink-0 flex items-center justify-center w-11 sm:w-auto sm:px-4 sm:py-2.5 rounded-r-lg font-bold text-sm text-white transition-colors cursor-pointer border-none"
               style={{ backgroundColor: accentColor }}
             >
-              Hledat
+              <svg className="sm:hidden w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="hidden sm:inline">Hledat</span>
             </button>
           </form>
 
@@ -213,12 +217,13 @@ export function AdminAnimalSearch({
         <button
           type="button"
           onClick={() => setShowExport(true)}
-          className="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-[#F0EDE8] rounded-lg font-bold text-sm text-[#8B6550] hover:bg-[#F5E6D3] hover:border-[#EDD8C0] transition-colors cursor-pointer whitespace-nowrap"
+          aria-label="Export"
+          className="shrink-0 flex items-center justify-center gap-2 w-11 sm:w-auto h-11 sm:h-auto sm:px-4 sm:py-2.5 bg-white border-2 border-[#F0EDE8] rounded-lg font-bold text-sm text-[#8B6550] hover:bg-[#F5E6D3] hover:border-[#EDD8C0] transition-colors cursor-pointer whitespace-nowrap"
         >
           <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
-          Export CSV
+          <span className="hidden sm:inline">Export CSV</span>
         </button>
       </div>
 
