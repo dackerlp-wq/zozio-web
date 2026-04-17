@@ -19,11 +19,11 @@ interface MedRecord {
 interface WizardData {
   // Step 1 — Základní info
   name: string
-  species_id: string       // UUID ze seznamu, nebo '__other__' pro vlastní
-  species_other: string    // vlastní druh, pokud species_id === '__other__'
+  species_id: string
   sex: string
   adoption_status: string
   breed: string
+  breed_is_new: boolean  // true = rasa není v číselníku → přidá se jako vlastní
   age_years: string
   weight_kg: string
   color: string
@@ -56,8 +56,8 @@ interface WizardData {
 const TODAY = new Date().toISOString().slice(0, 10)
 
 const INITIAL: WizardData = {
-  name: '', species_id: '', species_other: '', sex: '', adoption_status: 'intake',
-  breed: '', age_years: '', weight_kg: '', color: '',
+  name: '', species_id: '', sex: '', adoption_status: 'intake',
+  breed: '', breed_is_new: false, age_years: '', weight_kg: '', color: '',
   intake_date: TODAY, intake_time: '', intake_worker: '',
   origin: 'found', found_location: '', found_date: '', box: '',
   finder_name: '', finder_phone: '', finder_email: '', finder_address: '',
@@ -171,16 +171,10 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
         ? Number(data.weight_on_arrival)
         : (data.weight_kg ? Number(data.weight_kg) : null)
 
-      const isCustomSpecies = data.species_id === '__other__'
-      // Pokud je vlastní druh, zaznamenej do interních poznámek
-      const internalNotes = data.species_other
-        ? `[Druh: ${data.species_other.trim()}]`
-        : null
-
       const body: Record<string, unknown> = {
         institution_id:        institutionId,
         name:                  data.name.trim() || 'Nové zvíře',
-        species_id:            isCustomSpecies ? null : (data.species_id || null),
+        species_id:            data.species_id || null,
         sex:                   data.sex || null,
         breed:                 data.breed || null,
         color:                 data.color || null,
@@ -205,8 +199,17 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
         quarantine_vet:        data.quarantine_vet || null,
         quarantine_box:        data.box || null,
         health_status:         data.health_status || null,
-        internal_notes:        internalNotes,
         published:             false,
+      }
+
+      // Pokud je zadána rasa, která není v číselníku, přidej ji jako vlastní (is_custom: true)
+      // Probíhá před vytvořením zvířete, ale neblokuje — chyba (duplikát) je ignorována
+      if (data.breed.trim() && data.species_id && data.breed_is_new) {
+        fetch('/api/breeds', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ species_id: data.species_id, name_cs: data.breed.trim() }),
+        }).catch(() => {}) // ignoruj chybu (duplikát atd.)
       }
 
       const res = await fetch('/api/animals', {
@@ -376,16 +379,32 @@ export default function NewAnimalWizard({ institutionId, species }: { institutio
 /* ─── Step 1 ─────────────────────────────────────────────── */
 function Step1({ data, set, species }: { data: WizardData; set: <K extends keyof WizardData>(k: K, v: WizardData[K]) => void; species: Species[] }) {
   const [breedSuggestions, setBreedSuggestions] = useState<string[]>([])
-  const isOtherSpecies = data.species_id === '__other__'
 
   useEffect(() => {
     const sid = data.species_id
-    if (!sid || sid === '__other__') return
+    if (!sid) { setBreedSuggestions([]); return }
     fetch(`/api/breeds?species_id=${sid}`)
       .then(r => r.ok ? r.json() : [])
-      .then((rows: { name_cs?: string }[]) => setBreedSuggestions(rows.map(r => r.name_cs ?? '').filter(Boolean)))
+      .then((rows: { name_cs?: string }[]) => {
+        const names = rows.map(r => r.name_cs ?? '').filter(Boolean)
+        setBreedSuggestions(names)
+        // Přehodnoť, zda je aktuální rasa nová
+        if (data.breed) {
+          const isNew = !names.some(n => n.toLowerCase() === data.breed.toLowerCase())
+          set('breed_is_new', isNew)
+        }
+      })
       .catch(() => {})
-  }, [data.species_id])
+  }, [data.species_id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleBreedChange(value: string) {
+    set('breed', value)
+    if (!value.trim()) { set('breed_is_new', false); return }
+    const isNew = !breedSuggestions.some(n => n.toLowerCase() === value.toLowerCase())
+    set('breed_is_new', isNew)
+  }
+
+  const showNewBreedHint = data.breed_is_new && data.breed.trim().length > 1 && !!data.species_id
 
   return (
     <div className="flex flex-col gap-4">
@@ -397,7 +416,6 @@ function Step1({ data, set, species }: { data: WizardData; set: <K extends keyof
           <select value={data.species_id} onChange={e => set('species_id', e.target.value)} style={inputStyle}>
             <option value="">Vyberte druh…</option>
             {species.map(s => <option key={s.id} value={s.id}>{s.name_cs}</option>)}
-            <option value="__other__">Jiný druh…</option>
           </select>
         </Field>
         <Field label="Pohlaví">
@@ -409,28 +427,27 @@ function Step1({ data, set, species }: { data: WizardData; set: <K extends keyof
           </select>
         </Field>
 
-        {/* Vlastní druh — zobrazí se po výběru "Jiný druh" */}
-        {isOtherSpecies && (
-          <div className="col-span-3">
-            <Field label="Název druhu" hint="Zapíše se do interních poznámek zvířete">
-              <input
-                autoFocus
-                placeholder="Ježek, plch, fretka, had..."
-                value={data.species_other}
-                onChange={e => set('species_other', e.target.value)}
-                style={inputStyle}
-              />
-            </Field>
-          </div>
-        )}
+        <div className="col-span-3 sm:col-span-1 flex flex-col gap-1">
+          <Field label="Plemeno / rasa">
+            <input
+              value={data.breed}
+              onChange={e => handleBreedChange(e.target.value)}
+              placeholder="Labrador mix"
+              list="breed-suggestions"
+              style={inputStyle}
+            />
+            <datalist id="breed-suggestions">
+              <option value="Kříženec" />
+              {breedSuggestions.map(b => <option key={b} value={b} />)}
+            </datalist>
+          </Field>
+          {showNewBreedHint && (
+            <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: '#2D8A4E' }}>
+              ✨ Nová rasa — přidá se do číselníku ke schválení
+            </span>
+          )}
+        </div>
 
-        <Field label="Plemeno / rasa">
-          <input value={data.breed} onChange={e => set('breed', e.target.value)} placeholder="Labrador mix" list="breed-suggestions" style={inputStyle} />
-          <datalist id="breed-suggestions">
-            <option value="Kříženec" />
-            {breedSuggestions.map(b => <option key={b} value={b} />)}
-          </datalist>
-        </Field>
         <Field label="Věk (roky)">
           <input type="number" min={0} max={30} value={data.age_years} onChange={e => set('age_years', e.target.value)} placeholder="3" style={inputStyle} />
         </Field>
