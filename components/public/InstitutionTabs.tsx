@@ -54,7 +54,7 @@ export function InstitutionTabs({
 
   // ── Derived lists for filters ──
   const speciesList = Array.from(
-    new Map(animals.map(a => [a.species?.name_cs, a.species]).filter(([k]) => k)).values()
+    new Map(animals.map(a => [a.species?.name_cs, a.species] as [string, any]).filter(([k]) => k)).values()
   ) as { id: string; name_cs: string; icon: string | null }[]
 
   const hasMultipleSpecies = speciesList.length > 1
@@ -347,7 +347,7 @@ export function InstitutionTabs({
 
                     return (
                       <div key={a.id} className={`bg-white rounded-xl overflow-hidden transition-all duration-200 hover:-translate-y-1 ${a.urgent ? 'ring-2 shadow-md' : 'border border-[#F0EDE8] hover:border-[#E8634A]/30 hover:shadow-sm'}`}
-                        style={a.urgent ? { ringColor: accent, boxShadow: `0 0 0 2px ${accent}40` } : {}}>
+                        style={a.urgent ? { boxShadow: `0 0 0 2px ${accent}40` } : {}}>
                         <Link href={`/animals/${a.id}`} className="no-underline group block">
                           <div className="relative h-36 md:h-40 overflow-hidden" style={{ background: '#F5E6D3' }}>
                             {a.primary_photo
