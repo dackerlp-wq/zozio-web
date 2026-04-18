@@ -366,7 +366,8 @@ async function getAnimals(params: any, page: number) {
   let query = supabase
     .from('animals')
     .select('id, name, breed, birth_year, primary_photo, urgent, adoption_status, vaccinated, neutered, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, suitable_for_flat, suitable_for_house, activity_level, care_difficulty, species:animal_species(name_cs,icon), institution:institutions(name,city,type,lat,lng)')
-    .eq('published', true)
+    // podmíněná adopce obchází published filtr — vždy veřejně viditelná
+    .or('published.eq.true,adoption_status.eq.conditional')
     .in('adoption_status', ['available', 'reserved', 'foster', 'conditional'])
     .or(`quarantine_end.is.null,quarantine_end.lt.${today}`)
 
@@ -425,7 +426,7 @@ async function getTotal(params: any) {
   let query = supabase
     .from('animals')
     .select('id', { count: 'exact', head: true })
-    .eq('published', true)
+    .or('published.eq.true,adoption_status.eq.conditional')
     .in('adoption_status', ['available', 'reserved', 'foster', 'conditional'])
     .or(`quarantine_end.is.null,quarantine_end.lt.${today}`)
 
@@ -461,7 +462,7 @@ async function getBreeds(speciesId?: string) {
   let query = supabase
     .from('animals')
     .select('breed')
-    .eq('published', true)
+    .or('published.eq.true,adoption_status.eq.conditional')
     .in('adoption_status', ['available', 'reserved', 'foster', 'conditional'])
     .or(`quarantine_end.is.null,quarantine_end.lt.${today}`)
     .not('breed', 'is', null) as any
