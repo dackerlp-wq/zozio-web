@@ -63,6 +63,9 @@ const ALLOWED_COLUMNS = new Set([
   'internal_notes', 'staff_assigned', 'institution_id',
   // Odchod
   'exit_type', 'exit_date', 'exit_notes', 'exit_worker',
+  // Podmíněná adopce
+  'conditional_adopter_name', 'conditional_adopter_phone', 'conditional_adopter_email',
+  'conditional_adoption_since', 'conditional_adoption_note',
   // Adopce (odchod)
   'adopter_name', 'adopter_phone', 'adopter_email', 'adopter_address',
   'adopter_id_number', 'adoption_contract_num', 'adoption_date', 'adopted_at',
@@ -73,24 +76,103 @@ const ALLOWED_COLUMNS = new Set([
   'disposal_method', 'disposal_doc_number', 'disposal_company',
 ])
 
-// good_with_* jsou v DB boolean, formulář posílá 'yes'/'ok'/'no'/'unknown'
-function convertGoodWith(value: unknown): boolean | null {
-  if (value === 'yes' || value === 'ok') return true
-  if (value === 'no') return false
-  return null
-}
-
-// good_with_adults is TEXT ('friendly'|'shy'|'fearful'|'distrustful'|'unknown'), not boolean
-const GOOD_WITH_COLS = ['good_with_kids', 'good_with_dogs', 'good_with_cats', 'good_with_other_animals']
+// good_with_* jsou TEXT sloupce, hodnoty: 'yes'|'ok'|'no'|'unknown'|null
+const GOOD_WITH_VALID = new Set(['yes', 'ok', 'no', 'unknown'])
 
 function sanitizePayload(body: Record<string, unknown>): Record<string, unknown> {
   const payload: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(body)) {
     if (!ALLOWED_COLUMNS.has(key)) continue
     if (value !== null && typeof value === 'object' && !Array.isArray(value)) continue
-    payload[key] = GOOD_WITH_COLS.includes(key) ? convertGoodWith(value) : value
+    // Normalize good_with_* — přijme i starý boolean formát z DB
+    if (['good_with_kids','good_with_dogs','good_with_cats','good_with_other_animals'].includes(key)) {
+      if (value === true  || value === 'true'  || value === 1) { payload[key] = 'yes'; continue }
+      if (value === false || value === 'false' || value === 0) { payload[key] = 'no';  continue }
+      payload[key] = GOOD_WITH_VALID.has(value as string) ? value : null
+      continue
+    }
+    payload[key] = value
   }
   return payload
+}
+
+// ── Audit helpers ────────────────────────────────────────────────────────────
+
+const TRACKED_FIELDS: Record<string, string> = {
+  name:             'Jméno',
+  sex:              'Pohlaví',
+  breed:            'Plemeno',
+  color:            'Barva',
+  weight_kg:        'Váha (kg)',
+  birth_year:       'Rok narození',
+  size:             'Velikost',
+  adoption_status:  'Status adopce',
+  published:        'Zveřejnění',
+  urgent:           'Urgentní',
+  health_status:    'Zdravotní stav',
+  neutered:         'Kastrace',
+  vaccinated:       'Očkování',
+  chip_number:      'Číslo čipu',
+  passport_number:  'Číslo pasu',
+  crz_registered:   'CRZ registrace',
+  quarantine_start: 'Zahájení karantény',
+  quarantine_end:   'Konec karantény',
+  quarantine_vet:   'Veterinář karantény',
+  in_quarantine:    'V karanténě',
+  good_with_kids:   'Vztah k dětem',
+  good_with_dogs:   'Vztah k psům',
+  good_with_cats:   'Vztah ke kočkám',
+  good_with_adults: 'Povaha k lidem',
+  activity_level:   'Aktivita',
+  care_difficulty:  'Náročnost péče',
+  adoption_fee:     'Adopční poplatek',
+  origin:           'Způsob příjmu',
+  found_location:   'Místo nálezu',
+  medical_notes:    'Zdravotní poznámky',
+  description:      'Popis povahy',
+  story:            'Příběh zvířete',
+  internal_notes:   'Interní poznámky',
+}
+
+const VALUE_LABELS: Record<string, string> = {
+  intake: 'V příjmu', available: 'K adopci', reserved: 'Rezervováno',
+  adopted: 'Adoptováno', foster: 'Dočasná péče', not_for_adoption: 'Není k adopci',
+  healthy: 'Zdravý', sick: 'Nemocný', injured: 'Zraněný',
+  recovering: 'Rekonvalescence', chronic: 'Chronické',
+  male: 'Samec', female: 'Samice', unknown: 'Netestováno',
+  low: 'Nízká', medium: 'Střední', high: 'Vysoká', very_high: 'Velmi vysoká',
+  easy: 'Nenáročný', demanding: 'Náročný', hard: 'Náročný', expert: 'Expert',
+  found: 'Nalezeno', municipal_capture: 'Odchyceno obcí', surrendered: 'Odevzdáno',
+  seized: 'Odebráno', transferred: 'Přemístěno', other: 'Jiné',
+  friendly: 'Přátelský', shy: 'Ostýchavý', fearful: 'Bojácný', distrustful: 'Nedůvěřivý',
+  yes: 'Miluje', ok: 'Toleruje', no: 'Nevhodné',
+}
+
+function fmtAuditValue(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—'
+  if (value === true  || value === 'true'  || value === 1) return 'Ano'
+  if (value === false || value === 'false' || value === 0) return 'Ne'
+  const s = String(value)
+  return VALUE_LABELS[s] ?? s
+}
+
+interface AuditChange { field: string; label: string; old_value: string; new_value: string }
+
+function buildAuditChanges(
+  current: Record<string, unknown>,
+  payload:  Record<string, unknown>,
+): AuditChange[] {
+  const changes: AuditChange[] = []
+  for (const field of Object.keys(TRACKED_FIELDS)) {
+    if (!(field in payload)) continue
+    const oldRaw = current[field]
+    const newRaw = payload[field]
+    const oldStr = fmtAuditValue(oldRaw)
+    const newStr = fmtAuditValue(newRaw)
+    if (oldStr === newStr) continue
+    changes.push({ field, label: TRACKED_FIELDS[field], old_value: oldStr, new_value: newStr })
+  }
+  return changes
 }
 
 export async function PUT(
@@ -112,6 +194,28 @@ export async function PUT(
     const payload = sanitizePayload(rest)
     payload.updated_at = new Date().toISOString()
 
+    // 1. Načti aktuální stav pro diff
+    const { data: currentAnimal } = await service
+      .from('animals')
+      .select('name,sex,breed,color,weight_kg,birth_year,size,adoption_status,published,urgent,health_status,neutered,vaccinated,chip_number,passport_number,crz_registered,quarantine_start,quarantine_end,quarantine_vet,in_quarantine,good_with_kids,good_with_dogs,good_with_cats,good_with_adults,activity_level,care_difficulty,adoption_fee,origin,found_location,medical_notes,description,story,internal_notes')
+      .eq('id', id)
+      .single()
+
+    // Auto-sync in_quarantine boolean z dat karantény
+    if ('quarantine_start' in payload || 'quarantine_end' in payload) {
+      const qs = (payload.quarantine_start ?? currentAnimal?.quarantine_start) as string | null
+      const qe = (payload.quarantine_end ?? currentAnimal?.quarantine_end) as string | null
+      if (qs) {
+        const endDate = qe ? new Date(qe) : new Date(new Date(qs).getTime() + 14 * 86400000)
+        payload.in_quarantine = endDate > new Date()
+      }
+    }
+
+    // Auto-sync microchipped z chip_number
+    if ('chip_number' in payload) {
+      payload.microchipped = payload.chip_number ? true : false
+    }
+
     const { error } = await service
       .from('animals')
       .update(payload)
@@ -125,6 +229,21 @@ export async function PUT(
     revalidatePath('/adopt')
     revalidatePath('/rescue')
     revalidatePath(`/animals/${id}`)
+
+    // 2. Build a ulož audit log
+    if (currentAnimal) {
+      const changes = buildAuditChanges(currentAnimal as Record<string,unknown>, payload)
+      if (changes.length > 0 || change_note) {
+        service.from('animal_audit_log').insert({
+          animal_id:   id,
+          changed_by:  user.id,
+          change_note: change_note || null,
+          changes,
+        }).then(({ error: aErr }) => {
+          if (aErr) console.error('audit log insert error:', aErr)
+        })
+      }
+    }
 
     // Zaeviduj do historie pokud je zadána poznámka (neblokující)
     if (change_note) {

@@ -128,12 +128,12 @@ export function QuarantineChip({ animalId, daysRemaining, defaultExtendDate, ori
         style={{ background: '#FEE2E2', color: '#991B1B' }}>
         ⚠️ Konec karantény
       </span>
-      <button onClick={() => updateAnimal({ adoption_status: 'available' })} disabled={isPending}
+      <button onClick={() => updateAnimal({ adoption_status: 'available', in_quarantine: false })} disabled={isPending}
         className="text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer border-0"
         style={{ background: '#D1FAE5', color: '#065F46', opacity: isPending ? 0.6 : 1 }}>
         K adopci
       </button>
-      <button onClick={() => updateAnimal({ adoption_status: 'foster' })} disabled={isPending}
+      <button onClick={() => updateAnimal({ adoption_status: 'foster', in_quarantine: false })} disabled={isPending}
         className="text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer border-0"
         style={{ background: '#DBEAFE', color: '#1E40AF', opacity: isPending ? 0.6 : 1 }}>
         Dočasná péče

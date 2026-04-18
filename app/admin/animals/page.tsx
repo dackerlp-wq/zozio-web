@@ -13,12 +13,16 @@ interface PageProps {
 
 const PAGE_SIZE = 20
 
+/** Vrátí efektivní zobrazovací status — 'quarantine' pokud je aktivní karanténa */
+function effectiveStatus(adoptionStatus: string, _inQuarantine: boolean | null, qEnd: string | null): string {
+  if (qEnd && new Date(qEnd) > new Date()) return 'quarantine'
+  return adoptionStatus
+}
+
 /** Vrátí počet zbývajících dní karantény (záporné = skončila, null = nemá karanténu) */
 function computeQuarantineDays(start: string | null, end: string | null): number | null {
-  if (!start) return null
-  const endDate = end
-    ? new Date(end)
-    : new Date(new Date(start).getTime() + 14 * 24 * 60 * 60 * 1000)
+  if (!start || !end) return null   // oba datumy musí být explicitně nastaveny
+  const endDate = new Date(end)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   endDate.setHours(0, 0, 0, 0)
@@ -86,7 +90,7 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
 
   // Počty pro záložky
   const shelterTabStatuses = ['available', 'reserved', 'foster'] as const
-  const rescueTabStatuses  = ['intake', 'treatment', 'rehabilitation'] as const
+  const rescueTabStatuses  = ['intake', 'treatment'] as const
   const tabStatuses = isShelter ? shelterTabStatuses : rescueTabStatuses
 
   const [activeResult, archiveResult, ...tabCountResults] = await Promise.all([
@@ -112,7 +116,7 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
 
   // Main query
   const selectFields = isShelter
-    ? 'id, name, breed, birth_year, birth_month, urgent, adoption_status, health_status, in_quarantine, in_foster, quarantine_start, quarantine_end, origin, photos, species:animal_species(id, name_cs, icon), intake_date, created_at'
+    ? 'id, name, breed, birth_year, birth_month, urgent, adoption_status, health_status, in_quarantine, in_foster, quarantine_start, quarantine_end, origin, photos, published, chip_number, vaccinated, species:animal_species(id, name_cs, icon), intake_date, created_at'
     : 'id, name, case_number, estimated_age, status, health_status, photos, species:animal_species(id, name_cs, icon), intake_date, created_at'
 
   let animalsQuery = service
@@ -151,11 +155,10 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
     { value: 'archive',   label: 'Archiv',      count: archiveCount, muted: true },
   ]
   const rescueTabs = [
-    { value: '',               label: 'Aktivní',      count: activeCount },
-    { value: 'intake',         label: 'Příjem',        count: tabCounts[0] },
-    { value: 'treatment',      label: 'Léčba',         count: tabCounts[1] },
-    { value: 'rehabilitation', label: 'Rehabilitace',  count: tabCounts[2] },
-    { value: 'archive',        label: 'Archiv',        count: archiveCount, muted: true },
+    { value: '',          label: 'Aktivní', count: activeCount },
+    { value: 'intake',    label: 'Příjem',  count: tabCounts[0] },
+    { value: 'treatment', label: 'Léčba',   count: tabCounts[1] },
+    { value: 'archive',   label: 'Archiv',  count: archiveCount, muted: true },
   ]
   const tabs = isShelter ? shelterTabs : rescueTabs
   const activeColor = isShelter ? '#E8634A' : '#2E9E8F'
@@ -248,7 +251,10 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
           {/* ── Mobile cards ── */}
           <div className="md:hidden space-y-2.5">
             {items.map((item: any) => {
-              const statusVal = isShelter ? item.adoption_status : item.status
+              const rawStatus = isShelter ? item.adoption_status : item.status
+              const statusVal = isShelter
+                ? effectiveStatus(rawStatus, item.in_quarantine, item.quarantine_end ?? null)
+                : rawStatus
               const age = isShelter
                 ? computeAge(item.birth_year, item.birth_month)
                 : item.estimated_age ?? null
@@ -263,6 +269,12 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
               const qDays = isShelter
                 ? computeQuarantineDays(item.quarantine_start ?? null, item.quarantine_end ?? null)
                 : null
+              const hasPhoto = Array.isArray(item.photos) && item.photos.length > 0
+              const warnings: string[] = []
+              if (isShelter) {
+                if (!hasPhoto) warnings.push('Bez fotky')
+                if (!item.chip_number) warnings.push('Bez čipu')
+              }
               return (
                 <Link
                   key={item.id}
@@ -281,6 +293,12 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                     <div className="flex items-center gap-1.5 mb-1">
                       {isShelter && item.urgent && <span aria-label="Urgentní" title="Urgentní">🆘</span>}
                       {isShelter && item.in_foster && <span aria-label="Foster" title="Foster">🏠</span>}
+                      {isShelter && item.published === true && (
+                        <span title="Viditelné na webu" className="inline-block w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                      )}
+                      {isShelter && item.published === false && (
+                        <span title="Skryté (draft)" className="inline-block w-2 h-2 rounded-full bg-[#D5CFC8] flex-shrink-0" />
+                      )}
                       <span className="font-display font-bold text-[15px] text-espresso truncate">
                         {item.name ?? item.case_number ?? '—'}
                       </span>
@@ -300,9 +318,28 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                         />
                       )}
                     </div>
+                    {warnings.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {warnings.map(w => (
+                          <span key={w} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E]">
+                            ⚠ {w}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  {/* Chevron */}
-                  <span className="text-[#C4B8A8] text-lg shrink-0 pr-1" aria-hidden="true">›</span>
+                  {/* Akce */}
+                  <div className="flex flex-col items-center gap-1.5 shrink-0">
+                    <span className="text-[#C4B8A8] text-lg" aria-hidden="true">›</span>
+                    {!isArchive && (
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: '#F5E6D3', color: '#6B4030' }}
+                      >
+                        ✏️
+                      </span>
+                    )}
+                  </div>
                 </Link>
               )
             })}
@@ -330,7 +367,10 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
               </thead>
               <tbody>
                 {items.map((item: any) => {
-                  const statusVal = isShelter ? item.adoption_status : item.status
+                  const rawStatusDesk = isShelter ? item.adoption_status : item.status
+                  const statusVal = isShelter
+                    ? effectiveStatus(rawStatusDesk, item.in_quarantine, item.quarantine_end ?? null)
+                    : rawStatusDesk
                   const age = isShelter
                     ? computeAge(item.birth_year, item.birth_month)
                     : item.estimated_age ?? null
@@ -340,6 +380,12 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                   const qDaysDesk = isShelter
                     ? computeQuarantineDays(item.quarantine_start ?? null, item.quarantine_end ?? null)
                     : null
+                  const hasPhotoDesk = Array.isArray(item.photos) && item.photos.length > 0
+                  const warningsDesk: string[] = []
+                  if (isShelter) {
+                    if (!hasPhotoDesk) warningsDesk.push('Bez fotky')
+                    if (!item.chip_number) warningsDesk.push('Bez čipu')
+                  }
                   return (
                     <tr
                       key={item.id}
@@ -359,6 +405,12 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                               {isShelter && item.urgent   && <span className="text-xs">🆘</span>}
                               {item.in_quarantine          && <span className="text-xs" title="Karanténa">🚧</span>}
                               {isShelter && item.in_foster && <span className="text-xs" title="Foster">🏠</span>}
+                              {isShelter && item.published === true && (
+                                <span title="Viditelné na webu" className="inline-block w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                              )}
+                              {isShelter && item.published === false && (
+                                <span title="Skryté (draft)" className="inline-block w-2 h-2 rounded-full bg-[#D5CFC8] flex-shrink-0" />
+                              )}
                               <span className="font-display font-bold text-sm text-[#2C1810]">
                                 {item.name ?? item.case_number ?? '—'}
                               </span>
@@ -368,6 +420,15 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                             )}
                             {!isShelter && item.name && item.case_number && (
                               <div className="text-xs text-[#8B6550] mt-0.5">{item.case_number}</div>
+                            )}
+                            {warningsDesk.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {warningsDesk.map(w => (
+                                  <span key={w} className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E]">
+                                    ⚠ {w}
+                                  </span>
+                                ))}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -407,21 +468,12 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                       {/* AKCE — zobrazí se na hover */}
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {isArchive ? (
-                            <Link
-                              href={`/admin/animals/${item.id}`}
-                              className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold text-[#8B6550] bg-[#F5E6D3] hover:bg-[#EDD8C0] transition-colors no-underline whitespace-nowrap"
-                            >
-                              Zobrazit detail
-                            </Link>
-                          ) : (
-                            <Link
-                              href={`/admin/animals/${item.id}`}
-                              className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold text-[#6B4030] bg-[#F5E6D3] hover:bg-[#EDD8C0] transition-colors no-underline whitespace-nowrap"
-                            >
-                              ✏️ Upravit záznam
-                            </Link>
-                          )}
+                          <Link
+                            href={`/admin/animals/${item.id}`}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-bold text-[#6B4030] bg-[#F5E6D3] hover:bg-[#EDD8C0] transition-colors no-underline whitespace-nowrap"
+                          >
+                            {isArchive ? 'Zobrazit' : '📋 Otevřít'}
+                          </Link>
                           <a
                             href={`/admin/animals/${item.id}/qr`}
                             target="_blank"

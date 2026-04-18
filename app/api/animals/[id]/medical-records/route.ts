@@ -83,6 +83,14 @@ export async function POST(
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+  // Auto-sync vaccinated flag: pokud je přidán záznam vakcinace/odčervení → nastav vaccinated = true
+  if (['vaccination', 'deworming'].includes(recordType)) {
+    service.from('animals').update({ vaccinated: true }).eq('id', id).then(({ error: vErr }) => {
+      if (vErr) console.error('vaccinated sync error:', vErr)
+    })
+  }
+
   return NextResponse.json(record, { status: 201 })
 }
 

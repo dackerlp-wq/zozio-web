@@ -95,7 +95,7 @@ function detectPhase(a: Record<string, unknown>): PhaseKey {
 
   // Karanténa aktivní — PŘED kontrolou adoption_status
   const qEnd = a.quarantine_end ? new Date(String(a.quarantine_end)) : null
-  if (a.quarantine_start && qEnd && qEnd > new Date()) return 'karantena'
+  if (qEnd && qEnd > new Date()) return 'karantena'
 
   // Ochranná doba — POUZE pokud karanténa PROBĚHLA (qEnd v minulosti)
   // Pokud karanténa ještě nezačala (quarantine_start null), zůstaň v příjmu
@@ -183,8 +183,9 @@ function CheckItem({ done, label }: { done: boolean; label: string }) {
 function PhasePrijem({ a, id }: { a: Record<string, unknown>; id: string }) {
   const origin       = String(a.origin ?? '')
   const isFound      = ['found', 'municipal_capture'].includes(origin)
-  const hasQ         = Boolean(a.quarantine_start)
   const qEnd         = a.quarantine_end ? new Date(String(a.quarantine_end)) : null
+  // Karanténa je "zahájena" pouze pokud má oba datumy — start bez endu je jen wizard default
+  const hasQ         = Boolean(a.quarantine_start) && qEnd !== null
   const quarantineDone = qEnd !== null && qEnd <= new Date()
 
   // Profil kompletnost
@@ -875,7 +876,7 @@ export default function AnimalWorkflowDashboard({ animal: a, institution, medica
 
   // Karanténa jako odvozený zobrazovací stav
   const qEnd = a.quarantine_end ? new Date(String(a.quarantine_end)) : null
-  const isInQuarantine = Boolean(a.quarantine_start) && qEnd != null && qEnd > new Date()
+  const isInQuarantine = qEnd != null && qEnd > new Date()
   const displayStatus = isInQuarantine ? 'quarantine' : status
   const statusBadge   = STATUS_BADGE[displayStatus] ?? STATUS_BADGE.intake
   const daysInShelter = daysFrom(a.intake_date)

@@ -66,24 +66,24 @@ export default async function EditAnimalPage({
     icon:    s.icon ? String(s.icon) : null,
   }))
 
-  /* ── Status history ── */
-  const threeMonthsAgo = new Date()
-  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
-
-  const { data: historyRows } = await service
-    .from('animal_status_history')
-    .select('id, status, changed_at, note, changed_by')
+  /* ── Audit log (field-level change history) ── */
+  const { data: auditRows } = await service
+    .from('animal_audit_log')
+    .select('id, changed_at, change_note, changed_by, changes')
     .eq('animal_id', id)
-    .gte('changed_at', threeMonthsAgo.toISOString())
     .order('changed_at', { ascending: false })
+    .limit(100)
 
-  const statusHistory = (historyRows ?? []).map((h) => ({
-    id:         String(h.id),
-    status:     String(h.status ?? ''),
-    changed_at: String(h.changed_at),
-    note:       h.note ? String(h.note) : undefined,
-    changed_by: h.changed_by ? String(h.changed_by) : undefined,
+  const auditLog = (auditRows ?? []).map((r) => ({
+    id:          String(r.id),
+    changed_at:  String(r.changed_at),
+    change_note: r.change_note ? String(r.change_note) : null,
+    changed_by:  r.changed_by  ? String(r.changed_by)  : null,
+    changes:     Array.isArray(r.changes) ? r.changes as { field: string; label: string; old_value: string; new_value: string }[] : [],
   }))
+
+  /* ── Status history (legacy — kept for backwards compat) ── */
+  const statusHistory: { id: string; status: string; changed_at: string; note?: string; changed_by?: string }[] = []
 
   return (
     <div>
@@ -139,6 +139,7 @@ export default async function EditAnimalPage({
         mode="edit"
         animal={a}
         statusHistory={statusHistory}
+        auditLog={auditLog}
         currentUser={{ id: user.id, name: user.email ?? '' }}
       />
     </div>

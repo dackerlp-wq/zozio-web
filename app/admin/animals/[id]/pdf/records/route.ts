@@ -58,6 +58,15 @@ export async function GET(
 
   const a = animal as any
 
+  // Fetch from animal_medical_records table
+  const { data: medRecordsRows } = await service
+    .from('animal_medical_records')
+    .select('*')
+    .eq('animal_id', id)
+    .order('record_date', { ascending: false })
+
+  const medRecords = (medRecordsRows ?? []) as any[]
+
   const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://zozio.cz'
 
   // QR → digitální ověření záznamu (admin URL)
@@ -585,65 +594,108 @@ export async function GET(
   <div class="section">
     <div class="section-header">
       <span class="section-num">6</span>
-      <span class="section-title">Vakcinace a ošetření</span>
+      <span class="section-title">Vakcinace a odčervení</span>
       <span class="section-legal">§13 zák. 166/1999 Sb.</span>
     </div>
-    ${vaccinations.length > 0 ? `
-    <table class="vaccine-table">
+    ${(() => {
+      // Prefer structured medRecords; fall back to JSONB vaccinations
+      const vacMedRecs = medRecords.filter((r: any) => r.record_type === 'vaccination' || r.record_type === 'deworming')
+      if (vacMedRecs.length > 0) {
+        return `<table class="vaccine-table">
+      <thead>
+        <tr>
+          <th>Typ</th>
+          <th>Datum aplikace</th>
+          <th>Přeočkovat do</th>
+          <th>Veterinář</th>
+          <th>Poznámka</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${vacMedRecs.map((r: any) => `
+        <tr>
+          <td><strong>${v(r.title)}</strong></td>
+          <td>${fmtDate(r.record_date)}</td>
+          <td>${r.next_due_date ? fmtDate(r.next_due_date) : '—'}</td>
+          <td>${v(r.vet_name)}</td>
+          <td>${v(r.description)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`
+      } else if (vaccinations.length > 0) {
+        return `<table class="vaccine-table">
       <thead>
         <tr>
           <th>Typ vakcinace</th>
           <th>Datum aplikace</th>
+          <th>Přeočkovat do</th>
           <th>Šarže / batch</th>
-          <th>Expirace vakcíny</th>
           <th>Veterinář</th>
         </tr>
       </thead>
       <tbody>
-        ${vaccinations.map(vc => `
+        ${vaccinations.map((vc: any) => `
         <tr>
-          <td><strong>${vc.label ?? vc.type ?? '—'}</strong></td>
+          <td><strong>${v(vc.label ?? vc.type)}</strong></td>
           <td>${fmtDate(vc.last_date)}</td>
+          <td>—</td>
           <td>${v(vc.batch_number)}</td>
-          <td>${fmtDate(vc.expiry_date)}</td>
           <td>${v(vc.vet_name)}</td>
         </tr>`).join('')}
       </tbody>
-    </table>` : `
-    <table class="vaccine-table">
+    </table>`
+      } else {
+        return `<table class="vaccine-table">
       <tr><td colspan="5" style="padding:8px;text-align:center;color:#A09890;font-style:italic">Žádné záznamy o vakcinaci</td></tr>
-    </table>`}
+    </table>`
+      }
+    })()}
   </div>
 
-  <!-- 7. AKTUÁLNÍ MEDIKACE -->
-  ${medications.length > 0 ? `
-  <div class="section">
+  <!-- 6b. OSTATNÍ ZDRAVOTNÍ ZÁZNAMY -->
+  ${(() => {
+    const otherRecs = medRecords.filter((r: any) => !['vaccination','deworming'].includes(r.record_type))
+    if (otherRecs.length === 0 && medications.length === 0) return ''
+    return `<div class="section">
     <div class="section-header">
-      <span class="section-num">7</span>
-      <span class="section-title">Aktuální medikace</span>
+      <span class="section-num">6b</span>
+      <span class="section-title">Ostatní zdravotní záznamy</span>
       <span class="section-legal">Vyhl. 342/2012 Sb.</span>
     </div>
-    <table class="med-table">
+    <table class="vaccine-table">
       <thead>
         <tr>
-          <th>Název léčiva</th>
-          <th>Dávkování</th>
-          <th>Frekvence</th>
+          <th>Typ</th>
+          <th>Název / diagnóza</th>
+          <th>Datum</th>
+          <th>Veterinář</th>
+          <th>Poznámka</th>
         </tr>
       </thead>
       <tbody>
-        ${medications.map(m => `
+        ${otherRecs.map((r: any) => `
         <tr>
+          <td>${v(r.record_type)}</td>
+          <td><strong>${v(r.title)}</strong></td>
+          <td>${fmtDate(r.record_date)}</td>
+          <td>${v(r.vet_name)}</td>
+          <td>${v(r.description)}</td>
+        </tr>`).join('')}
+        ${medications.map((m: any) => `
+        <tr>
+          <td>medication</td>
           <td><strong>${v(m.name)}</strong></td>
-          <td>${v(m.dosage)}</td>
-          <td>${v(m.frequency)}</td>
+          <td>—</td>
+          <td>—</td>
+          <td>${v(m.dosage)}${m.frequency ? ' · ' + m.frequency : ''}</td>
         </tr>`).join('')}
       </tbody>
     </table>
-  </div>` : ''}
+  </div>`
+  })()}
 
-  <!-- 8. ODCHOD ZE ZAŘÍZENÍ -->
-  ${section('8', 'Odchod ze zařízení', '§25b odst. 4 zák. 246/1992 Sb.', `
+  <!-- 7. ODCHOD ZE ZAŘÍZENÍ -->
+  ${section('7', 'Odchod ze zařízení', '§25b odst. 4 zák. 246/1992 Sb.', `
     ${row('Typ odchodu', a.exit_type ? (exitTypeLabel[a.exit_type] ?? a.exit_type) : '—', true)}
     ${row('Datum odchodu', fmtDate(a.exit_date))}
     ${row('Pracovník propuštění', v(a.exit_worker))}

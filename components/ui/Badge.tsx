@@ -6,8 +6,9 @@ import {
 
 interface BadgeProps {
   variant:
-    | 'available' | 'reserved' | 'adopted' | 'foster' | 'not_for_adoption'
-    | 'intake' | 'treatment' | 'rehabilitation' | 'released' | 'transferred' | 'deceased'
+    | 'intake' | 'quarantine' | 'available' | 'reserved' | 'adopted'
+    | 'foster' | 'treatment' | 'deceased' | 'not_for_adoption' | 'conditional'
+    | 'released' | 'transferred'
     | 'healthy' | 'sick' | 'injured' | 'recovering' | 'chronic'
     | 'urgent'
     | 'rescue'
@@ -34,7 +35,7 @@ export function Badge({ variant, className = '', size = 'md' }: BadgeProps) {
     )
   }
 
-  // Stav adopce
+  // Stav adopce (shelter) — včetně odvozených stavů jako quarantine
   if (variant in ADOPTION_STATUS_LABEL) {
     return (
       <span className={`inline-flex items-center gap-1 font-body font-bold rounded-pill ${ADOPTION_STATUS_BADGE[variant] ?? 'bg-gray-pale text-gray'} ${sizeClass} ${className}`}>

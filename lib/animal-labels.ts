@@ -3,57 +3,69 @@
 // Importuj odkudkoliv — admin i veřejný web
 // ══════════════════════════════════════════════
 
-// Stav adopce (útulky)
+// Stav adopce (útulky) — adoption_status + odvozené zobrazovací stavy
 export const ADOPTION_STATUS_LABEL: Record<string, string> = {
-  available:       'K adopci',
-  reserved:        'Rezervováno',
-  adopted:         'Adoptováno',
-  foster:          'Ve foster péči',
+  intake:           'V příjmu',
+  quarantine:       'Karanténa',       // odvozený stav (in_quarantine=true), není v DB
+  available:        'K adopci',
+  reserved:         'Rezervováno',
+  adopted:          'Adoptováno',
+  foster:           'Dočasná péče',
+  treatment:        'V léčbě',
+  deceased:         'Uhynul',
   not_for_adoption: 'Není k adopci',
+  conditional:      'Podmíněná adopce',
 }
 
 export const ADOPTION_STATUS_BADGE: Record<string, string> = {
+  intake:           'bg-[#E6F1FB] text-[#185FA5]',
+  quarantine:       'bg-[#F0E6FB] text-[#6B35B5]',
   available:        'bg-success-bg text-success',
   reserved:         'bg-amber-light text-warning',
   adopted:          'bg-espresso text-white',
-  foster:           'bg-rescue-bg text-rescue-dark',
+  foster:           'bg-[#EDE9FB] text-[#6D3BE8]',
+  treatment:        'bg-[#FCEBEB] text-[#D83030]',
+  deceased:         'bg-gray-pale text-gray',
   not_for_adoption: 'bg-gray-pale text-gray',
+  conditional:      'bg-[#FFF0E6] text-[#C05000]',
 }
 
 export const ADOPTION_STATUS_ICON: Record<string, string> = {
-  available:        '✓',
-  reserved:         '⏳',
-  adopted:          '🏠',
-  foster:           '👨‍👩‍👧',
+  intake:           '📥',
+  quarantine:       '🔒',
+  available:        '🏠',
+  reserved:         '📌',
+  adopted:          '✅',
+  foster:           '🏡',
+  treatment:        '💊',
+  deceased:         '🕊️',
   not_for_adoption: '⛔',
+  conditional:      '🤝',
 }
 
 // Stav záchranného případu
 export const RESCUE_STATUS_LABEL: Record<string, string> = {
-  intake:         'Příjem',
-  treatment:      'Léčba',
-  rehabilitation: 'Rehabilitace',
-  released:       'Propuštěn do přírody',
-  transferred:    'Přemístěn',
-  deceased:       'Uhynul',
+  intake:      'Příjem',
+  treatment:   'Léčba',
+  released:    'Propuštěn do přírody',
+  transferred: 'Přemístěn',
+  deceased:    'Uhynul',
 }
 
 export const RESCUE_STATUS_BADGE: Record<string, string> = {
-  intake:         'bg-coral-light text-coral-dark',
-  treatment:      'bg-amber-light text-warning',
-  rehabilitation: 'bg-rescue-bg text-rescue-dark',
-  released:       'bg-success-bg text-success',
-  transferred:    'bg-sand text-brown-mid',
-  deceased:       'bg-gray-pale text-gray',
+  intake:      'bg-coral-light text-coral-dark',
+  treatment:   'bg-amber-light text-warning',
+  released:    'bg-success-bg text-success',
+  transferred: 'bg-sand text-brown-mid',
+  deceased:    'bg-gray-pale text-gray',
 }
 
 export const RESCUE_STATUS_ICON: Record<string, string> = {
-  intake:         '🚑',
-  treatment:      '🩺',
-  rehabilitation: '💪',
-  released:       '🌿',
-  transferred:    '🚐',
-  deceased:       '💔',
+  intake:      '🚑',
+  treatment:   '🩺',
+  released:    '🌿',
+  transferred: '🚐',
+  deceased:    '💔',
 }
 
 // Zdravotní stav
@@ -85,16 +97,24 @@ export const ORIGIN_LABEL: Record<string, string> = {
 
 // Důvod příjmu — hodnoty sloupce `intake_reason` v DB
 export const INTAKE_REASON_LABEL: Record<string, string> = {
-  // původní hodnoty (text pole)
   found:             'Nalezeno',
   surrendered:       'Odevzdáno majitelem',
   confiscated:       'Konfiskace',
   born_here:         'Narozeno v útulku',
   other:             'Jiný důvod',
-  // fallback — pokud intake_reason obsahuje origin klíč
   municipal_capture: 'Odchyceno obcí',
   seized:            'Odebráno (SVS/Policie)',
   transferred:       'Přemístěno z jiného útulku',
+}
+
+// Důvod nevhodnosti k adopci
+export const NOT_FOR_ADOPTION_REASON_LABEL: Record<string, { icon: string; label: string; desc: string }> = {
+  owner_unresolved:  { icon: '⚖️', label: 'Nevyřešený majitel',          desc: 'Probíhá hledání nebo spor o vlastnictví' },
+  behavior:          { icon: '⚠️', label: 'Bezpečnostní riziko',         desc: 'Agresivita nebo nebezpečné chování' },
+  legal:             { icon: '🔒', label: 'Právní blokace',              desc: 'Zabavení, soudní řízení nebo jiný právní důvod' },
+  health:            { icon: '💊', label: 'Zdravotní nezpůsobilost',     desc: 'Vážné zdravotní důvody vylučující adopci' },
+  protected_species: { icon: '🌿', label: 'Chráněný nebo exotický druh', desc: 'Ze zákona nelze nebo lze jen omezeně adoptovat' },
+  other:             { icon: '📋', label: 'Jiný důvod',                  desc: 'Viz interní poznámky' },
 }
 
 // Pohlaví

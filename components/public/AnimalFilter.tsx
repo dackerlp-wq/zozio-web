@@ -383,16 +383,16 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
           <div>
             <div className="text-[10px] font-medium mb-1.5" style={{ color: '#8B6550' }}>S dětmi</div>
             <div className="flex gap-2">
-              {yesNoChip('kids', 'yes', '✓ Ano', { background: '#EAF3DE', borderColor: '#BDE8D0', color: '#1D6A42' })}
-              {yesNoChip('kids', 'no',  '✗ Ne',  { background: '#FAECE7', borderColor: '#F5C4B3', color: '#993C1D' })}
+              {yesNoChip('kids', 'yes', '✓ Vhodné',    { background: '#EAF3DE', borderColor: '#BDE8D0', color: '#1D6A42' })}
+              {yesNoChip('kids', 'no',  '✗ Nevhodné',  { background: '#FAECE7', borderColor: '#F5C4B3', color: '#993C1D' })}
               {yesNoChip('kids', 'any', 'Nezáleží')}
             </div>
           </div>
           <div>
             <div className="text-[10px] font-medium mb-1.5" style={{ color: '#8B6550' }}>S jinými zvířaty</div>
             <div className="flex gap-2">
-              {yesNoChip('other_animals', 'yes', '✓ Ano', { background: '#EAF3DE', borderColor: '#BDE8D0', color: '#1D6A42' })}
-              {yesNoChip('other_animals', 'no',  '✗ Ne',  { background: '#FAECE7', borderColor: '#F5C4B3', color: '#993C1D' })}
+              {yesNoChip('other_animals', 'yes', '✓ Vhodné',    { background: '#EAF3DE', borderColor: '#BDE8D0', color: '#1D6A42' })}
+              {yesNoChip('other_animals', 'no',  '✗ Nevhodné',  { background: '#FAECE7', borderColor: '#F5C4B3', color: '#993C1D' })}
               {yesNoChip('other_animals', 'any', 'Nezáleží')}
             </div>
           </div>

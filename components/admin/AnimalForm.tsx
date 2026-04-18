@@ -3,6 +3,8 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
+import { MedicalRecordsPanel } from '@/components/admin/MedicalRecordsPanel'
+import type { LocalRecord } from '@/components/admin/MedicalRecordsPanel'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface Species { id: string; name_cs: string }
@@ -19,6 +21,21 @@ interface StatusHistoryEntry {
   changed_by?: string
 }
 
+interface AuditChange {
+  field:     string
+  label:     string
+  old_value: string
+  new_value: string
+}
+
+interface AuditLogEntry {
+  id:          string
+  changed_at:  string
+  change_note?: string | null
+  changed_by?: string | null
+  changes:     AuditChange[]
+}
+
 interface AnimalFormProps {
   institutionId:   string
   institutionType: 'shelter' | 'rescue_station'
@@ -27,6 +44,7 @@ interface AnimalFormProps {
   initialData?:    Record<string, unknown>
   animal?:         Record<string, unknown>
   statusHistory?:  StatusHistoryEntry[]
+  auditLog?:       AuditLogEntry[]
   currentUser?:    { id: string; name: string }
 }
 
@@ -36,23 +54,23 @@ interface PendingPhoto { file: File; preview: string }
 
 // ── Status config ──────────────────────────────────────────────────────────────
 const SHELTER_STATUS_CARDS = [
-  { value: 'intake',         icon: '📥', label: 'V příjmu' },
-  { value: 'available',      icon: '🏠', label: 'K adopci' },
-  { value: 'reserved',       icon: '📌', label: 'Rezervováno' },
-  { value: 'adopted',        icon: '✅', label: 'Adoptováno' },
-  { value: 'foster',         icon: '🏡', label: 'Dočasná péče' },
-  { value: 'treatment',      icon: '💊', label: 'V léčbě' },
-  { value: 'rehabilitation', icon: '🔄', label: 'Rehabilitace' },
-  { value: 'deceased',       icon: '🕊️', label: 'Uhynul' },
+  { value: 'intake',           icon: '📥', label: 'V příjmu' },
+  { value: 'available',        icon: '🏠', label: 'K adopci' },
+  { value: 'reserved',         icon: '📌', label: 'Rezervováno' },
+  { value: 'adopted',          icon: '✅', label: 'Adoptováno' },
+  { value: 'foster',           icon: '🏡', label: 'Dočasná péče' },
+  { value: 'conditional',      icon: '🤝', label: 'Podmíněná adopce' },
+  { value: 'treatment',        icon: '💊', label: 'V léčbě' },
+  { value: 'not_for_adoption', icon: '🚫', label: 'Nevhodný k adopci' },
+  { value: 'deceased',         icon: '🕊️', label: 'Uhynul' },
 ]
 
 const RESCUE_STATUS_CARDS = [
-  { value: 'intake',         icon: '📥', label: 'V příjmu' },
-  { value: 'treatment',      icon: '💊', label: 'V léčbě' },
-  { value: 'rehabilitation', icon: '🔄', label: 'Rehabilitace' },
-  { value: 'released',       icon: '🦋', label: 'Vypuštěn' },
-  { value: 'available',      icon: '🏠', label: 'K adopci' },
-  { value: 'deceased',       icon: '🕊️', label: 'Uhynul' },
+  { value: 'intake',    icon: '📥', label: 'V příjmu' },
+  { value: 'treatment', icon: '💊', label: 'Léčba' },
+  { value: 'released',  icon: '🦋', label: 'Vypuštěn' },
+  { value: 'available', icon: '🏠', label: 'K adopci' },
+  { value: 'deceased',  icon: '🕊️', label: 'Uhynul' },
 ]
 
 const STATUS_LABEL: Record<string, string> = {
@@ -62,11 +80,11 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const HEALTH_STATUS_OPTIONS = [
-  { value: 'healthy',      label: 'Zdravý' },
-  { value: 'in_treatment', label: 'V léčbě' },
-  { value: 'post_surgery', label: 'Po operaci' },
-  { value: 'chronic',      label: 'Chronické onemocnění' },
-  { value: 'unknown',      label: 'Neznámý' },
+  { value: 'healthy',    label: 'Zdravý' },
+  { value: 'sick',       label: 'Nemocný' },
+  { value: 'injured',    label: 'Zraněný' },
+  { value: 'recovering', label: 'Rekonvalescence' },
+  { value: 'chronic',    label: 'Chronické onemocnění' },
 ]
 
 const ORIGIN_OPTIONS = [
@@ -101,10 +119,10 @@ const ACTIVITY_CARDS = [
 ]
 
 const DIFFICULTY_CARDS = [
-  { value: 'easy',   icon: '⭐',    label: 'Nenáročný',  desc: 'Pro začátečníky' },
-  { value: 'medium', icon: '⭐⭐',  label: 'Střední',    desc: 'Mírná zkušenost' },
-  { value: 'hard',   icon: '⭐⭐⭐', label: 'Náročný',   desc: 'Pro zkušené' },
-  { value: 'expert', icon: '🏆',    label: 'Expert',     desc: 'Odborná péče' },
+  { value: 'easy',      icon: '⭐',     label: 'Nenáročný', desc: 'Pro začátečníky' },
+  { value: 'medium',    icon: '⭐⭐',   label: 'Střední',   desc: 'Mírná zkušenost' },
+  { value: 'demanding', icon: '⭐⭐⭐', label: 'Náročný',   desc: 'Pro zkušené' },
+  { value: 'expert',    icon: '🏆',     label: 'Expert',    desc: 'Odborná péče' },
 ]
 
 const RESCUE_PROGNOSIS_OPTIONS = [
@@ -243,6 +261,15 @@ function InfoBox({ type, icon, children }: { type: 'tip'|'warn'|'info'; icon: st
   )
 }
 
+// Handles both boolean (true/false) and string ("true"/"false") DB values for good_with_* columns
+function boolToGoodWith(v: unknown): string {
+  if (v === true  || v === 'true')  return 'yes'
+  if (v === false || v === 'false') return 'no'
+  if (v === 1     || v === '1')     return 'yes'
+  if (v === 0     || v === '0')     return 'no'
+  return 'unknown'
+}
+
 // ── initFormData ───────────────────────────────────────────────────────────────
 function initFormData(data?: Record<string, unknown>) {
   const d = data ?? {}
@@ -278,12 +305,13 @@ function initFormData(data?: Record<string, unknown>) {
     medical_notes:    String(d.medical_notes ?? ''),
     special_needs_text: String(d.special_needs_text ?? ''),
     in_quarantine:    Boolean(d.in_quarantine),
-    quarantine_until: String(d.quarantine_until ?? ''),
-    quarantine_reason:String(d.quarantine_reason ?? ''),
-    good_with_kids:   String(d.good_with_kids ?? 'unknown'),
-    good_with_dogs:   String(d.good_with_dogs ?? 'unknown'),
-    good_with_cats:   String(d.good_with_cats ?? 'unknown'),
-    good_with_other_animals: String(d.good_with_other_animals ?? 'unknown'),
+    quarantine_start: String(d.quarantine_start ?? ''),
+    quarantine_end:   String(d.quarantine_end ?? d.quarantine_until ?? ''),
+    quarantine_vet:   String(d.quarantine_vet ?? ''),
+    good_with_kids:   boolToGoodWith(d.good_with_kids),
+    good_with_dogs:   boolToGoodWith(d.good_with_dogs),
+    good_with_cats:   boolToGoodWith(d.good_with_cats),
+    good_with_other_animals: boolToGoodWith(d.good_with_other_animals),
     good_with_adults: String(d.good_with_adults ?? 'unknown'),
     activity_level:   String(d.activity_level ?? ''),
     care_difficulty:  String(d.care_difficulty ?? ''),
@@ -301,6 +329,12 @@ function initFormData(data?: Record<string, unknown>) {
     rescue_prognosis: String(d.rescue_prognosis ?? 'unknown'),
     rescue_public_description: String(d.rescue_public_description ?? ''),
     internal_notes:   String(d.internal_notes ?? ''),
+    not_for_adoption_reason: String(d.not_for_adoption_reason ?? ''),
+    conditional_adopter_name:  String(d.conditional_adopter_name ?? ''),
+    conditional_adopter_phone: String(d.conditional_adopter_phone ?? ''),
+    conditional_adopter_email: String(d.conditional_adopter_email ?? ''),
+    conditional_adoption_since: String(d.conditional_adoption_since ?? ''),
+    conditional_adoption_note:  String(d.conditional_adoption_note ?? ''),
   }
 }
 type FormState = ReturnType<typeof initFormData>
@@ -308,7 +342,7 @@ type FormState = ReturnType<typeof initFormData>
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function AnimalForm({
   institutionId, institutionType, species: initialSpecies,
-  mode, initialData, animal, statusHistory = [],
+  mode, initialData, animal, statusHistory = [], auditLog = [],
 }: AnimalFormProps) {
   const router    = useRouter()
   const isShelter = institutionType === 'shelter'
@@ -345,6 +379,9 @@ export function AnimalForm({
   const [medications, setMedications] = useState<MedicationEntry[]>(() =>
     parseMedications(source?.medications_data)
   )
+
+  // Medical records (create mode only)
+  const [medRecords, setMedRecords] = useState<LocalRecord[]>([])
 
   // Photos
   const [pendingPhotos, setPendingPhotos]   = useState<PendingPhoto[]>([])
@@ -537,9 +574,10 @@ export function AnimalForm({
         last_vet_visit: form.last_vet_visit || null,
         vet_name: form.vet_name || null, vet_phone: form.vet_phone || null,
         medical_notes: form.medical_notes || null,
-        in_quarantine: form.in_quarantine,
-        quarantine_until: form.quarantine_until || null,
-        quarantine_reason: form.quarantine_reason || null,
+        in_quarantine:    form.in_quarantine,
+        quarantine_start: form.quarantine_start || null,
+        quarantine_end:   form.quarantine_end   || null,
+        quarantine_vet:   form.quarantine_vet   || null,
         good_with_kids: form.good_with_kids, good_with_dogs: form.good_with_dogs,
         good_with_cats: form.good_with_cats, good_with_other_animals: form.good_with_other_animals,
         good_with_adults: form.good_with_adults,
@@ -555,6 +593,12 @@ export function AnimalForm({
         rescue_prognosis: form.rescue_prognosis || null,
         rescue_public_description: form.rescue_public_description || null,
         internal_notes: form.internal_notes || null,
+        not_for_adoption_reason: form.not_for_adoption_reason || null,
+        conditional_adopter_name:  form.conditional_adopter_name || null,
+        conditional_adopter_phone: form.conditional_adopter_phone || null,
+        conditional_adopter_email: form.conditional_adopter_email || null,
+        conditional_adoption_since: form.conditional_adoption_since || null,
+        conditional_adoption_note:  form.conditional_adoption_note || null,
       }
 
       let savedId = animalId
@@ -566,6 +610,23 @@ export function AnimalForm({
         })
         if (!res.ok) throw new Error(await res.text())
         savedId = (await res.json()).id
+
+        // POST medical records created in the wizard
+        if (savedId && medRecords.length > 0) {
+          for (const rec of medRecords) {
+            await fetch(`/api/animals/${savedId}/medical-records`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                record_date:   rec.record_date,
+                record_type:   rec.record_type,
+                title:         rec.title,
+                description:   rec.description ?? null,
+                vet_name:      rec.vet_name ?? null,
+                next_due_date: rec.next_due_date ?? null,
+              }),
+            })
+          }
+        }
       } else {
         const res = await fetch(`/api/animals/${animalId}`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -587,7 +648,9 @@ export function AnimalForm({
       }
 
       showToast(publish ? 'Uloženo a zveřejněno ✓' : 'Uloženo jako draft ✓')
-      setTimeout(() => router.push('/admin/animals'), 1200)
+      if (mode === 'create') {
+        setTimeout(() => router.push('/admin/animals'), 1200)
+      }
     } catch (err) {
       showToast(`Chyba: ${err instanceof Error ? err.message : 'Neznámá'}`, false)
     } finally { setSaving(false) }
@@ -717,6 +780,36 @@ export function AnimalForm({
                 ))}
               </div>
               {errors.adoption_status && <p className="text-xs text-[#E8634A] mt-1">{errors.adoption_status}</p>}
+
+              {/* Důvod nevhodnosti k adopci */}
+              {form.adoption_status === 'not_for_adoption' && (
+                <div className="mt-3 p-4 rounded-xl bg-[#FFF5F2] border border-[#F5C4B3]">
+                  <label className="block text-sm font-bold text-[#993C1D] mb-2">Důvod nevhodnosti k adopci</label>
+                  <select
+                    className="w-full px-3 py-2 rounded-lg border-2 border-[#F0EDE8] bg-white text-sm font-semibold text-[#2C1810] focus:outline-none focus:border-[#E8634A]"
+                    value={form.not_for_adoption_reason}
+                    onChange={e => set('not_for_adoption_reason', e.target.value)}
+                  >
+                    <option value="">— Vyberte důvod —</option>
+                    <option value="owner_unresolved">⚖️ Nevyřešený majitel</option>
+                    <option value="behavior">⚠️ Bezpečnostní riziko (agresivita)</option>
+                    <option value="legal">🔒 Právní blokace (zabavení, soud)</option>
+                    <option value="health">💊 Zdravotní nezpůsobilost</option>
+                    <option value="protected_species">🌿 Chráněný / exotický druh</option>
+                    <option value="other">📋 Jiný důvod (viz poznámky)</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Varování: K adopci + aktivní karanténa */}
+              {form.adoption_status === 'available' && form.quarantine_end && new Date(form.quarantine_end) > new Date() && (
+                <div className="mt-2 flex items-start gap-2 p-3 rounded-xl bg-[#FFF3D6] border border-[#F0A500]">
+                  <span>⚠️</span>
+                  <p className="text-xs font-semibold text-[#7a5800]">
+                    Zvíře má aktivní karanténu do {new Date(form.quarantine_end).toLocaleDateString('cs-CZ')}. Status „K adopci" by neměl být nastaven dokud karanténa neskončí.
+                  </p>
+                </div>
+              )}
             </div>
 
             <Divider />
@@ -839,109 +932,13 @@ export function AnimalForm({
 
             <Divider />
 
-            {/* Vaccinations */}
+            {/* Medical Records */}
             <div className="mb-5">
-              <SectionTitle>Očkování</SectionTitle>
-
-              {vaccinations.length > 0 && (
-                <div className="space-y-2 mb-3">
-                  {vaccinations.map(v => (
-                    <div key={v._key} className="flex items-center gap-2 p-2.5 rounded-lg border-2 border-[#F0EDE8] bg-[#FDFCFA]">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-[#2C1810] truncate">{v.label || v.type}</div>
-                        <input
-                          type="date" className="text-xs text-[#8B6550] bg-transparent border-0 p-0 mt-0.5 focus:outline-none"
-                          value={v.last_date} onChange={e => updateVaccination(v._key, 'last_date', e.target.value)}
-                          placeholder="Datum posledního očkování"
-                        />
-                      </div>
-                      <button type="button" onClick={() => removeVaccination(v._key)}
-                        className="w-7 h-7 flex items-center justify-center rounded-md text-[#A09890] hover:text-[#D83030] hover:bg-[#FCEBEB] transition-colors touch-manipulation">
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {addingVaccine ? (
-                <div className="p-3.5 rounded-lg border-2 border-[#E8634A]/30 bg-[#FDEAE6]/50">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                    {newVaccine.custom ? (
-                      <input className={inputCls} placeholder="Název očkování" value={newVaccine.label}
-                        onChange={e => setNewVaccine(p => ({...p, label: e.target.value}))} autoFocus />
-                    ) : (
-                      <select className={selectCls} value={newVaccine.type}
-                        onChange={e => setNewVaccine(p => ({...p, type: e.target.value, label: '', custom: e.target.value === '__custom__'}))}>
-                        <option value="">Vyberte typ...</option>
-                        {PREDEFINED_VACCINES.map(v => (
-                          <option key={v.type} value={v.type}>{v.label}</option>
-                        ))}
-                        <option value="__custom__">+ Vlastní typ...</option>
-                      </select>
-                    )}
-                    <input type="date" className={inputCls} value={newVaccine.last_date}
-                      onChange={e => setNewVaccine(p => ({...p, last_date: e.target.value}))} />
-                  </div>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={addVaccination}
-                      disabled={!newVaccine.type && !newVaccine.label}
-                      className="px-4 py-2 rounded-md bg-[#E8634A] text-white text-sm font-bold disabled:opacity-50 touch-manipulation">
-                      Přidat
-                    </button>
-                    <button type="button" onClick={() => { setAddingVaccine(false); setNewVaccine({type:'',label:'',last_date:'',custom:false}) }}
-                      className="px-4 py-2 rounded-md border-2 border-[#F0EDE8] text-[#8B6550] text-sm touch-manipulation">Zrušit</button>
-                  </div>
-                </div>
-              ) : (
-                <button type="button" onClick={() => setAddingVaccine(true)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-[#D5CFC8] text-sm font-semibold text-[#8B6550] hover:border-[#E8634A] hover:text-[#E8634A] transition-colors w-full touch-manipulation">
-                  + Přidat očkování
-                </button>
-              )}
-            </div>
-
-            <Divider />
-
-            {/* Medications */}
-            <div className="mb-5">
-              <SectionTitle>Léky</SectionTitle>
-
-              {medications.length > 0 && (
-                <div className="space-y-2 mb-3">
-                  {medications.map((m, i) => (
-                    <div key={m._key} className="p-3 rounded-lg border-2 border-[#F0EDE8] bg-[#FDFCFA]">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-[#8B6550] uppercase tracking-wide">Lék {i + 1}</span>
-                        <button type="button" onClick={() => removeMedication(m._key)}
-                          className="w-6 h-6 flex items-center justify-center rounded text-[#A09890] hover:text-[#D83030] hover:bg-[#FCEBEB] transition-colors touch-manipulation text-xs">✕</button>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <input className={inputCls} placeholder="Název léku" value={m.name}
-                          onChange={e => updateMedication(m._key, 'name', e.target.value)} />
-                        <input className={inputCls} placeholder="Dávkování (50mg)" value={m.dosage}
-                          onChange={e => updateMedication(m._key, 'dosage', e.target.value)} />
-                        <select className={selectCls} value={m.frequency}
-                          onChange={e => updateMedication(m._key, 'frequency', e.target.value)}>
-                          <option value="">Frekvence...</option>
-                          {FREQUENCY_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
-                          <option value="custom">Jiná...</option>
-                        </select>
-                        {m.frequency === 'custom' && (
-                          <input className={inputCls + ' sm:col-span-3'} placeholder="Popis frekvence"
-                            value={m.frequency === 'custom' ? '' : m.frequency}
-                            onChange={e => updateMedication(m._key, 'frequency', e.target.value)} />
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <button type="button" onClick={addMedication}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-[#D5CFC8] text-sm font-semibold text-[#8B6550] hover:border-[#E8634A] hover:text-[#E8634A] transition-colors w-full touch-manipulation">
-                + Přidat lék
-              </button>
+              <SectionTitle>Zdravotní záznamy</SectionTitle>
+              <MedicalRecordsPanel
+                animalId={mode === 'edit' ? animalId : undefined}
+                onChange={mode === 'create' ? setMedRecords : undefined}
+              />
             </div>
 
             <Divider />
@@ -971,12 +968,15 @@ export function AnimalForm({
               <ToggleRow label="Zvíře je v karanténě" desc="Nebude zobrazeno na veřejných stránkách"
                 checked={form.in_quarantine} onChange={v => set('in_quarantine', v)} />
               {form.in_quarantine && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                  <Field label="Karanténa do">
-                    <input type="date" className={inputCls} value={form.quarantine_until} onChange={e => set('quarantine_until', e.target.value)} />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                  <Field label="Zahájení karantény">
+                    <input type="date" className={inputCls} value={form.quarantine_start} onChange={e => set('quarantine_start', e.target.value)} />
                   </Field>
-                  <Field label="Důvod">
-                    <input className={inputCls} value={form.quarantine_reason} onChange={e => set('quarantine_reason', e.target.value)} />
+                  <Field label="Konec karantény">
+                    <input type="date" className={inputCls} value={form.quarantine_end} onChange={e => set('quarantine_end', e.target.value)} />
+                  </Field>
+                  <Field label="Karanténní veterinář">
+                    <input className={inputCls} value={form.quarantine_vet} onChange={e => set('quarantine_vet', e.target.value)} placeholder="MVDr. ..." />
                   </Field>
                 </div>
               )}
@@ -1227,33 +1227,50 @@ export function AnimalForm({
         {/* ═══ TAB: HISTORY ═══ */}
         {activeTab === 'history' && (
           <div>
-            <SectionTitle>🕐 Historie stavů</SectionTitle>
-            {statusHistory.length === 0 ? (
+            <SectionTitle>🕐 Historie úprav</SectionTitle>
+            {auditLog.length === 0 ? (
               <div className="text-center py-10 text-[#A09890]">
                 <div className="text-3xl mb-2">📋</div>
-                <p className="text-sm">Zatím žádná história stavů</p>
+                <p className="text-sm">Zatím žádné záznamy o úpravách</p>
+                <p className="text-xs mt-1">Každá uložená změna se zde zobrazí s přehledem co a jak se změnilo.</p>
               </div>
             ) : (
               <div className="relative">
                 <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-[#F0EDE8]" />
-                <div className="space-y-4">
-                  {statusHistory.map((h, i) => {
-                    const date = new Date(h.changed_at)
+                <div className="space-y-5">
+                  {auditLog.map((entry, i) => {
+                    const date    = new Date(entry.changed_at)
                     const dateStr = date.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short', year: 'numeric' })
                     const timeStr = date.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
                     const isFirst = i === 0
                     return (
-                      <div key={h.id ?? i} className="flex gap-4 pl-10 relative">
-                        <div className={`absolute left-2.5 w-3 h-3 rounded-full border-2 top-1.5 ${isFirst ? 'bg-[#E8634A] border-[#E8634A]' : 'bg-white border-[#D5CFC8]'}`} />
+                      <div key={entry.id} className="flex gap-4 pl-10 relative">
+                        <div className={`absolute left-2.5 w-3 h-3 rounded-full border-2 top-1.5 flex-shrink-0 ${isFirst ? 'bg-[#E8634A] border-[#E8634A]' : 'bg-white border-[#D5CFC8]'}`} />
                         <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${isFirst ? 'bg-[#FDEAE6] text-[#993C1D]' : 'bg-[#F0EDE8] text-[#6B4030]'}`}>
-                              {STATUS_LABEL[h.status] ?? h.status}
-                            </span>
-                            <span className="text-xs text-[#A09890]">{dateStr} · {timeStr}</span>
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <span className="text-xs font-bold text-[#2C1810]">{dateStr}</span>
+                            <span className="text-xs text-[#A09890]">{timeStr}</span>
+                            {entry.change_note && (
+                              <span className="px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#92400E] text-xs font-semibold">
+                                💬 {entry.change_note}
+                              </span>
+                            )}
                           </div>
-                          {h.note && <p className="text-sm text-[#6B4030] mt-1">{h.note}</p>}
-                          {h.changed_by && <p className="text-xs text-[#A09890] mt-0.5">{h.changed_by}</p>}
+                          {entry.changes.length > 0 && (
+                            <div className="space-y-1">
+                              {entry.changes.map((c, ci) => (
+                                <div key={ci} className="flex flex-wrap items-center gap-1.5 text-xs">
+                                  <span className="font-semibold text-[#6B4030]">{c.label}:</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-[#FCEBEB] text-[#D83030] line-through opacity-75">{c.old_value}</span>
+                                  <span className="text-[#A09890]">→</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-[#EAF3DE] text-[#2D7A4F] font-semibold">{c.new_value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {entry.changes.length === 0 && entry.change_note && (
+                            <p className="text-xs text-[#A09890]">Pouze poznámka, bez změn polí</p>
+                          )}
                         </div>
                       </div>
                     )
