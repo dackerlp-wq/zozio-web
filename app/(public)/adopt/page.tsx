@@ -371,7 +371,7 @@ async function getAnimals(params: any, page: number) {
     .or(`quarantine_end.is.null,quarantine_end.lt.${today}`)
 
   if (params.species)  query = query.eq('species_id', params.species)
-  if (params.breed)    query = query.eq('breed', params.breed)
+  if (params.breed)    query = query.ilike('breed', params.breed)
   if (params.size)     query = query.eq('size', params.size)
   if (params.urgent === 'true') query = query.eq('urgent', true)
   if (params.q)        query = query.or(`name.ilike.%${params.q}%,breed.ilike.%${params.q}%,description.ilike.%${params.q}%`)
@@ -430,7 +430,7 @@ async function getTotal(params: any) {
     .or(`quarantine_end.is.null,quarantine_end.lt.${today}`)
 
   if (params.species)  query = query.eq('species_id', params.species)
-  if (params.breed)    query = query.eq('breed', params.breed)
+  if (params.breed)    query = query.ilike('breed', params.breed)
   if (params.size)     query = query.eq('size', params.size)
   if (params.urgent === 'true') query = query.eq('urgent', true)
   if (params.q)        query = query.or(`name.ilike.%${params.q}%,breed.ilike.%${params.q}%,description.ilike.%${params.q}%`)
@@ -457,12 +457,13 @@ async function getActiveSpecies() {
 
 async function getBreeds(speciesId?: string) {
   const supabase = createServiceClient()
+  const today = new Date().toISOString().slice(0, 10)
   let query = supabase
     .from('animals')
     .select('breed')
     .eq('published', true)
-    .eq('adoption_status', 'available')
-    .or('in_quarantine.is.null,in_quarantine.eq.false')
+    .in('adoption_status', ['available', 'reserved', 'foster', 'conditional'])
+    .or(`quarantine_end.is.null,quarantine_end.lt.${today}`)
     .not('breed', 'is', null) as any
 
   if (speciesId) query = query.eq('species_id', speciesId)

@@ -587,6 +587,7 @@ function PhaseOchrana({ a, id }: { a: Record<string, unknown>; id: string }) {
       body: JSON.stringify({
         adoption_status:            'conditional',
         conditional_adoption_since: new Date().toISOString().slice(0, 10),
+        published:                  true,   // zveřejni — podmíněná adopce musí být viditelná
       }),
     })
     setSaving(false)

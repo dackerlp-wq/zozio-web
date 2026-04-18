@@ -298,7 +298,14 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                 </div>
               )}
               {isReserved && <ReservedBanner name={a.name} />}
-              {isFoster && <FosterBanner name={a.name} />}
+              {isFoster && (
+                <div className="bg-white rounded-2xl border border-border p-5">
+                  <FosterBanner name={a.name} />
+                  <h2 className="font-bold text-xl text-text-primary mb-1">Mám zájem o {a.name}</h2>
+                  <p className="text-sm mb-5 text-text-muted">Vyplň žádost a útulok tě kontaktuje.</p>
+                  <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
+                </div>
+              )}
               {!isConditional && !isAvailable && !isReserved && !isFoster && !isFinished && (
                 <NotYetBanner name={a.name} status={displayStatus} />
               )}
@@ -368,7 +375,16 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                   </>
                 )}
                 {isReserved && <ReservedBanner name={a.name} />}
-                {isFoster && <FosterBanner name={a.name} />}
+                {isFoster && (
+                  <>
+                    <FosterBanner name={a.name} />
+                    <h3 className="font-bold text-base text-text-primary mb-1">Mám zájem o {a.name}</h3>
+                    <p className="text-xs mb-4 text-text-muted">
+                      Vyplň žádost — útulok tě kontaktuje do 3 pracovních dní.
+                    </p>
+                    <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
+                  </>
+                )}
                 {!isConditional && !isAvailable && !isReserved && !isFoster && !isFinished && (
                   <NotYetBanner name={a.name} status={displayStatus} />
                 )}
@@ -512,15 +528,14 @@ function ReservedBanner({ name }: { name: string }) {
 
 function FosterBanner({ name }: { name: string }) {
   return (
-    <div className="text-center py-5 rounded-xl" style={{ background: '#EDE9FB' }}>
-      <div className="text-3xl mb-2">🏡</div>
-      <p className="font-bold text-text-primary mb-1">{name} je v dočasné péči</p>
-      <p className="text-xs mb-3 text-text-muted">Zvíře zatím bydlí u pěstouna a vyčkává na stálý domov.</p>
-      <Link href="/adopt">
-        <button className="px-4 py-2 rounded-lg font-bold text-sm border-none cursor-pointer hover:opacity-90 text-white" style={{ background: '#6D3BE8' }}>
-          Najít další zvíře
-        </button>
-      </Link>
+    <div className="flex items-start gap-3 px-4 py-3 rounded-xl mb-4" style={{ background: '#EDE9FB', border: '1px solid #C4B5F5' }}>
+      <span className="text-xl flex-shrink-0">🏡</span>
+      <div>
+        <p className="font-bold text-sm mb-0.5" style={{ color: '#4C1D95' }}>{name} je v dočasné péči</p>
+        <p className="text-xs leading-relaxed" style={{ color: '#6D3BE8' }}>
+          Zvíře bydlí u pěstouna, ale stále hledá stálý domov. Můžeš podat žádost o adopci — útulok tě kontaktuje.
+        </p>
+      </div>
     </div>
   )
 }
