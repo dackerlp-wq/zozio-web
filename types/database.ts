@@ -1,7 +1,7 @@
 export type InstitutionType = 'shelter' | 'rescue_station'
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 export type SubscriptionPlan = 'free' | 'standard' | 'pro'
-export type ShelterAnimalStatus = 'available' | 'reserved' | 'adopted' | 'foster' | 'not_for_adoption'
+export type ShelterAnimalStatus = 'available' | 'reserved' | 'adopted' | 'foster' | 'not_for_adoption' | 'conditional' | 'intake' | 'treatment' | 'deceased'
 export type RescueCaseStatus = 'intake' | 'treatment' | 'rehabilitation' | 'released' | 'deceased' | 'transferred'
 export type ApplicationStatus = 'pending' | 'reviewing' | 'approved' | 'rejected' | 'meeting_scheduled' | 'adopted'
 
@@ -62,9 +62,11 @@ export interface Animal {
   urgent: boolean
   adoption_fee: number
   description: string | null
-  good_with_kids: boolean | null
-  good_with_dogs: boolean | null
-  good_with_cats: boolean | null
+  good_with_kids: 'yes' | 'ok' | 'no' | 'unknown' | null
+  good_with_dogs: 'yes' | 'ok' | 'no' | 'unknown' | null
+  good_with_cats: 'yes' | 'ok' | 'no' | 'unknown' | null
+  good_with_other_animals: 'yes' | 'ok' | 'no' | 'unknown' | null
+  good_with_adults: string | null
   vaccinated: boolean
   neutered: boolean
   microchipped: boolean
