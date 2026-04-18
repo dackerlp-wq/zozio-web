@@ -27,6 +27,10 @@ function yesNo(v: unknown): string {
 
 function exitTypeLabel(t: unknown): string {
   const map: Record<string, string> = {
+    // DB hodnoty (aktuální)
+    adopted: 'Adopce', deceased: 'Úhyn', transferred: 'Převod',
+    escaped: 'Útěk', returned: 'Vrácení majiteli', released: 'Vypuštění',
+    // Starší / alternativní hodnoty
     adoption: 'Adopce', death: 'Úhyn', transfer: 'Převod', escape: 'Útěk',
     return_to_owner: 'Vrácení majiteli', euthanasia: 'Eutanázie', release: 'Vypuštění',
   }
@@ -248,7 +252,7 @@ function AnimalCard({ animal, inst }: { animal: Row; inst: string }) {
     <div className="print-page">
       <DocHeader
         title="Veterinární karta zvířete"
-        subtitle="Evidence dle §25 zák. č. 246/1992 Sb."
+        subtitle="Evidence dle §25b zák. č. 246/1992 Sb."
         institutionName={inst}
         docNumber={animal.evidence_number ?? undefined}
       />
@@ -482,7 +486,7 @@ function IntakeList({
             <th>Druh / Plemeno</th>
             <th>Pohlaví</th>
             <th>Datum příjmu</th>
-            <th>Důvod příjmu</th>
+            <th>Způsob příjmu</th>
             <th>Číslo čipu</th>
             <th>Evidence č.</th>
             <th>Nálezce</th>
@@ -496,7 +500,7 @@ function IntakeList({
               <td>{a.species_name ?? '—'}{a.breed ? ` / ${a.breed}` : ''}</td>
               <td>{sexLabel(a.sex)}</td>
               <td>{czDate(a.intake_date)}</td>
-              <td>{intakeReasonLabel(a.intake_reason)}</td>
+              <td>{a.origin ? originLabel(a.origin) : intakeReasonLabel(a.intake_reason)}</td>
               <td style={{ fontFamily: 'monospace', fontSize: '8pt' }}>{a.chip_number ?? '—'}</td>
               <td style={{ fontFamily: 'monospace', fontSize: '8pt' }}>{a.evidence_number ?? '—'}</td>
               <td>{a.intake_finder_name ?? a.finder_name ?? '—'}</td>
@@ -554,15 +558,15 @@ function ExitList({
           <div className="stat-lbl">Celkem odchozích</div>
         </div>
         <div className="stat-cell">
-          <div className="stat-num">{byType.adoption ?? 0}</div>
+          <div className="stat-num">{(byType.adopted ?? 0) + (byType.adoption ?? 0)}</div>
           <div className="stat-lbl">Adopcí</div>
         </div>
         <div className="stat-cell">
-          <div className="stat-num">{byType.death ?? 0}</div>
+          <div className="stat-num">{(byType.deceased ?? 0) + (byType.death ?? 0) + (byType.euthanasia ?? 0)}</div>
           <div className="stat-lbl">Úhynů</div>
         </div>
         <div className="stat-cell">
-          <div className="stat-num">{byType.transfer ?? 0}</div>
+          <div className="stat-num">{(byType.transferred ?? 0) + (byType.transfer ?? 0)}</div>
           <div className="stat-lbl">Převodů</div>
         </div>
       </div>
@@ -630,8 +634,8 @@ function SummaryReport({
   const intakes = animals.filter(a => a.intake_date >= dateFrom && a.intake_date <= dateTo)
   const exits = animals.filter(a => a.exit_date && a.exit_date >= dateFrom && a.exit_date <= dateTo)
   const currently = animals.filter(a => !a.exit_date || a.exit_date > dateTo)
-  const adoptions = exits.filter(a => a.exit_type === 'adoption')
-  const deaths = exits.filter(a => a.exit_type === 'death' || a.exit_type === 'euthanasia')
+  const adoptions = exits.filter(a => a.exit_type === 'adopted' || a.exit_type === 'adoption')
+  const deaths = exits.filter(a => a.exit_type === 'deceased' || a.exit_type === 'death' || a.exit_type === 'euthanasia')
 
   // Species breakdown
   const speciesCount = intakes.reduce<Record<string, number>>((acc, a) => {
@@ -793,11 +797,33 @@ function FoundAnimals({
 
       <p className="note-text">
         Dokument slouží jako podklad pro hlášení obci dle §14 zák. č. 246/1992 Sb. a §66 zák. č. 128/2000 Sb.
+        Útulok je ze zákona povinen neprodleně oznámit příjem nalezeného zvířete příslušnému obecnímu úřadu.
       </p>
+
+      <div style={{ marginTop: '24px', border: '1.5px solid #ccc', borderRadius: '4px', padding: '10px 14px' }}>
+        <div style={{ fontSize: '9pt', fontWeight: 700, color: '#444', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          Potvrzení obecního úřadu / KVS
+        </div>
+        <p style={{ fontSize: '9pt', color: '#555', marginBottom: '12px' }}>
+          Obecní úřad / Krajská veterinární správa potvrzuje, že byl informován o příjmu nalezených zvířat dle výše uvedeného seznamu.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginTop: '16px' }}>
+          <div>
+            <div style={{ borderTop: '1.5px solid #333', paddingTop: '5px', marginTop: '40px' }}>
+              <span style={{ fontSize: '8.5pt', color: '#555' }}>Jméno a podpis pracovníka OÚ / KVS</span>
+            </div>
+          </div>
+          <div>
+            <div style={{ borderTop: '1.5px solid #333', paddingTop: '5px', marginTop: '40px' }}>
+              <span style={{ fontSize: '8.5pt', color: '#555' }}>Datum a razítko OÚ / KVS</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="sig-row">
         <div className="sig-box">
-          <div className="sig-label">Podpis zodpovědné osoby</div>
+          <div className="sig-label">Podpis zodpovědné osoby útulku</div>
         </div>
         <div className="sig-box">
           <div className="sig-label">Datum a razítko organizace</div>
@@ -808,7 +834,7 @@ function FoundAnimals({
 }
 
 /* ─── patient-card (rescue) ───────────────────────────── */
-function PatientCard({ animal, inst }: { animal: Row; inst: string }) {
+function PatientCard({ animal, inst, medRecords }: { animal: Row; inst: string; medRecords: Row[] }) {
   return (
     <div className="print-page">
       <DocHeader
@@ -850,17 +876,30 @@ function PatientCard({ animal, inst }: { animal: Row; inst: string }) {
       <table>
         <thead>
           <tr>
-            <th style={{ width: '18%' }}>Datum</th>
-            <th>Popis ošetření / diagnóza</th>
-            <th style={{ width: '20%' }}>Medikace / výkon</th>
-            <th style={{ width: '18%' }}>Ošetřující</th>
+            <th style={{ width: '16%' }}>Datum</th>
+            <th style={{ width: '12%' }}>Typ záznamu</th>
+            <th>Diagnóza / popis ošetření</th>
+            <th style={{ width: '18%' }}>Medikace / výkon</th>
+            <th style={{ width: '16%' }}>Ošetřující</th>
           </tr>
         </thead>
         <tbody>
-          {/* Render medical notes as rows if parseable, else empty rows */}
-          {Array.from({ length: 6 }).map((_, i) => (
-            <tr key={i}><td style={{ height: '24px' }}>&nbsp;</td><td></td><td></td><td></td></tr>
-          ))}
+          {medRecords.length > 0 ? medRecords.map((r, i) => (
+            <tr key={i}>
+              <td>{czDate(r.record_date)}</td>
+              <td style={{ fontSize: '8pt', color: '#666' }}>{r.record_type ?? '—'}</td>
+              <td style={{ fontWeight: r.title ? 600 : 400 }}>{r.title ?? '—'}{r.description ? <><br/><span style={{ fontSize: '8pt', color: '#555', fontWeight: 400 }}>{r.description}</span></> : null}</td>
+              <td style={{ fontSize: '8.5pt' }}>{r.medications ?? r.treatment ?? '—'}</td>
+              <td style={{ fontSize: '8.5pt' }}>{r.vet_name ?? r.recorded_by ?? '—'}</td>
+            </tr>
+          )) : (
+            <>
+              <tr><td style={{ height: '24px', color: '#999', fontSize: '8.5pt', fontStyle: 'italic' }} colSpan={5}>Žádné záznamy o léčbě v systému — doplňte ručně:</td></tr>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}><td style={{ height: '28px' }}>&nbsp;</td><td></td><td></td><td></td><td></td></tr>
+              ))}
+            </>
+          )}
         </tbody>
       </table>
 
@@ -1281,6 +1320,7 @@ export default async function PrintPage({
 
   let animal: Row | null = null
   let animals: Row[] = []
+  let medRecords: Row[] = []
 
   if (animalTypes.has(type)) {
     if (!sp.animalId) notFound()
@@ -1292,6 +1332,16 @@ export default async function PrintPage({
       .single()
     if (error || !data) notFound()
     animal = withSpecies(data as Row)
+
+    // Fetch medical records for patient-card
+    if (type === 'patient-card') {
+      const { data: mrData } = await service
+        .from('animal_medical_records')
+        .select('*')
+        .eq('animal_id', sp.animalId)
+        .order('record_date', { ascending: false })
+      medRecords = (mrData ?? []) as Row[]
+    }
   } else {
     let query = service
       .from('animals')
@@ -1348,7 +1398,7 @@ export default async function PrintPage({
       docContent = <FoundAnimals animals={animals} inst={instName} dateFrom={dateFrom} dateTo={dateTo} />
       break
     case 'patient-card':
-      docContent = <PatientCard animal={animal!} inst={instName} />
+      docContent = <PatientCard animal={animal!} inst={instName} medRecords={medRecords} />
       break
     case 'rescue-intake-list':
       docContent = <RescueIntakeList animals={animals} inst={instName} dateFrom={dateFrom} dateTo={dateTo} />

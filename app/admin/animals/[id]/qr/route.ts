@@ -336,6 +336,11 @@ export async function GET(
             <div class="info-label">Příjem</div>
             <div class="info-value">${intake}</div>
           </div>
+          ${a.quarantine_box ? `
+          <div class="info-item" style="grid-column:1/-1">
+            <div class="info-label">Box karantény</div>
+            <div class="info-value">${a.quarantine_box}</div>
+          </div>` : ''}
         </div>
       </div>
 

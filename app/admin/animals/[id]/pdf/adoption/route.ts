@@ -376,10 +376,42 @@ export async function GET(
 </head>
 <body>
 
-<!-- Tlačítka (skrytá při tisku) -->
+<!-- Tlačítka + předvyplnění (skrytá při tisku) -->
 <div class="no-print">
-  <button class="btn btn-print" onclick="window.print()">🖨️ Tisknout / Uložit PDF</button>
-  <a class="btn btn-back" href="/admin/animals/${id}">← Zpět na kartu</a>
+  <div style="background:#FFF8F6;border:1.5px solid #F5C5B5;border-radius:8px;padding:14px 18px;max-width:640px;margin:0 auto 10px;font-family:Arial,sans-serif">
+    <div style="font-size:11px;font-weight:700;color:#E8634A;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">📋 Vyplnit údaje adoptéra před tiskem</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div>
+        <label style="font-size:10px;color:#8B6550;font-weight:700;display:block;margin-bottom:2px">Jméno a příjmení</label>
+        <input style="width:100%;border:1px solid #E0C8C0;border-radius:4px;padding:5px 8px;font-size:12px;font-family:Arial" value="${a.adopter_name ?? ''}" oninput="var v=this.value||'.................................................' ; document.getElementById('av-name').textContent=v; document.getElementById('av-sig-name').textContent=this.value" />
+      </div>
+      <div>
+        <label style="font-size:10px;color:#8B6550;font-weight:700;display:block;margin-bottom:2px">Trvalé bydliště</label>
+        <input style="width:100%;border:1px solid #E0C8C0;border-radius:4px;padding:5px 8px;font-size:12px;font-family:Arial" value="${a.adopter_address ?? ''}" oninput="document.getElementById('av-addr').textContent=this.value||'.................................................'"/>
+      </div>
+      <div>
+        <label style="font-size:10px;color:#8B6550;font-weight:700;display:block;margin-bottom:2px">Telefon</label>
+        <input style="width:100%;border:1px solid #E0C8C0;border-radius:4px;padding:5px 8px;font-size:12px;font-family:Arial" value="${a.adopter_phone ?? ''}" oninput="document.getElementById('av-phone').textContent=this.value||'.................................................'"/>
+      </div>
+      <div>
+        <label style="font-size:10px;color:#8B6550;font-weight:700;display:block;margin-bottom:2px">E-mail</label>
+        <input style="width:100%;border:1px solid #E0C8C0;border-radius:4px;padding:5px 8px;font-size:12px;font-family:Arial" value="${a.adopter_email ?? ''}" oninput="document.getElementById('av-email').textContent=this.value||'.................................................'"/>
+      </div>
+      <div>
+        <label style="font-size:10px;color:#8B6550;font-weight:700;display:block;margin-bottom:2px">Číslo OP / pasu</label>
+        <input style="width:100%;border:1px solid #E0C8C0;border-radius:4px;padding:5px 8px;font-size:12px;font-family:Arial" value="${a.adopter_id_number ?? ''}" oninput="document.getElementById('av-id').textContent=this.value||'.................................................'"/>
+      </div>
+      <div>
+        <label style="font-size:10px;color:#8B6550;font-weight:700;display:block;margin-bottom:2px">Adopční příspěvek (Kč)</label>
+        <input style="width:100%;border:1px solid #E0C8C0;border-radius:4px;padding:5px 8px;font-size:12px;font-family:Arial" type="number" value="${a.adoption_fee ?? ''}" oninput="document.getElementById('av-fee').textContent=this.value?this.value+' Kč':'.................................................'"/>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#A08878;margin-top:8px">💡 Zadané údaje se zobrazí v dokumentu níže. Klikněte Tisknout pro uložení PDF.</div>
+  </div>
+  <div style="display:flex;gap:10px;justify-content:center;padding:6px 0">
+    <button class="btn btn-print" onclick="window.print()">🖨️ Tisknout / Uložit PDF</button>
+    <a class="btn btn-back" href="/admin/animals/${id}">← Zpět na kartu</a>
+  </div>
 </div>
 
 <div class="page">
@@ -415,11 +447,11 @@ export async function GET(
         </div>
         <div>
           <div style="font-size:8.5pt;font-weight:700;color:#E8634A;text-transform:uppercase;margin-bottom:6px">Přijímající (adoptér)</div>
-          <div class="field"><div class="field-label">Jméno a příjmení</div><div class="field-value">${adopterName}</div></div>
-          <div class="field"><div class="field-label">Trvalé bydliště</div><div class="field-value">${adopterAddress}</div></div>
-          <div class="field"><div class="field-label">Telefon</div><div class="field-value">${adopterPhone}</div></div>
-          <div class="field"><div class="field-label">E-mail</div><div class="field-value">${adopterEmail}</div></div>
-          <div class="field"><div class="field-label">Číslo OP / pasu</div><div class="field-value">${adopterIdNum}</div></div>
+          <div class="field"><div class="field-label">Jméno a příjmení</div><div class="field-value" id="av-name">${adopterName}</div></div>
+          <div class="field"><div class="field-label">Trvalé bydliště</div><div class="field-value" id="av-addr">${adopterAddress}</div></div>
+          <div class="field"><div class="field-label">Telefon</div><div class="field-value" id="av-phone">${adopterPhone}</div></div>
+          <div class="field"><div class="field-label">E-mail</div><div class="field-value" id="av-email">${adopterEmail}</div></div>
+          <div class="field"><div class="field-label">Číslo OP / pasu</div><div class="field-value" id="av-id">${adopterIdNum}</div></div>
         </div>
       </div>
     </div>
@@ -459,7 +491,7 @@ export async function GET(
         <li>Zvíře je <strong>čipováno</strong> a přijímající je povinen zajistit aktualizaci kontaktních údajů v centrálním registru zvířat (CRZ/ČMKU).</li>
         <li>Předávající si vyhrazuje právo provést <strong>kontrolu životních podmínek</strong> zvířete, a to po předchozím telefonickém oznámení.</li>
         <li>Přijímající <strong>potvrzuje seznámení</strong> se zdravotním stavem zvířete k datu adopce a nebude uplatňovat nároky z případných skrytých vad zdravotního charakteru.</li>
-        <li>Adopční příspěvek ve výši <strong>${adoptionFee}</strong> pokrývá náklady na veterinární péči poskytnutou v útulku a není cenou za zvíře.</li>
+        <li>Adopční příspěvek ve výši <strong id="av-fee">${adoptionFee}</strong> pokrývá náklady na veterinární péči poskytnutou v útulku a není cenou za zvíře.</li>
       </ol>
 
       <div class="checkbox-row">
@@ -490,7 +522,7 @@ export async function GET(
       <div class="sig-block">
         <div class="sig-line"></div>
         <div class="sig-label">Přijímající (adoptér)</div>
-        <div class="sig-name">${a.adopter_name ?? ''}</div>
+        <div class="sig-name" id="av-sig-name">${a.adopter_name ?? ''}</div>
         <div class="sig-name" style="color:#8B6550;font-size:7.5pt">${adoptionDate}</div>
       </div>
     </div>
