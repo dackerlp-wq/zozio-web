@@ -369,7 +369,7 @@ async function getAnimals(params: any, page: number) {
     // podmíněná adopce obchází published filtr — vždy veřejně viditelná
     .or('published.eq.true,adoption_status.eq.conditional')
     .in('adoption_status', ['available', 'reserved', 'foster', 'conditional'])
-    .or(`quarantine_end.is.null,quarantine_end.lt.${today}`)
+    .or(`quarantine_end.is.null,quarantine_end.lt.${today},adoption_status.eq.conditional`)
 
   if (params.species)  query = query.eq('species_id', params.species)
   if (params.breed)    query = query.ilike('breed', params.breed)
@@ -428,7 +428,7 @@ async function getTotal(params: any) {
     .select('id', { count: 'exact', head: true })
     .or('published.eq.true,adoption_status.eq.conditional')
     .in('adoption_status', ['available', 'reserved', 'foster', 'conditional'])
-    .or(`quarantine_end.is.null,quarantine_end.lt.${today}`)
+    .or(`quarantine_end.is.null,quarantine_end.lt.${today},adoption_status.eq.conditional`)
 
   if (params.species)  query = query.eq('species_id', params.species)
   if (params.breed)    query = query.ilike('breed', params.breed)
@@ -464,7 +464,7 @@ async function getBreeds(speciesId?: string) {
     .select('breed')
     .or('published.eq.true,adoption_status.eq.conditional')
     .in('adoption_status', ['available', 'reserved', 'foster', 'conditional'])
-    .or(`quarantine_end.is.null,quarantine_end.lt.${today}`)
+    .or(`quarantine_end.is.null,quarantine_end.lt.${today},adoption_status.eq.conditional`)
     .not('breed', 'is', null) as any
 
   if (speciesId) query = query.eq('species_id', speciesId)
