@@ -479,29 +479,17 @@ function PhaseOchrana({ a, id }: { a: Record<string, unknown>; id: string }) {
   const elapsed    = intakeDate ? daysFrom(intakeDate) : 0
   const isConditional = String(a.adoption_status) === 'conditional'
 
-  // Conditional adoption form state
-  const [showCondForm, setShowCondForm] = useState(false)
-  const [condName,  setCondName]  = useState('')
-  const [condPhone, setCondPhone] = useState('')
-  const [condEmail, setCondEmail] = useState('')
-  const [condNote,  setCondNote]  = useState('')
-  const [saving, setSaving]       = useState(false)
-  const [saved,  setSaved]        = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved,  setSaved]  = useState(false)
 
   async function startConditional() {
-    if (!condName || !condPhone) return
     setSaving(true)
     await fetch(`/api/animals/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        adoption_status:           'conditional',
-        conditional_adopter_name:  condName,
-        conditional_adopter_phone: condPhone,
-        conditional_adopter_email: condEmail || null,
+        adoption_status:            'conditional',
         conditional_adoption_since: new Date().toISOString().slice(0, 10),
-        conditional_adoption_note: condNote || null,
-        published: false,  // stáhnout z webu
       }),
     })
     setSaving(false)
@@ -667,65 +655,25 @@ function PhaseOchrana({ a, id }: { a: Record<string, unknown>; id: string }) {
         <Row label="CRZ registrace"  value={a.crz_registered ? '✅ Ano' : '❌ Ne'} />
       </div>
 
-      {/* Conditional adoption section — pouze pokud lhůta ještě běží */}
-      {remaining > 0 && (!showCondForm ? (
+      {/* Podmíněná adopce — pouze pokud lhůta ještě běží */}
+      {remaining > 0 && (
         <div className="rounded-xl p-4" style={{ background: '#FFF0E6', border: '1px solid #F5C4A0' }}>
           <p className="text-sm font-bold mb-1" style={{ color: '#C05000' }}>🤝 Podmíněná adopce</p>
-          <p className="text-xs mb-3" style={{ color: '#8B6550' }}>
-            Zvíře lze svěřit rodině ještě během ochranné lhůty. Adopce je podmíněná — pokud se přihlásí původní majitel, zvíře musí být vráceno.
+          <p className="text-xs mb-1" style={{ color: '#8B6550' }}>
+            Zvíře lze svěřit rodině ještě během ochranné lhůty.
           </p>
-          <button onClick={() => setShowCondForm(true)}
-            className="w-full py-2 rounded-lg text-sm font-bold border-none cursor-pointer hover:opacity-90"
-            style={{ background: '#C05000', color: 'white' }}>
-            🤝 Zahájit podmíněnou adopci
+          <p className="text-xs mb-3 leading-relaxed" style={{ color: '#8B6550' }}>
+            Po zahájení se <strong style={{ color: '#C05000' }}>stav změní na „Podmíněná adopce"</strong> a zvíře bude na webu označeno jako dočasně svěřené. Adopce se stane plnou po uplynutí ochranné lhůty — pokud se do té doby nepřihlásí původní majitel. Údaje adoptéra doplníte v editaci záznamu.
+          </p>
+          <button
+            onClick={startConditional}
+            disabled={saving || saved}
+            className="w-full py-2.5 rounded-xl text-white text-sm font-black border-none cursor-pointer hover:opacity-90 disabled:opacity-50"
+            style={{ background: '#C05000' }}>
+            {saved ? '✓ Podmíněná adopce zahájena' : saving ? 'Ukládám…' : '🤝 Zahájit podmíněnou adopci'}
           </button>
         </div>
-      ) : (
-        /* Conditional adoption form */
-        <div className="rounded-xl p-4 space-y-3" style={{ background: '#FFF0E6', border: '1px solid #F5C4A0' }}>
-          <p className="text-sm font-bold" style={{ color: '#C05000' }}>🤝 Zahájit podmíněnou adopci</p>
-          <div>
-            <label className="block text-xs font-bold mb-1" style={{ color: '#6B4030' }}>Jméno adoptéra *</label>
-            <input type="text" value={condName} onChange={e => setCondName(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border-2 text-sm font-semibold focus:outline-none"
-              style={{ borderColor: '#F5C4A0', background: 'white', color: '#2C1810' }}
-              placeholder="Jana Nováková" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold mb-1" style={{ color: '#6B4030' }}>Telefon *</label>
-            <input type="tel" value={condPhone} onChange={e => setCondPhone(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border-2 text-sm font-semibold focus:outline-none"
-              style={{ borderColor: '#F5C4A0', background: 'white', color: '#2C1810' }}
-              placeholder="+420 777 888 999" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold mb-1" style={{ color: '#6B4030' }}>E-mail</label>
-            <input type="email" value={condEmail} onChange={e => setCondEmail(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border-2 text-sm font-semibold focus:outline-none"
-              style={{ borderColor: '#F5C4A0', background: 'white', color: '#2C1810' }}
-              placeholder="jana@example.com" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold mb-1" style={{ color: '#6B4030' }}>Poznámka (podmínky smlouvy)</label>
-            <textarea value={condNote} onChange={e => setCondNote(e.target.value)} rows={2}
-              className="w-full px-3 py-2 rounded-lg border-2 text-sm font-semibold focus:outline-none resize-none"
-              style={{ borderColor: '#F5C4A0', background: 'white', color: '#2C1810' }}
-              placeholder="Adopce podmíněná — vrácení do 30 dní při přihlášení majitele..." />
-          </div>
-          <div className="flex gap-2">
-            <button onClick={startConditional} disabled={!condName || !condPhone || saving || saved}
-              className="flex-1 py-2 rounded-lg text-white text-sm font-bold border-none cursor-pointer hover:opacity-90 disabled:opacity-50"
-              style={{ background: '#C05000' }}>
-              {saved ? '✓ Uloženo' : saving ? 'Ukládám…' : '🤝 Potvrdit podmíněnou adopci'}
-            </button>
-            <button onClick={() => setShowCondForm(false)}
-              className="px-3 py-2 rounded-lg text-sm font-bold border-none cursor-pointer"
-              style={{ background: '#F0EDE8', color: '#8B6550' }}>
-              Zrušit
-            </button>
-          </div>
-        </div>
-      ))}
+      )}
 
       <ul className="space-y-0.5 pt-1">
         <CheckItem done={Boolean(a.evidence_number)}   label="Evidenční číslo přiděleno" />
