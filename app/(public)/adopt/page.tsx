@@ -221,6 +221,21 @@ function AnimalCard({ animal }: { animal: any }) {
                 Urgentní
               </div>
             )}
+            {animal.adoption_status === 'reserved' && (
+              <div className="absolute top-2.5 left-2.5 bg-[#F59E0B] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                📌 Rezervováno
+              </div>
+            )}
+            {animal.adoption_status === 'foster' && (
+              <div className="absolute top-2.5 left-2.5 bg-[#8B5CF6] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                🏡 Dočasná péče
+              </div>
+            )}
+            {animal.adoption_status === 'conditional' && (
+              <div className="absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: '#C05000', color: 'white' }}>
+                🤝 Podmíněná adopce
+              </div>
+            )}
             {animal.suitable_for_flat && !animal.suitable_for_house && (
               <div className="absolute top-2.5 right-2.5 bg-white/90 text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ color: '#1A0F0A' }}>
                 🏢 Byt
@@ -243,7 +258,7 @@ function AnimalCard({ animal }: { animal: any }) {
             <div className="flex flex-wrap gap-1 mt-auto">
               {animal.vaccinated     && <Pill label="Očkovaný"   bg="#EAF3DE" color="#3B6D11" />}
               {animal.neutered       && <Pill label="Kastrovaný" bg="#EAF3DE" color="#3B6D11" />}
-              {animal.good_with_kids && <Pill label="S dětmi"    bg="#FAEEDA" color="#854F0B" />}
+              {(animal.good_with_kids === 'yes' || animal.good_with_kids === 'ok' || animal.good_with_kids === true) && <Pill label="S dětmi" bg="#FAEEDA" color="#854F0B" />}
               {activity              && <Pill label={activity.label} bg={activity.bg} color={activity.color} />}
             </div>
           </div>
@@ -347,12 +362,13 @@ async function getAnimals(params: any, page: number) {
   const offset   = hasLoc ? 0 : (page - 1) * PAGE_SIZE
   const limit    = hasLoc ? 500 : PAGE_SIZE
 
+  const today = new Date().toISOString().slice(0, 10)
   let query = supabase
     .from('animals')
     .select('id, name, breed, birth_year, primary_photo, urgent, adoption_status, vaccinated, neutered, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, suitable_for_flat, suitable_for_house, activity_level, care_difficulty, species:animal_species(name_cs,icon), institution:institutions(name,city,type,lat,lng)')
     .eq('published', true)
-    .eq('adoption_status', 'available')
-    .or('in_quarantine.is.null,in_quarantine.eq.false')
+    .in('adoption_status', ['available', 'reserved', 'foster', 'conditional'])
+    .or(`quarantine_end.is.null,quarantine_end.lt.${today}`)
 
   if (params.species)  query = query.eq('species_id', params.species)
   if (params.breed)    query = query.eq('breed', params.breed)
@@ -361,10 +377,10 @@ async function getAnimals(params: any, page: number) {
   if (params.q)        query = query.or(`name.ilike.%${params.q}%,breed.ilike.%${params.q}%,description.ilike.%${params.q}%`)
   if (params.housing === 'flat')  query = query.eq('suitable_for_flat', true)
   if (params.housing === 'house') query = query.eq('suitable_for_house', true)
-  if (params.kids === 'yes')      query = query.eq('good_with_kids', true)
-  if (params.kids === 'no')       query = query.eq('good_with_kids', false)
-  if (params.other_animals === 'yes') query = query.or('good_with_dogs.eq.true,good_with_cats.eq.true,good_with_other_animals.eq.true')
-  if (params.other_animals === 'no')  query = query.eq('good_with_dogs', false).eq('good_with_cats', false)
+  if (params.kids === 'yes')      query = query.in('good_with_kids', ['yes', 'ok'])
+  if (params.kids === 'no')       query = query.eq('good_with_kids', 'no')
+  if (params.other_animals === 'yes') query = query.or('good_with_dogs.in.(yes,ok),good_with_cats.in.(yes,ok),good_with_other_animals.in.(yes,ok)')
+  if (params.other_animals === 'no')  query = query.eq('good_with_dogs', 'no').eq('good_with_cats', 'no').eq('good_with_other_animals', 'no')
   if (params.activity)    query = query.eq('activity_level', params.activity)
   if (params.difficulty)  query = query.eq('care_difficulty', params.difficulty)
 
@@ -405,12 +421,13 @@ async function getAnimals(params: any, page: number) {
 
 async function getTotal(params: any) {
   const supabase = createServiceClient()
+  const today = new Date().toISOString().slice(0, 10)
   let query = supabase
     .from('animals')
     .select('id', { count: 'exact', head: true })
     .eq('published', true)
-    .eq('adoption_status', 'available')
-    .or('in_quarantine.is.null,in_quarantine.eq.false')
+    .in('adoption_status', ['available', 'reserved', 'foster', 'conditional'])
+    .or(`quarantine_end.is.null,quarantine_end.lt.${today}`)
 
   if (params.species)  query = query.eq('species_id', params.species)
   if (params.breed)    query = query.eq('breed', params.breed)
@@ -419,8 +436,8 @@ async function getTotal(params: any) {
   if (params.q)        query = query.or(`name.ilike.%${params.q}%,breed.ilike.%${params.q}%,description.ilike.%${params.q}%`)
   if (params.housing === 'flat')  query = query.eq('suitable_for_flat', true)
   if (params.housing === 'house') query = query.eq('suitable_for_house', true)
-  if (params.kids === 'yes') query = query.eq('good_with_kids', true)
-  if (params.kids === 'no')  query = query.eq('good_with_kids', false)
+  if (params.kids === 'yes') query = query.in('good_with_kids', ['yes', 'ok'])
+  if (params.kids === 'no')  query = query.eq('good_with_kids', 'no')
   if (params.activity)   query = query.eq('activity_level', params.activity)
   if (params.difficulty) query = query.eq('care_difficulty', params.difficulty)
 

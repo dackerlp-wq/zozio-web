@@ -181,78 +181,174 @@ function CheckItem({ done, label }: { done: boolean; label: string }) {
 // ── Phase panels ─────────────────────────────────────────────────────────────
 
 function PhasePrijem({ a, id }: { a: Record<string, unknown>; id: string }) {
-  const hasQ = Boolean(a.quarantine_start)
-  const [starting, setStarting] = useState(false)
-  const [done, setDone] = useState(false)
+  const origin       = String(a.origin ?? '')
+  const isFound      = ['found', 'municipal_capture'].includes(origin)
+  const hasQ         = Boolean(a.quarantine_start)
+  const qEnd         = a.quarantine_end ? new Date(String(a.quarantine_end)) : null
+  const quarantineDone = qEnd !== null && qEnd <= new Date()
+
+  // Profil kompletnost
+  const photos = Array.isArray(a.photos) ? a.photos : []
+  const profileScore = [
+    Boolean(a.description),
+    Boolean(a.primary_photo),
+    photos.length > 0,
+    Boolean(a.health_status),
+    Boolean(a.breed),
+    a.good_with_kids !== null && a.good_with_kids !== undefined,
+  ].filter(Boolean).length
+  const profileWeak = profileScore < 3
+
+  const [starting,     setStarting]     = useState(false)
+  const [startDone,    setStartDone]    = useState(false)
+  const [movingAdopt,  setMovingAdopt]  = useState(false)
+  const [adoptDone,    setAdoptDone]    = useState(false)
 
   async function startQuarantine() {
     setStarting(true)
     const today = new Date().toISOString().slice(0, 10)
-    const end   = addMonths(today, 0).replace(/\d{2}$/, '') + String(new Date().getDate() + 14).padStart(2, '0')
-    // 14 dní od dneška
-    const qEnd  = new Date(); qEnd.setDate(qEnd.getDate() + 14)
+    const qEndDate = new Date(); qEndDate.setDate(qEndDate.getDate() + 14)
     await fetch(`/api/animals/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        in_quarantine:   true,
+        in_quarantine:    true,
         quarantine_start: today,
-        quarantine_end:   qEnd.toISOString().slice(0, 10),
+        quarantine_end:   qEndDate.toISOString().slice(0, 10),
       }),
     })
-    setDone(true)
+    setStartDone(true)
     setStarting(false)
+    setTimeout(() => window.location.reload(), 800)
+  }
+
+  async function moveToAdoption() {
+    setMovingAdopt(true)
+    await fetch(`/api/animals/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adoption_status: 'available' }),
+    })
+    setAdoptDone(true)
+    setMovingAdopt(false)
     setTimeout(() => window.location.reload(), 800)
   }
 
   return (
     <div className="space-y-4">
-      {/* Karanténa varování */}
-      {!hasQ && (
+
+      {/* ── NALEZENO / ODCHYCENO: povinná karanténa ── */}
+      {isFound && !hasQ && (
         <div className="rounded-xl p-5" style={{ background: '#FFF3D6', border: '2px solid #F0A500' }}>
           <div className="flex items-start gap-3">
             <span className="text-xl flex-shrink-0">⚠️</span>
             <div className="flex-1">
               <div className="text-sm font-bold mb-1" style={{ color: '#7a5800' }}>Zahajte karanténu</div>
               <div className="text-xs mb-3" style={{ color: '#7a5800' }}>
-                Dle § 5 vyhl. č. 380/2022 Sb. je nově přijaté zvíře povinně umístěno do karantény (14 dní). Karanténu musí zahájit prosím zde.
+                Dle § 5 vyhl. č. 380/2022 Sb. je nově přijaté nalezené zvíře povinně umístěno do karantény (14 dní).
               </div>
-              <button
-                onClick={startQuarantine}
-                disabled={starting || done}
+              <button onClick={startQuarantine} disabled={starting || startDone}
                 className="w-full py-2.5 rounded-xl text-white text-sm font-black border-none cursor-pointer hover:opacity-90 disabled:opacity-50"
                 style={{ background: '#F0A500' }}>
-                {done ? '✓ Karanténa zahájena' : starting ? 'Zahajuji…' : '🔒 Zahájit karanténu (14 dní)'}
+                {startDone ? '✓ Karanténa zahájena' : starting ? 'Zahajuji…' : '🔒 Zahájit karanténu (14 dní)'}
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ── OSTATNÍ ZPŮSOBY PŘÍJMU ── */}
+      {!isFound && (
+        <div className="space-y-3">
+
+          {/* Slabý profil — varování */}
+          {profileWeak && (
+            <div className="rounded-xl p-4" style={{ background: '#FCEBEB', border: '1px solid #F5C4B3' }}>
+              <div className="flex items-start gap-3">
+                <span className="text-base flex-shrink-0">📋</span>
+                <div>
+                  <div className="text-xs font-bold mb-1" style={{ color: '#D83030' }}>Profil zvířete je neúplný</div>
+                  <div className="text-xs leading-relaxed mb-2" style={{ color: '#D83030' }}>
+                    Zvíře nemá vyplněný popis, fotografie ani zdravotní údaje. Zákon ukládá povinnost vést evidenci přijatých zvířat — a úplný profil navíc výrazně zvyšuje šanci na adopci.
+                  </div>
+                  <a href={`/admin/animals/${id}/edit`}
+                    className="inline-block text-xs font-bold px-3 py-1.5 rounded-lg text-white no-underline hover:opacity-90"
+                    style={{ background: '#D83030' }}>
+                    ✏️ Doplnit profil
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Karanténa doporučena (není zahájena) */}
+          {!hasQ && !quarantineDone && (
+            <div className="rounded-xl p-4" style={{ background: '#FFF3D6', border: '1px solid #F5D8A0' }}>
+              <div className="text-xs font-bold mb-1" style={{ color: '#7a5800' }}>🔒 Doporučená karanténa</div>
+              <div className="text-xs mb-3" style={{ color: '#7a5800' }}>
+                Pro odevzdaná a zabavená zvířata zákon karanténu nevyžaduje, ale veterináři ji důrazně doporučují pro ochranu ostatních zvířat v útulku.
+              </div>
+              <button onClick={startQuarantine} disabled={starting || startDone}
+                className="w-full py-2 rounded-xl text-sm font-bold border-none cursor-pointer hover:opacity-90 disabled:opacity-50"
+                style={{ background: '#F0A500', color: 'white' }}>
+                {startDone ? '✓ Zahájeno' : starting ? 'Zahajuji…' : '🔒 Zahájit karanténu (14 dní)'}
+              </button>
+            </div>
+          )}
+
+          {/* Karanténa skončila → přesunout k adopci */}
+          {quarantineDone && (
+            <div className="rounded-xl p-4" style={{ background: '#EAF3DE', border: '1px solid #BDE8D0' }}>
+              <div className="text-xs font-bold mb-1" style={{ color: '#2D8A4E' }}>✅ Karanténa ukončena</div>
+              <div className="text-xs mb-3" style={{ color: '#2D8A4E' }}>Zvíře prošlo karanténou a je připraveno k adopci.</div>
+              <button onClick={moveToAdoption} disabled={movingAdopt || adoptDone}
+                className="w-full py-2.5 rounded-xl text-white text-sm font-black border-none cursor-pointer hover:opacity-90 disabled:opacity-50"
+                style={{ background: '#2D8A4E' }}>
+                {adoptDone ? '✓ Přesunuto' : movingAdopt ? 'Přesouvám…' : '🏠 Přesunout k adopci'}
+              </button>
+            </div>
+          )}
+
+          {/* Přeskočit karanténu — rovnou k adopci */}
+          {!quarantineDone && (
+            <button onClick={moveToAdoption} disabled={movingAdopt || adoptDone}
+              className="w-full py-2 rounded-xl text-sm font-semibold border-2 cursor-pointer hover:border-[#E8634A] transition-colors disabled:opacity-50"
+              style={{ borderColor: '#F0EDE8', color: '#6B4030', background: 'white' }}>
+              {adoptDone ? '✓ Přesunuto' : movingAdopt ? 'Přesouvám…' : '→ Rovnou k adopci (bez karantény)'}
+            </button>
+          )}
+
+        </div>
+      )}
+
       <div>
-        <Row label="Datum příjmu"    value={fmt(a.intake_date)} />
-        <Row label="Čas příjmu"      value={a.intake_time ? String(a.intake_time) : '—'} />
-        <Row label="Způsob příjmu"   value={ORIGIN_LABELS[String(a.origin ?? '')] ?? '—'} />
+        <Row label="Datum příjmu"     value={fmt(a.intake_date)} />
+        <Row label="Čas příjmu"       value={a.intake_time ? String(a.intake_time) : '—'} />
+        <Row label="Způsob příjmu"    value={ORIGIN_LABELS[String(a.origin ?? '')] ?? '—'} />
         <Row label="Přijal pracovník" value={a.intake_worker ? String(a.intake_worker) : '—'} />
-        <Row label="Evidenční č."    value={a.evidence_number ? String(a.evidence_number) : '—'} />
-        <Row label="Místo nálezu"    value={a.found_location ? String(a.found_location) : '—'} />
-        <Row label="Datum nálezu"    value={fmt(a.found_date)} />
+        <Row label="Evidenční č."     value={a.evidence_number ? String(a.evidence_number) : '—'} />
+        {isFound && <Row label="Místo nálezu" value={a.found_location ? String(a.found_location) : '—'} />}
+        {isFound && <Row label="Datum nálezu" value={fmt(a.found_date)} />}
       </div>
 
-      <div className="pt-1">
-        <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#A09080' }}>Nálezce / předchozí majitel</p>
-        <Row label="Jméno"    value={a.intake_finder_name ?? a.finder_name ?? '—'} />
-        <Row label="Telefon"  value={a.intake_finder_phone ?? a.finder_phone ?? '—'} />
-        <Row label="Adresa"   value={a.intake_finder_address ?? '—'} />
-        <Row label="E-mail"   value={a.intake_finder_email ?? '—'} />
-      </div>
+      {isFound && (
+        <div className="pt-1">
+          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#A09080' }}>Nálezce / předchozí majitel</p>
+          <Row label="Jméno"   value={a.intake_finder_name ?? a.finder_name ?? '—'} />
+          <Row label="Telefon" value={a.intake_finder_phone ?? a.finder_phone ?? '—'} />
+          <Row label="Adresa"  value={a.intake_finder_address ?? '—'} />
+          <Row label="E-mail"  value={a.intake_finder_email ?? '—'} />
+        </div>
+      )}
 
       <ul className="space-y-0.5 mt-2">
-        <CheckItem done={Boolean(a.evidence_number)}  label="Evidenční číslo přiděleno" />
-        <CheckItem done={Boolean(a.origin)}            label="Způsob příjmu zaznamenán" />
-        <CheckItem done={Boolean(a.intake_worker)}     label="Přijímací pracovník uveden" />
-        <CheckItem done={Boolean(a.found_location) || !['found','municipal_capture'].includes(String(a.origin))} label="Místo nálezu zaznamenáno" />
-        <CheckItem done={hasQ}                         label="Karanténa zahájena" />
+        <CheckItem done={Boolean(a.evidence_number)} label="Evidenční číslo přiděleno" />
+        <CheckItem done={Boolean(a.origin)}           label="Způsob příjmu zaznamenán" />
+        <CheckItem done={Boolean(a.intake_worker)}    label="Přijímací pracovník uveden" />
+        {isFound && <CheckItem done={Boolean(a.found_location)} label="Místo nálezu zaznamenáno" />}
+        <CheckItem done={hasQ}                        label="Karanténa zahájena" />
+        <CheckItem done={Boolean(a.description)}      label="Popis zvířete vyplněn" />
+        <CheckItem done={Boolean(a.primary_photo)}    label="Titulní fotografie nahrána" />
       </ul>
     </div>
   )
