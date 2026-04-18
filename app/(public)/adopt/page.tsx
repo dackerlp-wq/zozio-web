@@ -22,6 +22,10 @@ interface PageProps {
     lat?:           string
     lng?:           string
     size?:          string
+    sex?:           string      // NEW: 'male' | 'female'
+    age?:           string      // NEW: 'young' | 'adult' | 'senior'
+    vaccinated?:    string      // NEW: 'true'
+    neutered?:      string      // NEW: 'true'
     urgent?:        string
     sort?:          string
     page?:          string
@@ -49,7 +53,8 @@ export default async function AdoptPage({ searchParams }: PageProps) {
 
   return (
     <main className="min-h-screen pt-20 md:pt-24" style={{ background: '#FFFCF8' }}>
-      <div className="max-w-[1200px] mx-auto px-5 md:px-10 pb-16">
+      {/* pb-28 na mobilu dává prostor plovoucímu filter tlačítku */}
+      <div className="max-w-[1200px] mx-auto px-5 md:px-10 pb-28 lg:pb-16">
 
         {/* Header */}
         <div className="py-8 md:py-10 flex items-end justify-between gap-4 flex-wrap">
@@ -72,7 +77,7 @@ export default async function AdoptPage({ searchParams }: PageProps) {
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
           {/* Filtry */}
-          <aside className="w-full lg:w-64 flex-shrink-0">
+          <aside className="lg:w-64 flex-shrink-0">
             <AnimalFilter
               species={species}
               breeds={breeds}
@@ -161,7 +166,8 @@ function buildFilterUrl(params: any, overrides: Record<string, string | undefine
 function hasActiveFilters(params: any) {
   return !!(params.q || params.species || params.breed || params.city || params.size ||
     params.urgent || params.housing || params.kids || params.other_animals ||
-    params.activity || params.difficulty)
+    params.activity || params.difficulty || params.sex || params.age ||
+    params.vaccinated || params.neutered)
 }
 
 /* ── Sort ── */
@@ -385,6 +391,14 @@ async function getAnimals(params: any, page: number) {
   if (params.activity)    query = query.eq('activity_level', params.activity)
   if (params.difficulty)  query = query.eq('care_difficulty', params.difficulty)
 
+  const y = new Date().getFullYear()
+  if (params.sex)                  query = query.eq('sex', params.sex)
+  if (params.vaccinated === 'true') query = query.eq('vaccinated', true)
+  if (params.neutered === 'true')   query = query.eq('neutered', true)
+  if (params.age === 'young')  query = query.gte('birth_year', y - 2)
+  if (params.age === 'adult')  query = query.gte('birth_year', y - 8).lt('birth_year', y - 1)
+  if (params.age === 'senior') query = query.lt('birth_year', y - 7)
+
   if (!hasLoc) {
     query = params.sort === 'name'
       ? query.order('name', { ascending: true })
@@ -439,8 +453,17 @@ async function getTotal(params: any) {
   if (params.housing === 'house') query = query.eq('suitable_for_house', true)
   if (params.kids === 'yes') query = query.in('good_with_kids', ['yes', 'ok'])
   if (params.kids === 'no')  query = query.eq('good_with_kids', 'no')
+  if (params.other_animals === 'yes') query = query.or('good_with_dogs.in.(yes,ok),good_with_cats.in.(yes,ok),good_with_other_animals.in.(yes,ok)')
+  if (params.other_animals === 'no')  query = query.eq('good_with_dogs', 'no').eq('good_with_cats', 'no').eq('good_with_other_animals', 'no')
   if (params.activity)   query = query.eq('activity_level', params.activity)
   if (params.difficulty) query = query.eq('care_difficulty', params.difficulty)
+  const y = new Date().getFullYear()
+  if (params.sex)                  query = query.eq('sex', params.sex)
+  if (params.vaccinated === 'true') query = query.eq('vaccinated', true)
+  if (params.neutered === 'true')   query = query.eq('neutered', true)
+  if (params.age === 'young')  query = query.gte('birth_year', y - 2)
+  if (params.age === 'adult')  query = query.gte('birth_year', y - 8).lt('birth_year', y - 1)
+  if (params.age === 'senior') query = query.lt('birth_year', y - 7)
 
   const { count } = await query
   return count ?? 0
