@@ -22,10 +22,8 @@ interface PageProps {
     lat?:           string
     lng?:           string
     size?:          string
-    sex?:           string      // NEW: 'male' | 'female'
-    age?:           string      // NEW: 'young' | 'adult' | 'senior'
-    vaccinated?:    string      // NEW: 'true'
-    neutered?:      string      // NEW: 'true'
+    sex?:           string      // 'male' | 'female'
+    age?:           string      // 'young' | 'adult' | 'senior'
     urgent?:        string
     sort?:          string
     page?:          string
@@ -166,8 +164,7 @@ function buildFilterUrl(params: any, overrides: Record<string, string | undefine
 function hasActiveFilters(params: any) {
   return !!(params.q || params.species || params.breed || params.city || params.size ||
     params.urgent || params.housing || params.kids || params.other_animals ||
-    params.activity || params.difficulty || params.sex || params.age ||
-    params.vaccinated || params.neutered)
+    params.activity || params.difficulty || params.sex || params.age)
 }
 
 /* ── Sort ── */
@@ -392,9 +389,7 @@ async function getAnimals(params: any, page: number) {
   if (params.difficulty)  query = query.eq('care_difficulty', params.difficulty)
 
   const y = new Date().getFullYear()
-  if (params.sex)                  query = query.eq('sex', params.sex)
-  if (params.vaccinated === 'true') query = query.eq('vaccinated', true)
-  if (params.neutered === 'true')   query = query.eq('neutered', true)
+  if (params.sex)              query = query.eq('sex', params.sex)
   if (params.age === 'young')  query = query.gte('birth_year', y - 2)
   if (params.age === 'adult')  query = query.gte('birth_year', y - 8).lt('birth_year', y - 1)
   if (params.age === 'senior') query = query.lt('birth_year', y - 7)
@@ -458,9 +453,7 @@ async function getTotal(params: any) {
   if (params.activity)   query = query.eq('activity_level', params.activity)
   if (params.difficulty) query = query.eq('care_difficulty', params.difficulty)
   const y = new Date().getFullYear()
-  if (params.sex)                  query = query.eq('sex', params.sex)
-  if (params.vaccinated === 'true') query = query.eq('vaccinated', true)
-  if (params.neutered === 'true')   query = query.eq('neutered', true)
+  if (params.sex)              query = query.eq('sex', params.sex)
   if (params.age === 'young')  query = query.gte('birth_year', y - 2)
   if (params.age === 'adult')  query = query.gte('birth_year', y - 8).lt('birth_year', y - 1)
   if (params.age === 'senior') query = query.lt('birth_year', y - 7)

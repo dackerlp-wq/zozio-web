@@ -38,6 +38,11 @@ export function InstitutionTabs({
   const [animalStatusFilter, setAnimalStatusFilter] = useState('')
   const [animalSearch, setAnimalSearch] = useState('')
   const [animalSuggestOpen, setAnimalSuggestOpen] = useState(false)
+  const [sexFilter, setSexFilter]         = useState('')
+  const [ageFilter, setAgeFilter]         = useState('')
+  const [sizeFilter, setSizeFilter]       = useState('')
+  const [speciesFilter, setSpeciesFilter] = useState('')
+  const [showAdvanced, setShowAdvanced]   = useState(false)
 
   const accent = isShelter ? '#E8634A' : '#2E9E8F'
 
@@ -46,6 +51,41 @@ export function InstitutionTabs({
   const filteredRescue = rescueFilter
     ? rescueCases.filter(c => c.status === rescueFilter)
     : rescueCases
+
+  // ── Derived lists for filters ──
+  const speciesList = Array.from(
+    new Map(animals.map(a => [a.species?.name_cs, a.species]).filter(([k]) => k)).values()
+  ) as { id: string; name_cs: string; icon: string | null }[]
+
+  const hasMultipleSpecies = speciesList.length > 1
+
+  // ── Filtering logic ──
+  const currentYear = new Date().getFullYear()
+  const filteredAnimals = animals.filter(a => {
+    const q   = animalSearch.toLowerCase().trim()
+    const age = a.birth_year ? currentYear - a.birth_year : null
+
+    if (animalStatusFilter && a.adoption_status !== animalStatusFilter) return false
+    if (q && ![a.name, a.breed, a.species?.name_cs].some((v: any) => v?.toLowerCase().includes(q))) return false
+    if (sexFilter && a.sex !== sexFilter) return false
+    if (sizeFilter && a.size !== sizeFilter) return false
+    if (speciesFilter && a.species?.name_cs !== speciesFilter) return false
+    if (ageFilter === 'young'  && !(age !== null && age <= 2)) return false
+    if (ageFilter === 'adult'  && !(age !== null && age > 2 && age <= 8)) return false
+    if (ageFilter === 'senior' && !(age !== null && age > 8)) return false
+    return true
+  })
+
+  const advancedActiveCount = [sexFilter, ageFilter, sizeFilter, speciesFilter].filter(Boolean).length
+
+  const clearAllFilters = () => {
+    setAnimalStatusFilter('')
+    setAnimalSearch('')
+    setSexFilter('')
+    setAgeFilter('')
+    setSizeFilter('')
+    setSpeciesFilter('')
+  }
 
   return (
     <div>
@@ -93,186 +133,284 @@ export function InstitutionTabs({
             <EmptyTab icon="🐾" text="Zatím žádná zvířata k adopci." />
           ) : (
             <>
-              {/* Filtry statusu */}
-              {(() => {
-                const statusCfg: Record<string, { label: string; bg: string; color: string }> = {
-                  available: { label: 'K adopci',    bg: '#EAF3DE', color: '#3B6D11' },
-                  reserved:  { label: 'Rezervováno', bg: '#FAEEDA', color: '#854F0B' },
-                  foster:    { label: 'Ve foster',   bg: '#E1F5EE', color: '#0F6E56' },
-                }
-                const presentStatuses = Object.keys(statusCfg).filter(s => animals.some(a => a.adoption_status === s))
-                return presentStatuses.length > 1 ? (
-                  <div className="flex gap-2 overflow-x-auto pb-1 mb-5" style={{ scrollbarWidth: 'none' }}>
-                    <button
-                      onClick={() => setAnimalStatusFilter('')}
-                      className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer"
-                      style={!animalStatusFilter
-                        ? { background: '#E8634A', color: 'white', borderColor: '#E8634A' }
-                        : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }
-                      }
-                    >
-                      Vše ({animals.length})
-                    </button>
-                    {presentStatuses.map(s => {
-                      const cfg = statusCfg[s]
-                      const cnt = animals.filter(a => a.adoption_status === s).length
-                      return (
-                        <button
-                          key={s}
-                          onClick={() => setAnimalStatusFilter(s)}
-                          className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer"
-                          style={animalStatusFilter === s
-                            ? { background: '#E8634A', color: 'white', borderColor: '#E8634A' }
-                            : { background: cfg.bg, color: cfg.color, borderColor: 'transparent' }
-                          }
-                        >
-                          {cfg.label} ({cnt})
+              {/* Search */}
+              <div className="relative mb-3">
+                <input
+                  type="text"
+                  value={animalSearch}
+                  onChange={e => { setAnimalSearch(e.target.value); setAnimalSuggestOpen(true) }}
+                  onFocus={() => setAnimalSuggestOpen(true)}
+                  onBlur={() => setTimeout(() => setAnimalSuggestOpen(false), 150)}
+                  placeholder="Hledat jméno, rasu, druh…"
+                  className="w-full pl-9 pr-9 py-2.5 text-sm border-2 rounded-xl outline-none transition-colors bg-white"
+                  style={{ borderColor: '#F0EDE8', color: '#1A0F0A' }}
+                />
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B6550" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                {animalSearch && (
+                  <button onClick={() => setAnimalSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold cursor-pointer border-none bg-transparent"
+                    style={{ color: '#8B6550' }}>✕</button>
+                )}
+                {animalSuggestOpen && (() => {
+                  const q = animalSearch.toLowerCase().trim()
+                  const suggs = q.length < 1 ? [] : Array.from(new Set([
+                    ...animals.map((a: any) => a.name).filter((v: any) => v?.toLowerCase().includes(q) && v.toLowerCase() !== q),
+                    ...animals.map((a: any) => a.breed).filter((v: any): v is string => !!v && v.toLowerCase().includes(q) && v.toLowerCase() !== q),
+                  ])).slice(0, 5)
+                  return suggs.length > 0 ? (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#F0EDE8] rounded-xl shadow-lg z-20 overflow-hidden">
+                      {suggs.map((s: any) => (
+                        <button key={s} onMouseDown={() => { setAnimalSearch(s); setAnimalSuggestOpen(false) }}
+                          className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#FDF8F5] cursor-pointer border-none bg-transparent"
+                          style={{ color: '#1A0F0A' }}>🔍 {s}</button>
+                      ))}
+                    </div>
+                  ) : null
+                })()}
+              </div>
+
+              {/* Status + Filtry row */}
+              <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                {/* Status pills */}
+                {(() => {
+                  const statusCfg: Record<string, { label: string }> = {
+                    available:   { label: 'K adopci' },
+                    reserved:    { label: 'Rezervováno' },
+                    foster:      { label: 'Ve foster' },
+                    conditional: { label: 'Podmíněná' },
+                  }
+                  const present = Object.keys(statusCfg).filter(s => animals.some((a: any) => a.adoption_status === s))
+                  return present.length > 1 ? (
+                    <>
+                      <button onClick={() => setAnimalStatusFilter('')}
+                        className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer min-h-[32px]"
+                        style={!animalStatusFilter ? { background: accent, color: 'white', borderColor: accent } : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }}>
+                        Vše ({animals.length})
+                      </button>
+                      {present.map(s => {
+                        const cnt = animals.filter((a: any) => a.adoption_status === s).length
+                        return (
+                          <button key={s} onClick={() => setAnimalStatusFilter(s === animalStatusFilter ? '' : s)}
+                            className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer min-h-[32px]"
+                            style={animalStatusFilter === s ? { background: accent, color: 'white', borderColor: accent } : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }}>
+                            {statusCfg[s].label} ({cnt})
+                          </button>
+                        )
+                      })}
+                    </>
+                  ) : null
+                })()}
+
+                {/* Advanced filter toggle */}
+                <button
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer min-h-[32px] ml-auto"
+                  style={showAdvanced || advancedActiveCount > 0
+                    ? { background: accent, color: 'white', borderColor: accent }
+                    : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M1 3h10M3 6h6M5 9h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                  </svg>
+                  Filtry{advancedActiveCount > 0 ? ` · ${advancedActiveCount}` : ''}
+                </button>
+              </div>
+
+              {/* Advanced filters panel */}
+              {showAdvanced && (
+                <div className="rounded-xl p-4 mb-4 space-y-3" style={{ background: '#FAFAF8', border: '1px solid #F0EDE8' }}>
+
+                  {/* Species — only if multiple */}
+                  {hasMultipleSpecies && (
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: '#8B6550' }}>Druh</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button onClick={() => setSpeciesFilter('')}
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all"
+                          style={!speciesFilter ? { background: accent, color: 'white', borderColor: accent } : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }}>
+                          Všechny
                         </button>
-                      )
-                    })}
-                  </div>
-                ) : null
-              })()}
-
-              {/* Vyhledávání s našeptávačem */}
-              {(() => {
-                const q = animalSearch.toLowerCase().trim()
-                const suggestions = q.length < 1 ? [] : Array.from(new Set([
-                  ...animals.map(a => a.name).filter(v => v?.toLowerCase().includes(q) && v.toLowerCase() !== q),
-                  ...animals.map(a => a.breed).filter((v): v is string => !!v && v.toLowerCase().includes(q) && v.toLowerCase() !== q),
-                  ...animals.map(a => a.species?.name_cs).filter((v): v is string => !!v && v.toLowerCase().includes(q) && v.toLowerCase() !== q),
-                ])).slice(0, 6)
-
-                return (
-                  <div className="relative mb-5">
-                    <input
-                      type="text"
-                      value={animalSearch}
-                      onChange={e => { setAnimalSearch(e.target.value); setAnimalSuggestOpen(true) }}
-                      onFocus={() => setAnimalSuggestOpen(true)}
-                      onBlur={() => setTimeout(() => setAnimalSuggestOpen(false), 150)}
-                      placeholder="Hledat podle jména, rasy, druhu…"
-                      className="w-full pl-9 pr-4 py-2.5 text-sm border-2 border-[#F0EDE8] rounded-xl outline-none focus:border-[#E8634A] transition-colors bg-white"
-                      style={{ color: '#1A0F0A' }}
-                    />
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B6550" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                    </svg>
-                    {animalSearch && (
-                      <button onClick={() => setAnimalSearch('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold cursor-pointer border-none bg-transparent"
-                        style={{ color: '#8B6550' }}>✕</button>
-                    )}
-
-                    {/* Dropdown */}
-                    {animalSuggestOpen && suggestions.length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#F0EDE8] rounded-xl shadow-lg z-20 overflow-hidden">
-                        {suggestions.map(s => (
-                          <button
-                            key={s}
-                            onMouseDown={() => { setAnimalSearch(s); setAnimalSuggestOpen(false) }}
-                            className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#FDF8F5] transition-colors cursor-pointer border-none bg-transparent flex items-center gap-2"
-                            style={{ color: '#1A0F0A' }}
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B6550" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                            </svg>
-                            {s}
+                        {speciesList.map((s: any) => (
+                          <button key={s.name_cs} onClick={() => setSpeciesFilter(speciesFilter === s.name_cs ? '' : s.name_cs)}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all"
+                            style={speciesFilter === s.name_cs ? { background: accent, color: 'white', borderColor: accent } : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }}>
+                            {s.icon} {s.name_cs}
                           </button>
                         ))}
                       </div>
-                    )}
-                  </div>
-                )
-              })()}
+                    </div>
+                  )}
 
-              {(() => {
-                const q = animalSearch.toLowerCase().trim()
-                const filtered = animals.filter(a => {
-                  const matchStatus = !animalStatusFilter || a.adoption_status === animalStatusFilter
-                  const matchSearch = !q || [a.name, a.breed, a.species?.name_cs].some(v => v?.toLowerCase().includes(q))
-                  return matchStatus && matchSearch
-                })
-                return filtered.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="text-4xl mb-3">🔍</div>
-                    <p className="text-sm font-semibold" style={{ color: '#1A0F0A' }}>Žádný výsledek</p>
-                    <button onClick={() => { setAnimalSearch(''); setAnimalStatusFilter('') }}
-                      className="text-xs mt-2 cursor-pointer border-none bg-transparent font-semibold"
-                      style={{ color: '#E8634A' }}>Zrušit filtry</button>
+                  {/* Sex */}
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: '#8B6550' }}>Pohlaví</p>
+                    <div className="flex gap-2">
+                      {[
+                        { v: '',       label: 'Nezáleží' },
+                        { v: 'male',   label: '♂ Samec' },
+                        { v: 'female', label: '♀ Samice' },
+                      ].map(({ v, label }) => (
+                        <button key={label} onClick={() => setSexFilter(v)}
+                          className="flex-1 py-2 rounded-lg text-xs font-semibold border cursor-pointer transition-all text-center min-h-[36px]"
+                          style={sexFilter === v
+                            ? { background: v === 'male' ? '#E6F1FB' : v === 'female' ? '#FDE8F3' : '#FAECE7', borderColor: v === 'male' ? '#4A9EE0' : v === 'female' ? '#E040A0' : accent, color: v === 'male' ? '#185FA5' : v === 'female' ? '#B01060' : '#993C1D' }
+                            : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                ) : null
-              })()}
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-                {animals
-                  .filter(a => {
-                    const q = animalSearch.toLowerCase().trim()
-                    const matchStatus = !animalStatusFilter || a.adoption_status === animalStatusFilter
-                    const matchSearch = !q || [a.name, a.breed, a.species?.name_cs].some(v => v?.toLowerCase().includes(q))
-                    return matchStatus && matchSearch
-                  })
-                  .map(a => {
-                    const age = a.birth_year ? new Date().getFullYear() - a.birth_year : null
-                    const ageLabel = age === null ? null : age === 0 ? 'Mládě' : age === 1 ? '1 rok' : `${age} let`
-                    const sexLabel = a.sex === 'male' ? '♂' : a.sex === 'female' ? '♀' : null
-                    const bgGradient = a.urgent ? 'from-[#FAECE7] to-[#F5E6D3]' : 'from-[#F5E6D3] to-[#FEF4D9]'
+                  {/* Age + Size */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: '#8B6550' }}>Věk</p>
+                      <div className="flex flex-col gap-1">
+                        {[
+                          { v: '',       label: 'Jakýkoliv' },
+                          { v: 'young',  label: '🐣 Do 2 let' },
+                          { v: 'adult',  label: '🐕 2–8 let' },
+                          { v: 'senior', label: '🦮 Senior 8+' },
+                        ].map(({ v, label }) => (
+                          <button key={label} onClick={() => setAgeFilter(v)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all text-left min-h-[32px]"
+                            style={ageFilter === v ? { background: '#FAECE7', borderColor: accent, color: '#993C1D' } : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: '#8B6550' }}>Velikost</p>
+                      <div className="flex flex-col gap-1">
+                        {[
+                          { v: '',       label: 'Jakákoliv' },
+                          { v: 'small',  label: '🐾 Malý' },
+                          { v: 'medium', label: '🐕 Střední' },
+                          { v: 'large',  label: '🐕‍🦺 Velký' },
+                          { v: 'xlarge', label: '🦣 Extra velký' },
+                        ].map(({ v, label }) => (
+                          <button key={label} onClick={() => setSizeFilter(v)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all text-left min-h-[32px]"
+                            style={sizeFilter === v ? { background: '#FAECE7', borderColor: accent, color: '#993C1D' } : { background: 'white', borderColor: '#F0EDE8', color: '#6B4030' }}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Clear advanced */}
+                  {advancedActiveCount > 0 && (
+                    <button onClick={clearAllFilters}
+                      className="w-full py-2 rounded-lg text-xs font-bold border-none cursor-pointer"
+                      style={{ background: '#F0EDE8', color: '#6B4030' }}>
+                      Zrušit všechny filtry
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Result count */}
+              <p className="text-xs mb-4" style={{ color: '#8B6550' }}>
+                {filteredAnimals.length === animals.length
+                  ? `${animals.length} zvířat`
+                  : `${filteredAnimals.length} z ${animals.length} zvířat`}
+              </p>
+
+              {/* Empty filtered state */}
+              {filteredAnimals.length === 0 && (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-3">🔍</div>
+                  <p className="text-sm font-semibold mb-2" style={{ color: '#1A0F0A' }}>Žádný výsledek</p>
+                  <button onClick={clearAllFilters}
+                    className="text-xs font-bold cursor-pointer border-none bg-transparent"
+                    style={{ color: accent }}>Zrušit filtry</button>
+                </div>
+              )}
+
+              {/* Animal grid */}
+              {filteredAnimals.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                  {filteredAnimals.map((a: any) => {
+                    const age       = a.birth_year ? currentYear - a.birth_year : null
+                    const ageLabel  = age === null ? null : age === 0 ? 'Mládě' : age === 1 ? '1 rok' : `${age} let`
+                    const sexIcon   = a.sex === 'male' ? '♂' : a.sex === 'female' ? '♀' : null
+                    const statusCfgPhoto: Record<string, { label: string; bg: string }> = {
+                      available:   { label: 'K adopci',    bg: 'rgba(34,107,17,0.85)' },
+                      reserved:    { label: '⏳ Rezervováno', bg: 'rgba(133,79,11,0.85)' },
+                      foster:      { label: '🏡 Foster',    bg: 'rgba(15,110,86,0.85)' },
+                      conditional: { label: '🤝 Podmíněná', bg: 'rgba(192,80,0,0.85)' },
+                    }
+                    const sc = statusCfgPhoto[a.adoption_status]
 
                     return (
-                      <div key={a.id} className={`bg-white rounded-xl overflow-hidden shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-200 ${a.urgent ? 'ring-2 ring-[#E8634A]/30' : 'border border-[#F0EDE8]'}`}>
+                      <div key={a.id} className={`bg-white rounded-xl overflow-hidden transition-all duration-200 hover:-translate-y-1 ${a.urgent ? 'ring-2 shadow-md' : 'border border-[#F0EDE8] hover:border-[#E8634A]/30 hover:shadow-sm'}`}
+                        style={a.urgent ? { ringColor: accent, boxShadow: `0 0 0 2px ${accent}40` } : {}}>
                         <Link href={`/animals/${a.id}`} className="no-underline group block">
-                          <div className={`relative h-36 md:h-40 bg-gradient-to-br ${bgGradient} flex items-center justify-center text-5xl overflow-hidden`}>
+                          <div className="relative h-36 md:h-40 overflow-hidden" style={{ background: '#F5E6D3' }}>
                             {a.primary_photo
                               ? <Image src={a.primary_photo} alt={a.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width:640px) 50vw, 25vw" />
-                              : <span>{a.species?.icon ?? '🐾'}</span>
+                              : <div className="w-full h-full flex items-center justify-center text-5xl">{a.species?.icon ?? '🐾'}</div>
                             }
-                            {/* Urgentní badge */}
                             {a.urgent && (
-                              <div className="absolute top-2 left-2 bg-[#E8634A] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                                Urgentní
+                              <div className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ background: accent }}>
+                                🆘 Urgentní
                               </div>
                             )}
-                            {/* Status badge na fotce */}
-                            <div className="absolute bottom-2 left-2">
-                              <StatusPillPhoto status={a.adoption_status} />
-                            </div>
+                            {sc && !a.urgent && (
+                              <div className="absolute bottom-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full text-white backdrop-blur-sm"
+                                style={{ background: sc.bg }}>
+                                {sc.label}
+                              </div>
+                            )}
+                            {a.urgent && sc && (
+                              <div className="absolute bottom-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full text-white backdrop-blur-sm"
+                                style={{ background: sc.bg }}>
+                                {sc.label}
+                              </div>
+                            )}
                           </div>
                         </Link>
 
                         <div className="p-3">
                           <div className="flex items-start justify-between gap-1 mb-1">
-                            <Link href={`/animals/${a.id}`} className="no-underline">
-                              <span className="font-display font-extrabold text-sm text-[#1A0F0A] hover:text-[#E8634A] transition-colors leading-tight block">
+                            <Link href={`/animals/${a.id}`} className="no-underline min-w-0">
+                              <span className="font-bold text-sm leading-tight block truncate" style={{ color: '#1A0F0A' }}>
                                 {a.name}
                               </span>
                             </Link>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <FavoriteButton type="animal" id={a.id} size="sm" />
-                            </div>
+                            <FavoriteButton type="animal" id={a.id} size="sm" />
                           </div>
 
                           <p className="text-[11px] leading-tight mb-2 truncate" style={{ color: '#8B6550' }}>
-                            {[
-                              a.species?.name_cs,
-                              a.breed,
-                              sexLabel,
-                              ageLabel,
-                            ].filter(Boolean).join(' · ')}
+                            {[a.species?.name_cs, a.breed, sexIcon, ageLabel].filter(Boolean).join(' · ')}
                           </p>
 
-                          {(a.good_with_kids || a.good_with_dogs || a.good_with_cats) && (
-                            <div className="flex flex-wrap gap-1">
-                              {a.good_with_kids && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#FAECE7] text-[#993C1D]">👶 Děti</span>}
-                              {a.good_with_dogs && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#F0EDE8] text-[#6B4030]">🐕 Psi</span>}
-                              {a.good_with_cats && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#F0EDE8] text-[#6B4030]">🐱 Kočky</span>}
-                            </div>
-                          )}
+                          <div className="flex flex-wrap gap-1">
+                            {a.vaccinated && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#EAF3DE', color: '#3B6D11' }}>💉 Očk.</span>
+                            )}
+                            {a.neutered && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#EAF3DE', color: '#3B6D11' }}>✂️ Kast.</span>
+                            )}
+                            {(a.good_with_kids === 'yes' || a.good_with_kids === 'ok' || a.good_with_kids === true) && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#FAECE7', color: '#993C1D' }}>👶</span>
+                            )}
+                            {(a.good_with_dogs === 'yes' || a.good_with_dogs === 'ok' || a.good_with_dogs === true) && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#F0EDE8', color: '#6B4030' }}>🐕</span>
+                            )}
+                            {(a.good_with_cats === 'yes' || a.good_with_cats === 'ok' || a.good_with_cats === true) && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#F0EDE8', color: '#6B4030' }}>🐱</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )
-                  })
-                }
-              </div>
+                  })}
+                </div>
+              )}
             </>
           )}
         </div>

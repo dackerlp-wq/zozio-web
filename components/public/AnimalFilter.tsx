@@ -148,7 +148,7 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
   const activeCount = [
     params.q, params.species, params.breed, params.city, params.size, params.urgent,
     params.housing, params.kids, params.other_animals, params.activity, params.difficulty,
-    params.sex, params.age, params.vaccinated, params.neutered,
+    params.sex, params.age,
   ].filter(Boolean).length
 
   // ── Chip styles ───────────────────────────────────────────────────────
@@ -476,17 +476,6 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
 
       <Divider />
 
-      {/* Zdraví */}
-      <div>
-        <Label>Zdravotní stav</Label>
-        <div className="flex gap-2 flex-wrap">
-          {toggleChip('vaccinated', 'true', '💉 Očkovaný')}
-          {toggleChip('neutered', 'true', '✂️ Kastrovaný')}
-        </div>
-      </div>
-
-      <Divider />
-
       {/* Poloha */}
       <div>
         <Label>Poloha</Label>
@@ -608,8 +597,6 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
             {params.kids === 'no'    && <ActiveChip label="✗ Bez dětí"     onRemove={() => setFilter('kids', undefined)} />}
             {params.other_animals === 'yes' && <ActiveChip label="✓ Se zvířaty" onRemove={() => setFilter('other_animals', undefined)} />}
             {params.other_animals === 'no'  && <ActiveChip label="✗ Bez zvířat" onRemove={() => setFilter('other_animals', undefined)} />}
-            {params.vaccinated && <ActiveChip label="💉 Očkovaný"   onRemove={() => setFilter('vaccinated', undefined)} />}
-            {params.neutered   && <ActiveChip label="✂️ Kastrovaný" onRemove={() => setFilter('neutered', undefined)} />}
             {params.city      && <ActiveChip label={`📍 ${params.city}`}  onRemove={() => { if (cityInputRef.current) cityInputRef.current.value = ''; router.push(buildUrl({ city: undefined, lat: undefined, lng: undefined })) }} />}
           </div>
         )}

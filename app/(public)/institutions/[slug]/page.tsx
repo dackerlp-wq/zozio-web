@@ -193,13 +193,14 @@ async function getInstitution(slug: string) {
 
 async function getAnimals(id: string) {
   const supabase = createServiceClient()
+  const today = new Date().toISOString().slice(0, 10)
   const { data } = await supabase
     .from('animals')
-    .select('id, name, breed, birth_year, sex, size, primary_photo, urgent, adoption_status, vaccinated, neutered, microchipped, good_with_kids, good_with_dogs, good_with_cats, species:animal_species(name_cs,icon)')
+    .select('id, name, breed, birth_year, sex, size, primary_photo, urgent, adoption_status, vaccinated, neutered, microchipped, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, activity_level, care_difficulty, suitable_for_flat, suitable_for_house, species:animal_species(id, name_cs, icon)')
     .eq('institution_id', id)
-    .eq('published', true)
-    .in('adoption_status', ['available', 'reserved', 'foster'])
-    .or('in_quarantine.is.null,in_quarantine.eq.false')
+    .or('published.eq.true,adoption_status.eq.conditional')
+    .in('adoption_status', ['available', 'reserved', 'foster', 'conditional'])
+    .or(`quarantine_end.is.null,quarantine_end.lt.${today},adoption_status.eq.conditional`)
     .order('urgent', { ascending: false })
     .order('created_at', { ascending: false })
   return data ?? []
