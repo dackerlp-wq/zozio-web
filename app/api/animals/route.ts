@@ -117,6 +117,19 @@ export async function POST(request: NextRequest) {
     // Whitelist — odfiltruj sloupce, které klient nesmí ovlivnit
     const payload = pickAllowed(rawBody)
 
+    // Auto-karanténa: nalezené/odchycené zvíře → 14 dní karantény automaticky
+    const foundOrigins = ['found', 'municipal_capture']
+    if (foundOrigins.includes(String(payload.origin ?? ''))) {
+      const intakeDate = String(payload.intake_date ?? new Date().toISOString().slice(0, 10))
+      const qEnd = new Date(intakeDate)
+      qEnd.setDate(qEnd.getDate() + 14)
+      payload.in_quarantine    = true
+      payload.quarantine_start = intakeDate
+      payload.quarantine_end   = qEnd.toISOString().slice(0, 10)
+      // adoption_status zůstane 'intake' pokud není explicitně nastaveno jinak
+      if (!payload.adoption_status) payload.adoption_status = 'intake'
+    }
+
     const { data, error } = await service
       .from('animals')
       .insert(payload)
