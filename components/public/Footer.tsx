@@ -60,8 +60,8 @@ export function Footer() {
                 { href: '/pricing',               label: 'Ceník' },
                 { href: '/inzerujte',             label: '📣 Inzerujte' },
                 { href: 'mailto:info@zozio.cz',   label: 'Kontakt' },
-                { href: '#', label: 'Ochrana osobních údajů' },
-                { href: '#', label: 'Podmínky použití' },
+                { href: '/ochrana-dat', label: 'Ochrana osobních údajů' },
+                { href: '/podminky',   label: 'Podmínky použití' },
               ].map(({ href, label }) => (
                 <li key={label}>
                   <Link href={href} className="text-sm text-gray hover:text-coral transition-colors no-underline">{label}</Link>
