@@ -273,8 +273,13 @@ const plans = [
     price: '0 Kč',
     period: 'navždy zdarma',
     hot: false,
-    features: ['Do 15 zvířat', 'Veřejný profil instituce', 'Adopční formulář', 'Základní statistiky'],
-    missing: ['E-mail notifikace', 'Sbírky', 'Dobrovolníci', 'Export dat'],
+    features: [
+      'Do 20 zvířat / případů',
+      'Veřejný profil instituce',
+      'Adopční žádosti online',
+      'Základní statistiky',
+    ],
+    missing: ['E-mail notifikace', 'Sbírky', 'Správa dobrovolníků', 'Export dat (CSV)', 'Newsletter'],
     cta: 'Začít zdarma',
     href: '/auth/register',
   },
@@ -283,9 +288,18 @@ const plans = [
     price: '490 Kč',
     period: 'měsíčně',
     hot: true,
-    features: ['Neomezená zvířata', 'E-mail notifikace', '1 aktivní sbírka', 'Správa dobrovolníků', 'Export dat (CSV)', 'Pokročilé statistiky'],
-    missing: ['Více poboček'],
-    cta: '30 dní zdarma →',
+    features: [
+      'Neomezená zvířata / případy',
+      'E-mail notifikace',
+      'Neomezené sbírky',
+      'Správa dobrovolníků',
+      'Newsletter pro příznivce',
+      'Export dat (CSV)',
+      'Pokročilé statistiky',
+      'Widget pro váš web',
+    ],
+    missing: ['Pobočky (více lokací)', 'Prioritní podpora'],
+    cta: '14 dní zdarma →',
     href: '/auth/register',
   },
   {
@@ -293,10 +307,17 @@ const plans = [
     price: '990 Kč',
     period: 'měsíčně',
     hot: false,
-    features: ['Vše ze Standard', 'Neomezené sbírky', 'Až 5 poboček', 'Analytika a reporty', 'Prioritní podpora', 'Onboarding pomoc'],
+    features: [
+      'Vše ze Standard',
+      'Pobočky (více lokací)',
+      'Prioritní zobrazení v katalogu',
+      'Pokročilé reporty a export',
+      'Onboarding asistence',
+      'Prioritní podpora (SLA)',
+    ],
     missing: [],
     cta: 'Kontaktovat nás',
-    href: 'mailto:info@zozio.cz',
+    href: 'mailto:team@zozio.cz',
   },
 ]
 
@@ -315,7 +336,7 @@ const faq = [
   },
   {
     q: 'Mohu migrovat data ze starého systému?',
-    a: 'Pomůžeme vám s importem dat z Excelu nebo jiných systémů. Na placeném plánu nabízíme asistenci při onboardingu. Kontaktujte nás na info@zozio.cz.',
+    a: 'Pomůžeme vám s importem dat z Excelu nebo jiných systémů. Na placeném plánu nabízíme asistenci při onboardingu. Kontaktujte nás na team@zozio.cz.',
   },
   {
     q: 'Co když jsem nezisková organizace nebo obecní útulek?',
@@ -651,7 +672,7 @@ export default function ProcBytNaZozioPage() {
           <p className="text-center text-sm text-gray">
             🏛️ Neziskové organizace a obecní útulky:{' '}
             <strong className="text-gray-light">30% sleva</strong> po ověření ·{' '}
-            <a href="mailto:info@zozio.cz" className="text-coral hover:underline">info@zozio.cz</a>
+            <a href="mailto:team@zozio.cz" className="text-coral hover:underline">team@zozio.cz</a>
           </p>
         </div>
       </section>
@@ -690,7 +711,7 @@ export default function ProcBytNaZozioPage() {
                 Registrovat instituci zdarma
               </Button>
             </Link>
-            <a href="mailto:info@zozio.cz">
+            <a href="mailto:team@zozio.cz">
               <button className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-[17px] rounded-pill font-display font-bold text-base text-white border-2 border-white/40 bg-white/15 hover:bg-white/25 transition-all cursor-pointer">
                 Napsat nám
               </button>

@@ -24,21 +24,42 @@ const sharedFeatures = [
 const plans = [
   {
     tier: 'Free', price: '0 Kč', period: 'navždy zdarma', hot: false,
-    features: ['Do 15 zvířat', 'Veřejný profil instituce', 'Adopční formulář'],
-    missing: ['E-mail notifikace', 'Sbírky', 'Dobrovolníci'],
+    features: [
+      'Do 20 zvířat / případů',
+      'Veřejný profil instituce',
+      'Adopční žádosti online',
+      'Základní statistiky',
+    ],
+    missing: ['E-mail notifikace', 'Sbírky', 'Správa dobrovolníků', 'Export dat (CSV)', 'Newsletter'],
     cta: 'Začít zdarma', href: '/auth/register',
   },
   {
     tier: 'Standard', price: '490 Kč', period: 'měsíčně', hot: true,
-    features: ['Neomezená zvířata', 'E-mail notifikace', '1 aktivní sbírka', 'Správa dobrovolníků', 'Export dat (CSV)'],
-    missing: ['Více poboček'],
-    cta: '30 dní zdarma →', href: '/auth/register',
+    features: [
+      'Neomezená zvířata / případy',
+      'E-mail notifikace',
+      'Neomezené sbírky',
+      'Správa dobrovolníků',
+      'Newsletter pro příznivce',
+      'Export dat (CSV)',
+      'Pokročilé statistiky',
+      'Widget pro váš web',
+    ],
+    missing: ['Pobočky (více lokací)', 'Prioritní podpora'],
+    cta: '14 dní zdarma →', href: '/auth/register',
   },
   {
     tier: 'Pro', price: '990 Kč', period: 'měsíčně', hot: false,
-    features: ['Vše ze Standard', 'Neomezené sbírky', 'Až 5 poboček', 'Statistiky a analytika', 'Prioritní podpora'],
+    features: [
+      'Vše ze Standard',
+      'Pobočky (více lokací)',
+      'Prioritní zobrazení v katalogu',
+      'Pokročilé reporty a export',
+      'Onboarding asistence',
+      'Prioritní podpora (SLA)',
+    ],
     missing: [],
-    cta: 'Kontaktovat nás', href: 'mailto:info@zozio.cz',
+    cta: 'Kontaktovat nás', href: 'mailto:team@zozio.cz',
   },
 ]
 
@@ -126,6 +147,9 @@ export default function ProInstitucePage() {
           <div className="text-center mb-10 md:mb-12">
             <h2 className="font-display font-extrabold text-3xl md:text-4xl text-white">Transparentní ceník</h2>
             <p className="text-base text-gray-light mt-3 max-w-[480px] mx-auto">Začni zdarma. Plať jen když rosteš. Bez závazků, bez skrytých poplatků.</p>
+            <Link href="/proc-byt-na-zozio" className="inline-block mt-4 text-sm text-coral hover:text-coral-light font-semibold">
+              Podrobný přehled funkcí →
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
@@ -166,7 +190,7 @@ export default function ProInstitucePage() {
 
           <p className="text-center text-sm text-gray">
             🏛️ Neziskové organizace a obecní útulky: <strong className="text-gray-light">30% sleva</strong> po ověření ·{' '}
-            <a href="mailto:info@zozio.cz" className="text-coral hover:text-coral-light">info@zozio.cz</a>
+            <a href="mailto:team@zozio.cz" className="text-coral hover:text-coral-light">team@zozio.cz</a>
           </p>
         </div>
       </section>
@@ -179,7 +203,7 @@ export default function ProInstitucePage() {
             {[
               { q: 'Jak dlouho trvá registrace?', a: 'Vyplnění registračního formuláře trvá 5 minut. Po odeslání tým Zozio instituci zkontroluje a schválí do 24 hodin.' },
               { q: 'Musím platit hned?', a: 'Ne. Free plán je zdarma navždy bez kreditní karty. Standard plán nabízíme 30 dní zdarma — platba začne až po uplynutí zkušební doby.' },
-              { q: 'Mohu migrovat data ze starého systému?', a: 'Ano, pomůžeme vám s importem dat z Excelu nebo jiných systémů. Kontaktujte nás na info@zozio.cz.' },
+              { q: 'Mohu migrovat data ze starého systému?', a: 'Ano, pomůžeme vám s importem dat z Excelu nebo jiných systémů. Kontaktujte nás na team@zozio.cz.' },
               { q: 'Funguje Zozio na telefonu?', a: 'Ano, admin panel je plně mobilně responzivní. Schvalovat žádosti, přidávat zvířata nebo spravovat dobrovolníky lze přímo z telefonu.' },
               { q: 'Co když jsem nezisková organizace?', a: 'Neziskové organizace a obecní útulky získávají 30% slevu na Standard a Pro plán. Stačí po registraci doložit potvrzení o neziskové činnosti.' },
             ].map(({ q, a }) => (
@@ -203,7 +227,7 @@ export default function ProInstitucePage() {
             <Link href="/auth/register">
               <Button variant="dark" size="lg" className="justify-center w-full sm:w-auto">Registrovat instituci zdarma</Button>
             </Link>
-            <a href="mailto:info@zozio.cz">
+            <a href="mailto:team@zozio.cz">
               <button className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-[17px] rounded-pill font-display font-bold text-base text-white border-2 border-white/40 bg-white/20 hover:bg-white/30 transition-all cursor-pointer">
                 Napsat nám
               </button>
