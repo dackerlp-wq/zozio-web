@@ -111,28 +111,58 @@ export interface AdoptionApplication {
 
 export type AdSlotType = 'inline_grid' | 'sidebar' | 'banner_adopt' | 'banner_home' | 'banner_animal' | 'newsletter'
 export type AdTier = 'friend' | 'supporter' | 'partner' | 'main'
+export type AdStatus = 'draft' | 'pending_review' | 'approved' | 'rejected' | 'paused'
 
 export interface Ad {
-  id:             string
-  company_name:   string
-  contact_email:  string | null
-  logo_url:       string | null
-  image_url:      string | null
-  headline:       string
-  description:    string | null
-  cta_label:      string
-  cta_url:        string
-  slots:          AdSlotType[]
-  target_species: string | null
-  active_from:    string
-  active_to:      string
-  tier:           AdTier
-  active:         boolean
-  notes:          string | null
-  impressions:    number
-  clicks:         number
-  created_at:     string
-  updated_at:     string
+  id:               string
+  company_name:     string
+  contact_email:    string | null
+  logo_url:         string | null
+  image_url:        string | null
+  headline:         string
+  description:      string | null
+  cta_label:        string
+  cta_url:          string
+  slots:            AdSlotType[]
+  target_species:   string | null
+  active_from:      string
+  active_to:        string
+  tier:             AdTier
+  active:           boolean
+  notes:            string | null
+  impressions:      number
+  clicks:           number
+  // Company portal fields
+  company_id:       string | null
+  status:           AdStatus
+  rejection_reason: string | null
+  submitted_at:     string | null
+  created_at:       string
+  updated_at:       string
+}
+
+export interface AdCompany {
+  id:               string
+  user_id:          string
+  company_name:     string
+  contact_name:     string | null
+  contact_email:    string
+  phone:            string | null
+  website:          string | null
+  ico:              string | null
+  billing_name:     string | null
+  billing_address:  string | null
+  notes:            string | null
+  approved:         boolean
+  created_at:       string
+  updated_at:       string
+}
+
+export interface AdDailyStat {
+  ad_id:       string
+  day:         string
+  impressions: number
+  clicks:      number
 }
 
 export interface Fundraiser {

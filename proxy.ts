@@ -34,7 +34,8 @@ export async function proxy(request: NextRequest) {
   const isProtected =
     path.startsWith('/admin') ||
     path.startsWith('/superadmin') ||
-    path.startsWith('/profil')
+    path.startsWith('/profil') ||
+    path.startsWith('/portal')
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone()
@@ -53,7 +54,9 @@ export async function proxy(request: NextRequest) {
     if (next) return NextResponse.redirect(new URL(next, request.url))
     const role = user.user_metadata?.role
     return NextResponse.redirect(new URL(
-      role === 'public' ? '/profil' : '/admin/dashboard',
+      role === 'public' ? '/profil'
+      : role === 'advertiser' ? '/portal'
+      : '/admin/dashboard',
       request.url
     ))
   }

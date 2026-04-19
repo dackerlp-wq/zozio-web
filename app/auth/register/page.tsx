@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ZozLogo } from '@/components/ui/ZozLogo'
 import { Button } from '@/components/ui/Button'
 
-type Mode = 'visitor' | 'shelter'
+type Mode = 'visitor' | 'shelter' | 'advertiser'
 
 const inputCls = 'w-full px-4 py-3 border-2 border-border rounded-xl text-sm outline-none focus:border-coral transition-colors bg-white text-text-primary'
 
@@ -32,10 +32,11 @@ function RegisterForm() {
   const [error,         setError]         = useState<string | null>(null)
   const [newsletter,    setNewsletter]    = useState(false)
 
-  const isInstitution = mode !== 'visitor'
+  const isInstitution = mode === 'shelter'
+  const isAdvertiser  = mode === 'advertiser'
 
   const handleRegister = async () => {
-    if (!name)     { setError(isInstitution ? 'Vyplň název instituce' : 'Vyplň své jméno'); return }
+    if (!name)     { setError(isInstitution ? 'Vyplň název instituce' : isAdvertiser ? 'Vyplň název firmy' : 'Vyplň své jméno'); return }
     if (!email || !password) { setError('Vyplň e-mail a heslo'); return }
     if (password.length < 8) { setError('Heslo musí mít alespoň 8 znaků'); return }
 
@@ -43,16 +44,19 @@ function RegisterForm() {
     setError(null)
 
     const supabase = createClient()
+    const role = isInstitution ? 'institution_admin' : isAdvertiser ? 'advertiser' : 'public'
+    const redirectNext = isInstitution ? '/admin/dashboard' : isAdvertiser ? '/portal' : '/profil'
+
     const { error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name:        name,
-          role:             isInstitution ? 'institution_admin' : 'public',
+          role,
           institution_type: isInstitution ? mode : null,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${isInstitution ? '/admin/dashboard' : '/profil'}`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${redirectNext}`,
       },
     })
 
@@ -100,10 +104,11 @@ function RegisterForm() {
       <h1 className="font-display font-extrabold text-2xl text-text-primary mb-6">Registrace</h1>
 
       {/* Přepínač typu */}
-      <div className="grid grid-cols-2 gap-2 mb-6 p-1 rounded-xl bg-sand">
+      <div className="grid grid-cols-3 gap-2 mb-6 p-1 rounded-xl bg-sand">
         {([
-          { id: 'visitor', label: '👤 Návštěvník' },
-          { id: 'shelter', label: '🏠 Útulek' },
+          { id: 'visitor',    label: '👤 Návštěvník' },
+          { id: 'shelter',    label: '🏠 Útulek' },
+          { id: 'advertiser', label: '📣 Inzerent' },
         ] as { id: Mode; label: string }[]).map(opt => (
           <button key={opt.id} onClick={() => setMode(opt.id)}
             className={`py-2 px-1 rounded-lg text-xs font-bold cursor-pointer border-none transition-all
@@ -118,15 +123,18 @@ function RegisterForm() {
 
       {/* Popis */}
       <div className={`mb-5 px-3 py-2.5 rounded-xl text-xs
-        ${mode === 'visitor' ? 'bg-sand text-text-body' : 'bg-coral-tag-bg text-coral-tag-text'}`}>
-        {mode === 'visitor' && 'Sleduj oblíbená zvířata, posílej žádosti o adopci a stávej se dobrovolníkem.'}
-        {mode === 'shelter' && 'Registruj útulek, spravuj zvířata, přijímej adopční žádosti a vytvářej sbírky.'}
+        ${mode === 'visitor' ? 'bg-sand text-text-body'
+        : mode === 'advertiser' ? 'bg-[#FEF9E7] text-[#854F0B]'
+        : 'bg-coral-tag-bg text-coral-tag-text'}`}>
+        {mode === 'visitor'    && 'Sleduj oblíbená zvířata, posílej žádosti o adopci a stávej se dobrovolníkem.'}
+        {mode === 'shelter'    && 'Registruj útulek, spravuj zvířata, přijímej adopční žádosti a vytvářej sbírky.'}
+        {mode === 'advertiser' && 'Inzeruj na Zozio a oslovte tisíce milovníků zvířat v ČR a SR. Spravuj reklamy přes portál inzerentů.'}
       </div>
 
       <div className="space-y-4">
-        <Field label={isInstitution ? 'Název instituce *' : 'Jméno *'}>
+        <Field label={isInstitution ? 'Název instituce *' : isAdvertiser ? 'Název firmy *' : 'Jméno *'}>
           <input value={name} onChange={e => setName(e.target.value)}
-            placeholder={isInstitution ? 'Útulek Praha Chodov' : 'Jana Nováková'}
+            placeholder={isInstitution ? 'Útulek Praha Chodov' : isAdvertiser ? 'Firma s.r.o.' : 'Jana Nováková'}
             className={inputCls} />
         </Field>
         <Field label="E-mail *">
@@ -159,7 +167,7 @@ function RegisterForm() {
         )}
 
         <Button variant="primary" className="w-full justify-center" loading={loading} onClick={handleRegister}>
-          {isInstitution ? 'Zaregistrovat instituci →' : 'Vytvořit účet →'}
+          {isInstitution ? 'Zaregistrovat instituci →' : isAdvertiser ? 'Zaregistrovat firmu →' : 'Vytvořit účet →'}
         </Button>
 
         <p className="text-xs text-center text-text-muted">
