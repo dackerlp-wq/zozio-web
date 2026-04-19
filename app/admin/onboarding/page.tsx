@@ -2,9 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { UpgradePrompt } from '@/components/admin/UpgradePrompt'
-import { hasFeature } from '@/lib/plans'
-import type { SubscriptionPlan } from '@/types/database'
 
 export const metadata = { title: 'Onboarding — Zozio Admin' }
 
@@ -39,14 +36,6 @@ export default async function OnboardingPage() {
     .eq('id', membership.institution_id)
     .single()
   if (!institution) redirect('/admin/dashboard')
-
-  if (!hasFeature(
-    (institution as any).plan as SubscriptionPlan ?? 'free',
-    (institution as any).plan_expires_at ?? null,
-    'onboarding'
-  )) {
-    return <UpgradePrompt feature="onboarding" />
-  }
 
   const iid = membership.institution_id
 

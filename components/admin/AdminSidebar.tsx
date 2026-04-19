@@ -73,8 +73,8 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
     { href: '/admin/articles',    icon: '📝', label: 'Články',             locked: false },
     { href: '/admin/newsletter',  icon: '📬', label: 'Newsletter',         locked: isFreePlan },
     { href: '/admin/reports',     icon: '📋', label: 'Pokročilé reporty',  locked: !isProPlan },
-    { href: '/admin/onboarding',  icon: '🚀', label: 'Onboarding',         locked: !isProPlan },
-    { href: '/admin/support',     icon: '🎧', label: 'Prioritní podpora',  locked: !isProPlan },
+    { href: '/admin/onboarding',  icon: '🚀', label: 'Onboarding',         locked: false },
+    { href: '/admin/support',     icon: '🎧', label: 'Podpora',            locked: false },
     { href: '/admin/documents',   icon: '📄', label: 'Dokumenty',          locked: false },
     { href: '/admin/billing',     icon: '💳', label: 'Předplatné',         locked: false },
   ]

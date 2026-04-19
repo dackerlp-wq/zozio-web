@@ -65,7 +65,6 @@ const PLAN_FEATURES: Record<SubscriptionPlan, Set<PlanFeature>> = {
     'branches',
     'priority_listing',
     'advanced_reports',
-    'onboarding',
     'priority_support',
   ]),
 }
