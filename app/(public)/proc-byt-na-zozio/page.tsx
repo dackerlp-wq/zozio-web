@@ -53,7 +53,7 @@ const features = [
       'Fotogalerie přímo z telefonu',
       'Zdravotní stav, veterinář, záznamy',
       'Stavový workflow: Příjem → Léčba → K adopci → Adoptováno',
-      'QR kód na každé zvíře — záchranáři ho načtou v terénu',
+      'QR kód na každé zvíře — pracovníci ho načtou v terénu',
       'PDF karta zvířete pro adoptivní rodiny',
     ],
     mockup: [
@@ -274,7 +274,7 @@ const plans = [
     period: 'navždy zdarma',
     hot: false,
     features: [
-      'Do 20 zvířat / případů',
+      'Do 20 zvířat',
       'Veřejný profil instituce',
       'Adopční žádosti online',
       'Základní statistiky',
@@ -289,7 +289,7 @@ const plans = [
     period: 'měsíčně',
     hot: true,
     features: [
-      'Neomezená zvířata / případy',
+      'Neomezená zvířata',
       'E-mail notifikace',
       'Neomezené sbírky',
       'Správa dobrovolníků',
