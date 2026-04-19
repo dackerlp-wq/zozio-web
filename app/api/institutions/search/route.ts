@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q') ?? ''
-  const type = request.nextUrl.searchParams.get('type') // 'shelter' | 'rescue_station' | null = vše
+  const type = request.nextUrl.searchParams.get('type') // 'shelter' | null = vše
 
   const service = createServiceClient()
 
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     query = query.ilike('name', `%${q.trim()}%`)
   }
 
-  if (type === 'shelter' || type === 'rescue_station') {
+  if (type === 'shelter') {
     query = query.eq('type', type)
   }
 

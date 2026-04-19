@@ -58,7 +58,7 @@ function healthStatusLabel(v: unknown): string {
 function adoptionStatusLabel(v: unknown): string {
   const map: Record<string, string> = {
     available: 'K adopci', reserved: 'Rezervováno', adopted: 'Adoptováno',
-    foster: 'Ve foster péči', not_for_adoption: 'Není k adopci',
+    foster: 'V dočasné péči', not_for_adoption: 'Není k adopci',
     intake: 'Příjem', treatment: 'Léčba', rehabilitation: 'Rehabilitace',
     released: 'Propuštěn do přírody', deceased: 'Uhynul',
   }

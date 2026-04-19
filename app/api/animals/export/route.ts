@@ -6,7 +6,7 @@ const STATUS_LABELS: Record<string, string> = {
   available:      'K adopci',
   reserved:       'Rezervováno',
   adopted:        'Adoptováno',
-  foster:         'Pěstounská péče',
+  foster:         'Dočasná péče',
   intake:         'V příjmu',
   treatment:      'Léčba',
   rehabilitation: 'Rehabilitace',

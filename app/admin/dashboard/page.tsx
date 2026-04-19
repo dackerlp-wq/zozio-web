@@ -8,7 +8,7 @@ const STATUS_LABEL: Record<string, string> = {
   available:      'K adopci',
   reserved:       'Rezervováno',
   adopted:        'Adoptováno',
-  foster:         'Pěstounská péče',
+  foster:         'Dočasná péče',
   intake:         'V příjmu',
   treatment:      'Léčba',
   rehabilitation: 'Rehabilitace',
@@ -20,7 +20,7 @@ const SHELTER_STATUSES = [
   { key: 'intake',         label: 'V příjmu',       color: '#185FA5', bg: '#EBF4FF' },
   { key: 'available',      label: 'K adopci',        color: '#D4471C', bg: '#FDEAE6' },
   { key: 'reserved',       label: 'Rezervováno',     color: '#8B6550', bg: '#F5E6D3' },
-  { key: 'foster',         label: 'Pěstounská péče', color: '#2A7D4F', bg: '#E6F7ED' },
+  { key: 'foster',         label: 'Dočasná péče', color: '#2A7D4F', bg: '#E6F7ED' },
   { key: 'treatment',      label: 'Léčba',           color: '#A05000', bg: '#FFF3D6' },
   { key: 'rehabilitation', label: 'Rehabilitace',    color: '#7B46B0', bg: '#F3EDFB' },
 ]

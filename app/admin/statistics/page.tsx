@@ -106,7 +106,7 @@ const ANIMAL_STATUS_CONFIG: Record<string, { label: string; color: string; bg: s
   available:      { label: 'K adopci',       color: '#16A34A', bg: '#F0FDF4' },
   reserved:       { label: 'Rezervováno',    color: '#CA8A04', bg: '#FEFCE8' },
   adopted:        { label: 'Adoptováno',     color: '#2563EB', bg: '#EFF6FF' },
-  foster:         { label: 'Pěstounská péče', color: '#7C3AED', bg: '#F5F3FF' },
+  foster:         { label: 'Dočasná péče', color: '#7C3AED', bg: '#F5F3FF' },
   treatment:      { label: 'V léčbě',        color: '#DC2626', bg: '#FEF2F2' },
   rehabilitation: { label: 'Rehabilitace',   color: '#EA580C', bg: '#FFF7ED' },
 }

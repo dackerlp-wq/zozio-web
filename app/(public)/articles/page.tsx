@@ -86,7 +86,7 @@ export default async function ArticlesPage({ searchParams }: PageProps) {
             Příběhy, které zahřejí srdce
           </h1>
           <p className="text-sm md:text-base text-brown-mid max-w-[520px] leading-relaxed">
-            Adopce, záchranné příběhy a novinky ze světa útulků a záchranných stanic.
+            Adopce, příběhy a novinky ze světa útulků.
           </p>
         </div>
 

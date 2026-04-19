@@ -162,7 +162,7 @@ export function InstitutionTabs({
                   const statusCfg: Record<string, { label: string }> = {
                     available:   { label: 'K adopci' },
                     reserved:    { label: 'Rezervováno' },
-                    foster:      { label: 'Ve foster' },
+                    foster:      { label: 'V dočasné péči' },
                     conditional: { label: 'Podmíněná' },
                   }
                   const present = Object.keys(statusCfg).filter(s => animals.some((a: any) => a.adoption_status === s))
@@ -324,7 +324,7 @@ export function InstitutionTabs({
                     const statusCfgPhoto: Record<string, { label: string; bg: string }> = {
                       available:   { label: 'K adopci',    bg: 'rgba(34,107,17,0.85)' },
                       reserved:    { label: '⏳ Rezervováno', bg: 'rgba(133,79,11,0.85)' },
-                      foster:      { label: '🏡 Foster',    bg: 'rgba(15,110,86,0.85)' },
+                      foster:      { label: '🏡 Dočasná péče',    bg: 'rgba(15,110,86,0.85)' },
                       conditional: { label: '🤝 Podmíněná', bg: 'rgba(192,80,0,0.85)' },
                     }
                     const sc = statusCfgPhoto[a.adoption_status]

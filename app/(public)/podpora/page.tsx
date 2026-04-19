@@ -154,7 +154,7 @@ export default function PodporaPage() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-lg">🏠</span>
-                <h3 className="font-display font-extrabold text-lg text-[#1A0F0A]">Pro útulky a záchranné stanice</h3>
+                <h3 className="font-display font-extrabold text-lg text-[#1A0F0A]">Pro útulky</h3>
               </div>
               <div className="space-y-2">
                 {FAQ_INSTITUTIONS.map(item => (

@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     const statAvailableOrTreatment = allAnimals.filter((a: any) => a.adoption_status === 'available').length
 
     const STATUS_LABELS_DIGEST: Record<string, string> = {
-      available: 'K adopci', reserved: 'Rezervováno', adopted: 'Adoptováno', foster: 'Pěstounská péče',
+      available: 'K adopci', reserved: 'Rezervováno', adopted: 'Adoptováno', foster: 'Dočasná péče',
     }
 
     // Formátuj zvířata

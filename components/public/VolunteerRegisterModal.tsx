@@ -10,7 +10,7 @@ const ACTIVITIES = [
   { id: 'events',     icon: '🎪', label: 'Pomoc na akcích',   desc: 'Adopční dny, charitativní akce' },
   { id: 'transport',  icon: '🚗', label: 'Přeprava zvířat',   desc: 'Odvoz k veterináři, převozy mezi stanicemi' },
   { id: 'care',       icon: '🤝', label: 'Péče o zvířata',    desc: 'Krmení, čištění, základní každodenní péče' },
-  { id: 'fostering',  icon: '🏡', label: 'Pěstounství (foster)', desc: 'Dočasná péče o zvíře ve vlastní domácnosti' },
+  { id: 'fostering',  icon: '🏡', label: 'Dočasná péče', desc: 'Dočasná péče o zvíře ve vlastní domácnosti' },
   { id: 'admin',      icon: '📷', label: 'Foto & sociální sítě', desc: 'Focení zvířat, správa profilů na sítích' },
   { id: 'other',      icon: '✏️', label: 'Jiné',              desc: 'Cokoliv dalšího, co byste rádi nabídli' },
 ]
@@ -30,7 +30,7 @@ interface Institution {
   id: string
   name: string
   slug: string
-  type: 'shelter' | 'rescue_station'
+  type: 'shelter'
   city: string
   logo_url: string | null
 }
@@ -51,7 +51,7 @@ export function VolunteerRegisterModal({ onClose, userEmail, userName, preselect
 
   // Krok 1 — vyhledávání
   const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState<'all' | 'shelter' | 'rescue_station'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'shelter'>('all')
   const [searchResults, setSearchResults] = useState<Institution[]>([])
   const [searching, setSearching] = useState(false)
   const [highlightIndex, setHighlightIndex] = useState(-1)
@@ -266,7 +266,7 @@ export function VolunteerRegisterModal({ onClose, userEmail, userName, preselect
 
               {/* Filtr type */}
               <div className="flex gap-2">
-                {([['all', 'Vše'], ['shelter', '🏠 Útulky'], ['rescue_station', '🚑 Záchranné stanice']] as const).map(([val, label]) => (
+                {([['all', 'Vše'], ['shelter', '🏠 Útulky']] as const).map(([val, label]) => (
                   <button
                     key={val}
                     onClick={() => setTypeFilter(val)}

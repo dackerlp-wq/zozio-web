@@ -6,7 +6,7 @@
  *   §25b zák. 246/1992 Sb. (evidence v útulcích)
  *   Vyhláška 342/2012 Sb. (karanténa, zdravotní záznamy)
  *   §13 zák. 166/1999 Sb. (identifikace zvířat — čip)
- *   §54 zák. 114/1992 Sb. (záchranné stanice — CITES)
+ *   §13 zák. 246/1992 Sb. (podmínky chovu zvířat)
  *   VZ 255/2012 Sb. (likvidace kadáverů)
  *
  * GET /admin/animals/[id]/pdf/records

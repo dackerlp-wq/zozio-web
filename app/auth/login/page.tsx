@@ -50,7 +50,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-border p-8">
           <h1 className="font-display font-extrabold text-2xl text-text-primary mb-1">Přihlásit se</h1>
           <p className="text-sm mb-6 text-text-muted">
-            Pro útulky, záchranné stanice i návštěvníky
+            Pro útulky i návštěvníky
           </p>
 
           <div className="space-y-4">

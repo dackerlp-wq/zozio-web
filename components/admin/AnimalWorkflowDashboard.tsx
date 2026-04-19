@@ -801,7 +801,7 @@ function PhaseKAdopci({ a }: { a: Record<string, unknown> }) {
           <>
             <Row label="Pečovatel"  value={a.foster_name} />
             <Row label="Telefon"    value={a.foster_phone} />
-            <Row label="Foster od"  value={fmt(a.foster_since)} />
+            <Row label="Dočasná péče od"  value={fmt(a.foster_since)} />
           </>
         )}
       </div>

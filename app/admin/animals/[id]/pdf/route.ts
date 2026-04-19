@@ -122,7 +122,7 @@ ${section('Zdravotní záznamy', `
   ${row('Poslední vet. návštěva', a.last_vet_visit)}
   ${row('Aktuální léky', a.medications)}
   ${row('V karanténě', a.in_quarantine ? `Ano${a.quarantine_until ? ' do ' + a.quarantine_until : ''}` : null, a.in_quarantine)}
-  ${a.in_foster ? row('Foster péče', `${a.foster_name ?? ''}${a.foster_phone ? ' · ' + a.foster_phone : ''}${a.foster_since ? ' (od ' + a.foster_since + ')' : ''}`, true) : ''}
+  ${a.in_foster ? row('Dočasná péče', `${a.foster_name ?? ''}${a.foster_phone ? ' · ' + a.foster_phone : ''}${a.foster_since ? ' (od ' + a.foster_since + ')' : ''}`, true) : ''}
   ${row('Zdravotní poznámky', a.medical_notes)}
 `)}
 

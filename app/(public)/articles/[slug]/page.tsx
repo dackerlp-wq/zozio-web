@@ -63,7 +63,7 @@ const adoptionStatusConfig: Record<string, { label: string; bg: string; color: s
   available:        { label: 'K adopci',      bg: 'var(--success-tag-bg)', color: 'var(--success-tag-text)' },
   reserved:         { label: 'Rezervováno',   bg: 'var(--warning-tag-bg)', color: 'var(--warning-tag-text)' },
   adopted:          { label: 'Adoptováno 🎉', bg: 'var(--border)', color: 'var(--text-neutral)' },
-  foster:           { label: 'Ve foster',     bg: 'var(--rescue-tag-bg)', color: 'var(--rescue-tag-text)' },
+  foster:           { label: 'V dočasné péči',     bg: 'var(--rescue-tag-bg)', color: 'var(--rescue-tag-text)' },
   not_for_adoption: { label: 'Není k adopci', bg: 'var(--border)', color: 'var(--text-neutral)' },
 }
 

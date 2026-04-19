@@ -14,7 +14,7 @@ const activityLabel: Record<string, string> = {
   events:      '🎪 Akce',
   transport:   '🚗 Přeprava',
   care:        '🤝 Péče',
-  fostering:   '🏡 Foster',
+  fostering:   '🏡 Dočasná péče',
   admin:       '📷 Foto & sítě',
   other:       '✏️ Jiné',
 }

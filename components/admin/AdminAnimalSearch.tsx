@@ -15,7 +15,7 @@ const STATUSES = [
   { value: 'available',      label: 'K adopci' },
   { value: 'reserved',       label: 'Rezervováno' },
   { value: 'adopted',        label: 'Adoptováno' },
-  { value: 'foster',         label: 'Pěstounská péče' },
+  { value: 'foster',         label: 'Dočasná péče' },
   { value: 'intake',         label: 'V příjmu' },
   { value: 'treatment',      label: 'Léčba' },
   { value: 'deceased',       label: 'Uhynulo' },

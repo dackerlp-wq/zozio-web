@@ -8,7 +8,7 @@ interface Institution {
   id: string
   name: string
   slug: string
-  type: 'shelter' | 'rescue_station'
+  type: 'shelter'
   city: string
   logo_url: string | null
 }

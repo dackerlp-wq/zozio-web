@@ -16,7 +16,7 @@ const statusBadge: Record<string, { bg: string; color: string; label: string }> 
   available:        { bg: '#E6F7ED', color: '#2A7D4F', label: 'K adopci' },
   reserved:         { bg: '#EEF2FF', color: '#3730A3', label: 'Rezervováno' },
   adopted:          { bg: '#F5F0EC', color: '#8B6550', label: 'Adoptováno' },
-  foster:           { bg: '#FEF3CD', color: '#7A5200', label: 'Pěstounská' },
+  foster:           { bg: '#FEF3CD', color: '#7A5200', label: 'Dočasná péče' },
   not_for_adoption: { bg: '#F5F0EC', color: '#8B6550', label: 'Není k adopci' },
   intake:           { bg: '#FDEAE6', color: '#993C1D', label: 'V příjmu' },
   treatment:        { bg: '#FEF3CD', color: '#7A5200', label: 'V léčbě' },

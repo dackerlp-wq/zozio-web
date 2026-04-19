@@ -135,7 +135,7 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
     { value: '',          label: 'Aktivní',     count: activeCount },
     { value: 'available', label: 'K adopci',    count: tabCounts[0] },
     { value: 'reserved',  label: 'Rezervovaná', count: tabCounts[1] },
-    { value: 'foster',    label: 'Pěstounská',  count: tabCounts[2] },
+    { value: 'foster',    label: 'Dočasná péče',  count: tabCounts[2] },
     { value: 'archive',   label: 'Archiv',      count: archiveCount, muted: true },
   ]
 
@@ -254,7 +254,7 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-1">
                       {item.urgent && <span aria-label="Urgentní" title="Urgentní">🆘</span>}
-                      {item.in_foster && <span aria-label="Foster" title="Foster">🏠</span>}
+                      {item.in_foster && <span aria-label="Dočasná péče" title="Dočasná péče">🏡</span>}
                       {item.published === true && (
                         <span title="Viditelné na webu" className="inline-block w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
                       )}
@@ -357,7 +357,7 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                             <div className="flex items-center gap-1.5">
                               {item.urgent      && <span className="text-xs">🆘</span>}
                               {item.in_quarantine && <span className="text-xs" title="Karanténa">🚧</span>}
-                              {item.in_foster    && <span className="text-xs" title="Foster">🏠</span>}
+                              {item.in_foster    && <span className="text-xs" title="Dočasná péče">🏡</span>}
                               {item.published === true && (
                                 <span title="Viditelné na webu" className="inline-block w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
                               )}

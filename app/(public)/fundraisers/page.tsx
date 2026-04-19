@@ -7,7 +7,7 @@ export const revalidate = 300
 
 export const metadata: Metadata = {
   title: 'Sbírky | Zozio',
-  description: 'Podpořte útulky a záchranné stanice. Přispějte přímo institucím, které zachraňují zvířata.',
+  description: 'Podpořte útulky. Přispějte přímo institucím, které zachraňují zvířata.',
 }
 
 export default async function FundraisersPage() {
@@ -28,7 +28,7 @@ export default async function FundraisersPage() {
         <div className="py-8 md:py-12">
           <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#F0A500' }}>Sbírky</p>
           <h1 className="font-display font-extrabold text-[#1A0F0A] mb-3" style={{ fontSize: 'clamp(28px, 4vw, 42px)' }}>
-            Podpořte útulky a záchranné stanice
+            Podpořte útulky
           </h1>
           <p className="text-sm max-w-xl leading-relaxed mb-6" style={{ color: '#8B6550' }}>
             Každá koruna putuje přímo instituci. Pomoz útulkům a záchranným stanicím,
@@ -91,7 +91,7 @@ export default async function FundraisersPage() {
           <div className="text-center py-20">
             <div className="text-5xl mb-4">💛</div>
             <p className="font-bold text-xl text-[#1A0F0A] mb-2">Zatím žádné sbírky</p>
-            <p className="text-sm" style={{ color: '#8B6550' }}>Brzy tu budou sbírky od útulků a záchranných stanic.</p>
+            <p className="text-sm" style={{ color: '#8B6550' }}>Brzy tu budou sbírky od útulků.</p>
           </div>
         )}
       </div>

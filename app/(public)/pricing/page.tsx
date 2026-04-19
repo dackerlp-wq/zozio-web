@@ -3,7 +3,7 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Ceník | Zozio',
-  description: 'Transparentní ceník pro útulky a záchranné stanice. Základní plán zdarma.',
+  description: 'Transparentní ceník pro útulky a útulky. Základní plán zdarma.',
 }
 
 const PLANS = [

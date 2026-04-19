@@ -4,8 +4,8 @@ import type { MapInstitution } from '@/components/public/InstitutionsMapClient'
 import { MapWrapper } from '@/components/public/MapWrapper'
 
 export const metadata: Metadata = {
-  title: 'Mapa útulků a záchranných stanic | Zozio',
-  description: 'Interaktivní mapa útulků a záchranných stanic v ČR a SR s jejich dosahem — odkud přijímají zvířata.',
+  title: 'Mapa útulků | Zozio',
+  description: 'Interaktivní mapa útulků v ČR a SR s jejich dosahem — odkud přijímají zvířata.',
 }
 
 export const revalidate = 3600

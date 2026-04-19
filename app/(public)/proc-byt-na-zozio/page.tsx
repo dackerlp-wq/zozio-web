@@ -114,7 +114,7 @@ const features = [
     desc: 'Dobrovolníci se registrují přes web, vy žádost schválíte nebo zamítnete. Přehled kdo je aktivní, na co se hlásil a kdy naposledy přišel.',
     bullets: [
       'Online registrační formulář pro dobrovolníky',
-      'Aktivity: Venčení, Transport, Pěstounská péče, Akce',
+      'Aktivity: Venčení, Transport, Dočasná péče, Akce',
       'Schválení nebo zamítnutí e-mailem',
       'Přehled aktivních dobrovolníků',
       'Kontaktní seznam pro koordinaci',
