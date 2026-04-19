@@ -62,16 +62,21 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
   const plan = institution?.plan ?? 'free'
   const isFreePlan = plan === 'free'
 
+  const isProPlan = plan === 'pro'
+
   const navItems = [
-    { href: '/admin/dashboard',   icon: '📊', label: 'Dashboard',     locked: false },
-    { href: '/admin/statistics',  icon: '📈', label: 'Statistiky',    locked: false },
-    { href: '/admin/animals',     icon: '🐾', label: 'Zvířata',       locked: false },
-    { href: '/admin/fundraisers', icon: '💛', label: 'Sbírky',        locked: isFreePlan },
-    { href: '/admin/volunteers',  icon: '🙋', label: 'Dobrovolníci',  locked: isFreePlan },
-    { href: '/admin/articles',    icon: '📝', label: 'Články',        locked: false },
-    { href: '/admin/newsletter',  icon: '📬', label: 'Newsletter',    locked: isFreePlan },
-    { href: '/admin/documents',   icon: '📄', label: 'Dokumenty',     locked: false },
-    { href: '/admin/billing',     icon: '💳', label: 'Předplatné',    locked: false },
+    { href: '/admin/dashboard',   icon: '📊', label: 'Dashboard',          locked: false },
+    { href: '/admin/statistics',  icon: '📈', label: 'Statistiky',         locked: false },
+    { href: '/admin/animals',     icon: '🐾', label: 'Zvířata',            locked: false },
+    { href: '/admin/fundraisers', icon: '💛', label: 'Sbírky',             locked: isFreePlan },
+    { href: '/admin/volunteers',  icon: '🙋', label: 'Dobrovolníci',       locked: isFreePlan },
+    { href: '/admin/articles',    icon: '📝', label: 'Články',             locked: false },
+    { href: '/admin/newsletter',  icon: '📬', label: 'Newsletter',         locked: isFreePlan },
+    { href: '/admin/reports',     icon: '📋', label: 'Pokročilé reporty',  locked: !isProPlan },
+    { href: '/admin/onboarding',  icon: '🚀', label: 'Onboarding',         locked: !isProPlan },
+    { href: '/admin/support',     icon: '🎧', label: 'Prioritní podpora',  locked: !isProPlan },
+    { href: '/admin/documents',   icon: '📄', label: 'Dokumenty',          locked: false },
+    { href: '/admin/billing',     icon: '💳', label: 'Předplatné',         locked: false },
   ]
 
   const adoptionSubItems = [
