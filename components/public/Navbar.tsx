@@ -209,6 +209,11 @@ export function Navbar({ user }: NavbarProps) {
                 <Button variant="sand" size="sm">Přihlásit</Button>
               </Link>
             )}
+            <Link href="/inzerujte"
+              className="hidden lg:inline-flex items-center text-sm font-bold no-underline px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
+              style={{ color: '#E8634A', background: '#FAECE7' }}>
+              📣 Inzerujte
+            </Link>
             <Link href="/pro-instituce">
               <Button variant="primary" size="sm">Pro útulky</Button>
             </Link>
@@ -274,13 +279,18 @@ export function Navbar({ user }: NavbarProps) {
               </ul>
             </div>
 
-            {/* Pro instituce */}
+            {/* Pro instituce + Inzerenti */}
             <div className="border-t border-gray-pale pt-5 mb-5">
-              <div className="text-xs font-bold text-gray uppercase tracking-widest mb-3 px-2">Instituce</div>
+              <div className="text-xs font-bold text-gray uppercase tracking-widest mb-3 px-2">Pro firmy</div>
               <Link href="/pro-instituce" onClick={() => setOpen(false)}
                 className="flex flex-col px-3 py-3 rounded-md no-underline hover:bg-sand transition-colors">
                 <span className="font-display font-bold text-lg text-espresso">🏢 Pro útulky a stanice</span>
                 <span className="text-xs text-gray mt-0.5">Registrace, ceník a funkce platformy</span>
+              </Link>
+              <Link href="/inzerujte" onClick={() => setOpen(false)}
+                className="flex flex-col px-3 py-3 rounded-md no-underline hover:bg-sand transition-colors">
+                <span className="font-display font-bold text-lg" style={{ color: '#E8634A' }}>📣 Inzerujte na Zozio</span>
+                <span className="text-xs text-gray mt-0.5">Oslovte milovníky zvířat — reklamní plochy a ceník</span>
               </Link>
             </div>
 
