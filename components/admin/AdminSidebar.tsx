@@ -93,6 +93,7 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
     // Adopce group is injected between animals and fundraisers
     { href: '/admin/fundraisers', icon: '💛', label: 'Sbírky',        locked: isFreePlan },
     { href: '/admin/volunteers',  icon: '🙋', label: 'Dobrovolníci',  locked: isFreePlan },
+    { href: '/admin/documents',   icon: '📄', label: 'Dokumenty',     locked: false },
   ]
 
   const communityItems = [
@@ -107,7 +108,6 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
 
   const accountItems = [
     { href: '/admin/onboarding', icon: '🚀', label: 'Onboarding',  locked: false },
-    { href: '/admin/documents',  icon: '📄', label: 'Dokumenty',   locked: false },
     { href: '/admin/support',    icon: '🎧', label: 'Podpora',     locked: false },
     { href: '/admin/billing',    icon: '💳', label: 'Předplatné',  locked: false },
   ]
