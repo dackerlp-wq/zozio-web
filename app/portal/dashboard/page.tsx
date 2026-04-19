@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import Link from 'next/link'
 import type { Ad, AdStatus } from '@/types/database'
+import { PrintButton } from './PrintButton'
+import { calcAdTotal, SLOT_LABELS } from '@/lib/ad-pricing'
 
 export const revalidate = 0
 
@@ -21,36 +23,6 @@ const STATUS_STYLE: Record<AdStatus, { bg: string; color: string }> = {
   paused:         { bg: '#F0EDE8', color: '#8B6550' },
 }
 
-const SLOT_LABEL: Record<string, string> = {
-  inline_grid:   'Inline grid',
-  sidebar:       'Sidebar',
-  banner_adopt:  'Banner adopce',
-  banner_home:   'Banner homepage',
-  banner_animal: 'Banner zvíře',
-  newsletter:    'Newsletter',
-}
-
-// Ceny bez DPH Kč/měsíc (newsletter = za vydání)
-const SLOT_PRICES: Record<string, number> = {
-  inline_grid:   1490,
-  sidebar:       1990,
-  banner_adopt:  2990,
-  banner_home:   3490,
-  banner_animal: 1990,
-  newsletter:    1490,
-}
-
-function calcAdPrice(ad: Ad): number {
-  const days = Math.max(0, Math.round(
-    (new Date(ad.active_to).getTime() - new Date(ad.active_from).getTime()) / (1000 * 60 * 60 * 24)
-  ))
-  const discountPct = days >= 90 ? 20 : days >= 60 ? 10 : 0
-  const subtotal = ad.slots.reduce((s, slot) => {
-    const mp = SLOT_PRICES[slot] ?? 0
-    return s + (slot === 'newsletter' ? mp : Math.round((mp / 30) * days))
-  }, 0)
-  return Math.round(subtotal * (1 - discountPct / 100) * 1.21)
-}
 
 function StatusBadge({ status }: { status: AdStatus }) {
   const s = STATUS_STYLE[status]
@@ -144,7 +116,7 @@ export default async function PortalDashboardPage() {
 
   // Celkový odhadovaný spend (pouze schválené reklamy)
   const approvedAds = allAds.filter(a => a.status === 'approved' || a.status === 'paused')
-  const totalSpend  = approvedAds.reduce((s, a) => s + calcAdPrice(a), 0)
+  const totalSpend  = approvedAds.reduce((s, a) => s + calcAdTotal(a), 0)
 
   // Denní statistiky posledních 30 dní
   const thirtyDaysAgo = new Date()
@@ -176,16 +148,19 @@ export default async function PortalDashboardPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <div>
           <h1 className="font-display font-extrabold text-3xl" style={{ color: '#1A0F0A' }}>Dashboard</h1>
           <p className="text-sm mt-1" style={{ color: '#8B6550' }}>{company.company_name}</p>
         </div>
-        <Link href="/portal/ads/new"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white no-underline transition-all hover:opacity-90"
-          style={{ background: '#E8634A' }}>
-          + Nová reklama
-        </Link>
+        <div className="flex items-center gap-2 no-print">
+          <PrintButton />
+          <Link href="/portal/ads/new"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white no-underline transition-all hover:opacity-90"
+            style={{ background: '#E8634A' }}>
+            + Nová reklama
+          </Link>
+        </div>
       </div>
 
       {/* Výstraha — expirující reklamy */}
@@ -249,13 +224,13 @@ export default async function PortalDashboardPage() {
                       </Link>
                     </td>
                     <td className="px-3 py-3 text-xs" style={{ color: '#8B6550' }}>
-                      {ad.slots.map(s => SLOT_LABEL[s] ?? s).join(', ')}
+                      {ad.slots.map(s => SLOT_LABELS[s] ?? s).join(', ')}
                     </td>
                     <td className="px-3 py-3 text-xs whitespace-nowrap" style={{ color: '#8B6550' }}>
                       {ad.active_from} — {ad.active_to}
                     </td>
                     <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: '#E8634A' }}>
-                      {calcAdPrice(ad).toLocaleString('cs-CZ')} Kč
+                      {calcAdTotal(ad).toLocaleString('cs-CZ')} Kč
                     </td>
                   </tr>
                 ))}

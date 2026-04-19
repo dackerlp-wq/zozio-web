@@ -9,6 +9,7 @@ interface AnimalFilterProps {
   cityList: { name: string; lat: number; lng: number }[]
   params:   Record<string, string | undefined>
   total:    number
+  adSlot?:  React.ReactNode
 }
 
 function Divider() {
@@ -23,7 +24,7 @@ function Label({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function AnimalFilter({ species, breeds, cityList, params, total }: AnimalFilterProps) {
+export function AnimalFilter({ species, breeds, cityList, params, total, adSlot }: AnimalFilterProps) {
   const router   = useRouter()
   const pathname = usePathname()
 
@@ -211,20 +212,20 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
           <div className="flex items-center border rounded-lg overflow-hidden"
             style={{ borderColor: '#E0DDD8', background: '#FAFAF8' }}>
             <input
-              type="search" value={q}
+              type="text" value={q}
               onChange={e => setQ(e.target.value)}
               onFocus={() => suggestions.length > 0 && setShowSugg(true)}
               placeholder="Hledat jméno, plemeno..."
-              className="flex-1 px-3 py-2.5 text-sm outline-none bg-transparent min-h-[44px]"
+              className="flex-1 min-w-0 px-3 py-2.5 text-sm outline-none bg-transparent min-h-[44px]"
               style={{ color: '#1A0F0A' }}
               autoComplete="off"
             />
             <button type="submit"
-              className="px-3 py-2.5 text-white text-sm border-none cursor-pointer hover:opacity-90 flex-shrink-0 min-h-[44px]"
+              className="flex items-center justify-center px-4 py-2.5 text-white border-none cursor-pointer hover:opacity-90 flex-shrink-0 min-h-[44px]"
               style={{ background: '#E8634A' }}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <svg width="16" height="16" viewBox="-1 -1 16 16" fill="none">
                 <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M10 10l2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M10 10l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
             </button>
           </div>
@@ -559,12 +560,14 @@ export function AnimalFilter({ species, breeds, cityList, params, total }: Anima
         <div className="bg-white rounded-xl border border-[#F0EDE8] p-4">
           {filterContent}
         </div>
+        {adSlot && <div className="mt-4">{adSlot}</div>}
       </div>
 
       {/* ── Mobile: fixed floating pill button ── */}
       <div className="lg:hidden">
         {/* Floating pill — fixed at bottom center */}
-        <div className="fixed bottom-6 left-0 right-0 flex justify-center z-40 pointer-events-none">
+        <div className="fixed bottom-8 left-0 right-0 flex justify-center z-40 pointer-events-none"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           <button
             onClick={() => setDrawerOpen(true)}
             className="pointer-events-auto flex items-center gap-2 px-5 py-3.5 rounded-full font-bold text-sm text-white"

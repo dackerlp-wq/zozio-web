@@ -64,12 +64,11 @@ export function AnimalCard({ animal }: AnimalCardProps) {
         </p>
 
         <div className="flex flex-wrap gap-1.5 mb-4">
-          {animal.neutered    && <Tag label="Kastrovaný" variant="green" />}
-          {animal.vaccinated  && <Tag label="Očkovaný"   variant="green" />}
-          {animal.microchipped && <Tag label="Čipovaný"  variant="sand" />}
-          {animal.good_with_kids && <Tag label="Miluje děti" variant="coral" />}
-          {animal.good_with_dogs && <Tag label="Vychází se psy" variant="sand" />}
-          {animal.good_with_cats && <Tag label="Vychází s kočkami" variant="sand" />}
+          {animal.adoption_fee === 0 && <Tag label="Adopce zdarma" variant="coral" />}
+          {(animal.good_with_kids === 'yes' || animal.good_with_kids === 'ok') && <Tag label="Vychází s dětmi" variant="green" />}
+          {(animal.good_with_dogs === 'yes' || animal.good_with_dogs === 'ok') && <Tag label="Vychází se psy" variant="sand" />}
+          {(animal.good_with_cats === 'yes' || animal.good_with_cats === 'ok') && <Tag label="Vychází s kočkami" variant="sand" />}
+          {animal.special_needs && <Tag label="Zvláštní péče" variant="sand" />}
         </div>
 
         <Link href={`/animals/${animal.id}`}>

@@ -131,14 +131,16 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
       {/* ── Statistiky ── */}
       <div className="border-b border-border bg-white">
         <div className="max-w-[1100px] mx-auto px-5 md:px-10">
-          <dl className="grid grid-cols-4">
+          <dl className="grid grid-cols-2 sm:grid-cols-4">
             {[
-              { num: (animals as any[]).length,                                      label: 'zvířat',          color: 'var(--coral)' },
-              { num: (fundraisers as any[]).filter((f: any) => f.active).length,     label: 'aktivních sbírek', color: 'var(--amber)' },
-              { num: volunteers,                                                      label: 'dobrovolníků',    color: 'var(--text-muted)' },
-              { num: (articles as any[]).length,                                      label: 'příběhů',         color: 'var(--text-muted)' },
-            ].map(({ num, label, color }) => (
-              <div key={label} className="px-6 py-4 border-r border-border last:border-r-0 first:pl-0">
+              { num: (animals as any[]).length,                                  label: 'zvířat',           color: 'var(--coral)' },
+              { num: (fundraisers as any[]).filter((f: any) => f.active).length, label: 'aktivních sbírek', color: 'var(--amber)' },
+              { num: volunteers,                                                  label: 'dobrovolníků',     color: 'var(--text-muted)' },
+              { num: (articles as any[]).length,                                  label: 'příběhů',          color: 'var(--text-muted)' },
+            ].map(({ num, label, color }, i) => (
+              <div key={label} className="px-4 sm:px-6 py-3 sm:py-4 border-border"
+                style={{ borderRight: i % 2 === 0 ? '1px solid var(--border)' : 'none', borderBottom: i < 2 ? '1px solid var(--border)' : 'none' }}
+              >
                 <div className="font-display font-extrabold text-2xl" style={{ color }}>{num}</div>
                 <div className="text-xs font-medium mt-0.5 text-text-muted">{label}</div>
               </div>

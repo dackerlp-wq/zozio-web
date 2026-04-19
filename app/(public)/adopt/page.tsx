@@ -87,13 +87,13 @@ export default async function AdoptPage({ searchParams }: PageProps) {
               cityList={[]}
               params={params}
               total={total}
-            />
-            {/* Sidebar reklama — lokálně cílená pokud má uživatel zvolenou lokalitu */}
-            <AdSlot
-              slot="sidebar"
-              lat={params.lat}
-              lng={params.lng}
-              className="mt-4 hidden lg:block"
+              adSlot={
+                <AdSlot
+                  slot="sidebar"
+                  lat={params.lat}
+                  lng={params.lng}
+                />
+              }
             />
           </aside>
 
@@ -123,10 +123,10 @@ export default async function AdoptPage({ searchParams }: PageProps) {
               {!(params.city && params.lat) && <SortSelect current={params.sort} params={params} />}
             </div>
 
-            {/* Urgentní banner */}
+            {/* Urgentní banner — jen desktop, mobil ví o urgentních z badge na kartě */}
             {hasUrgent && !params.urgent && (
               <div role="status" aria-live="polite"
-                className="mb-5 p-3 rounded-lg flex items-center gap-3"
+                className="hidden sm:flex mb-5 p-3 rounded-lg items-center gap-3"
                 style={{ background: 'rgba(232,99,74,0.07)', border: '1px solid rgba(232,99,74,0.18)' }}>
                 <span aria-hidden="true" className="text-lg">🆘</span>
                 <p className="text-sm font-semibold flex-1" style={{ color: '#993C1D' }}>
@@ -149,9 +149,11 @@ export default async function AdoptPage({ searchParams }: PageProps) {
                 {animals.map((animal: any, i: number) => (
                   <React.Fragment key={animal.id}>
                     <AnimalCard animal={animal} />
-                    {/* Inline reklama po každé 8. kartě, jen pokud zvířat > 4 */}
+                    {/* Inline reklama po každé 8. kartě — mobil: přes celou šířku, desktop: 1 karta ze 3/4 */}
                     {animals.length > 4 && (i + 1) % 8 === 0 && (
-                      <AdSlot slot="inline_grid" speciesId={params.species} />
+                      <div className="col-span-2 md:col-span-1">
+                        <AdSlot slot="inline_grid" speciesId={params.species} />
+                      </div>
                     )}
                   </React.Fragment>
                 ))}
@@ -277,10 +279,12 @@ function AnimalCard({ animal }: { animal: any }) {
               {[species?.name_cs, animal.breed, age].filter(Boolean).join(' · ')}
             </div>
             <div className="flex flex-wrap gap-1 mt-auto">
-              {animal.vaccinated     && <Pill label="Očkovaný"   bg="#EAF3DE" color="#3B6D11" />}
-              {animal.neutered       && <Pill label="Kastrovaný" bg="#EAF3DE" color="#3B6D11" />}
-              {(animal.good_with_kids === 'yes' || animal.good_with_kids === 'ok' || animal.good_with_kids === true) && <Pill label="S dětmi" bg="#FAEEDA" color="#854F0B" />}
-              {activity              && <Pill label={activity.label} bg={activity.bg} color={activity.color} />}
+              {animal.adoption_fee === 0                                                                                  && <Pill label="Zdarma"      bg="#FAECE7" color="#C03A1D" />}
+              {(animal.good_with_kids === 'yes' || animal.good_with_kids === 'ok')                                        && <Pill label="S dětmi"     bg="#FAEEDA" color="#854F0B" />}
+              {(animal.good_with_dogs === 'yes' || animal.good_with_dogs === 'ok')                                        && <Pill label="Se psy"      bg="#EAF3DE" color="#3B6D11" />}
+              {(animal.good_with_cats === 'yes' || animal.good_with_cats === 'ok')                                        && <Pill label="S kočkami"   bg="#EAF3DE" color="#3B6D11" />}
+              {animal.special_needs                                                                                        && <Pill label="Spec. péče"  bg="#F0EDE8" color="#6B4030" />}
+              {activity                                                                                                    && <Pill label={activity.label} bg={activity.bg} color={activity.color} />}
             </div>
           </div>
         </div>
@@ -386,7 +390,7 @@ async function getAnimals(params: any, page: number) {
   const today = new Date().toISOString().slice(0, 10)
   let query = supabase
     .from('animals')
-    .select('id, name, breed, birth_year, primary_photo, urgent, adoption_status, vaccinated, neutered, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, suitable_for_flat, suitable_for_house, activity_level, care_difficulty, species:animal_species(name_cs,icon), institution:institutions(name,city,type,lat,lng)')
+    .select('id, name, breed, birth_year, primary_photo, urgent, adoption_status, adoption_fee, good_with_kids, good_with_dogs, good_with_cats, good_with_other_animals, special_needs, suitable_for_flat, suitable_for_house, activity_level, care_difficulty, species:animal_species(name_cs,icon), institution:institutions(name,city,type,lat,lng)')
     // podmíněná adopce obchází published filtr — vždy veřejně viditelná
     .or('published.eq.true,adoption_status.eq.conditional')
     .in('adoption_status', ['available', 'reserved', 'foster', 'conditional'])
@@ -422,6 +426,14 @@ async function getAnimals(params: any, page: number) {
 
   const { data } = await query
   let animals = (data ?? []) as any[]
+
+  // První 3 sloty vždy urgentní (náhodně vybraní z urgentních)
+  // Platí jen na stránce 1, bez aktivního urgentního filtru a bez řazení dle jména
+  if (!hasLoc && page === 1 && params.urgent !== 'true' && params.sort !== 'name') {
+    const urgents    = animals.filter((a: any) => a.urgent).sort(() => Math.random() - 0.5)
+    const nonUrgents = animals.filter((a: any) => !a.urgent)
+    animals = [...urgents, ...nonUrgents]
+  }
 
   if (hasLoc) {
     const uLat = parseFloat(params.lat)

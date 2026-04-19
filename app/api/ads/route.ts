@@ -3,19 +3,21 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { regionFromCoords } from '@/lib/region-from-coords'
 
 const TIER_WEIGHT: Record<string, number> = {
-  main:      4,
-  partner:   3,
-  supporter: 2,
-  friend:    1,
+  main:      40,
+  partner:   30,
+  supporter: 20,
+  friend:    10,
 }
 
-// GET /api/ads?slot=inline_grid&species=uuid&lat=49.19&lng=16.60
+// GET /api/ads?slot=inline_grid&species=uuid&lat=49.19&lng=16.60&institutionId=uuid&articleCategory=story
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const slot    = searchParams.get('slot')
-  const species = searchParams.get('species')
-  const latStr  = searchParams.get('lat')
-  const lngStr  = searchParams.get('lng')
+  const slot              = searchParams.get('slot')
+  const species           = searchParams.get('species')
+  const latStr            = searchParams.get('lat')
+  const lngStr            = searchParams.get('lng')
+  const institutionId     = searchParams.get('institutionId')
+  const articleCategory   = searchParams.get('articleCategory')
 
   if (!slot) {
     return NextResponse.json({ error: 'slot is required' }, { status: 400 })
@@ -58,32 +60,47 @@ export async function GET(req: NextRequest) {
 
   const allAds = data ?? []
 
-  // ── Filtrování podle regionu ────────────────────────────────────────────
-  // Logika:
-  //   target_regions = []   → národní reklama, zobrazí se vždy
-  //   target_regions = [...] → regionální, zobrazí se jen pokud:
-  //     a) je detekován region uživatele, A
-  //     b) target_regions obsahuje detekovaný region
-  const filtered = allAds.filter(ad => {
-    const regions: string[] = ad.target_regions ?? []
+  // ── Skórovací systém (boost, ne filtr) ────────────────────────────────────
+  // Základ:  TIER_WEIGHT[tier]        (40 / 30 / 20 / 10)
+  // Bonusy:
+  //   +15  → lokalita se shoduje (target_regions obsahuje detekovaný kraj)
+  //   +10  → konkrétní útulek se shoduje (target_institutions obsahuje institutionId)
+  //   +8   → kategorie článku se shoduje (target_article_categories obsahuje articleCategory)
+  //
+  // Reklamy s prázdnými targeting poli jsou "národní" a nezískávají bonus,
+  // ale NEJSOU filtrovány pryč — zobrazí se vždy, jen s nižší prioritou.
+  const scored = allAds.map(ad => {
+    let score = TIER_WEIGHT[ad.tier] ?? 10
 
-    if (regions.length === 0) return true           // národní = vždy zobrazit
+    // Region bonus
+    const targetRegions: string[] = ad.target_regions ?? []
+    if (targetRegions.length > 0 && detectedRegion && targetRegions.includes(detectedRegion)) {
+      score += 15
+    }
 
-    if (!detectedRegion) return false               // regionální bez GPS kontextu = skrýt
+    // Institution bonus
+    const targetInstitutions: string[] = ad.target_institutions ?? []
+    if (targetInstitutions.length > 0 && institutionId && targetInstitutions.includes(institutionId)) {
+      score += 10
+    }
 
-    return regions.includes(detectedRegion)
+    // Article category bonus
+    const targetCategories: string[] = ad.target_article_categories ?? []
+    if (targetCategories.length > 0 && articleCategory && targetCategories.includes(articleCategory)) {
+      score += 8
+    }
+
+    return { ad, score }
   })
 
-  // ── Seřadit dle tier váhy (main > partner > supporter > friend) ─────────
-  const sorted = filtered.sort((a, b) => {
-    const wa = TIER_WEIGHT[a.tier] ?? 0
-    const wb = TIER_WEIGHT[b.tier] ?? 0
-    return wb - wa
-  })
+  // Seřadit sestupně dle skóre, při shodě náhodně (fair rotation)
+  scored.sort((a, b) => b.score - a.score || Math.random() - 0.5)
+
+  const sorted = scored.map(({ ad }) => ad)
 
   return NextResponse.json(sorted, {
     headers: {
-      // Krátká cache — regionální reklamy závisí na GPS v URL
+      // Krátká cache — skóre závisí na URL parametrech
       'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
     },
   })

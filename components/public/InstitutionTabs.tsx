@@ -1,10 +1,11 @@
 'use client'
-import { useState } from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { NewsletterSubscribe } from './NewsletterSubscribe'
 import { FavoriteButton } from './FavoriteButton'
+import { AdSlot } from './AdSlot'
 
 interface Tab { id: string; label: string; count: number | null }
 
@@ -61,6 +62,8 @@ export function InstitutionTabs({
   })
 
   const advancedActiveCount = [sexFilter, ageFilter, sizeFilter, speciesFilter].filter(Boolean).length
+  // Na mobilu počítáme i statusový filtr (pills jsou schované pod Filtry)
+  const mobileAdvancedCount = advancedActiveCount + (animalStatusFilter ? 1 : 0)
 
   const clearAllFilters = () => {
     setAnimalStatusFilter('')
@@ -75,14 +78,14 @@ export function InstitutionTabs({
     <div>
       {/* Tab navigace */}
       <div className="relative mb-6 px-4 md:px-0">
-        <div className="overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as any}>
-          <div className="inline-flex md:flex gap-1.5 p-1.5 rounded-b-2xl min-w-full"
+        <div>
+          <div className="flex gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-b-2xl"
             style={{ background: '#F0EDE8' }}>
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setTab(tab.id)}
-                className="flex items-center justify-center gap-1.5 px-3 md:px-4 py-2 text-sm font-bold cursor-pointer border-none whitespace-nowrap transition-all rounded-xl flex-shrink-0 md:flex-1"
+                className="flex items-center justify-center gap-1 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold cursor-pointer border-none whitespace-nowrap transition-all rounded-xl flex-1"
                 style={activeTab === tab.id
                   ? { background: 'white', color: accent, boxShadow: '0 1px 4px rgba(0,0,0,0.10)' }
                   : { background: 'transparent', color: '#8B6550' }
@@ -90,7 +93,7 @@ export function InstitutionTabs({
               >
                 {tab.label}
                 {tab.count !== null && tab.count > 0 && (
-                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold"
+                  <span className="hidden sm:inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold"
                     style={activeTab === tab.id
                       ? { background: accent, color: 'white' }
                       : { background: 'rgba(0,0,0,0.08)', color: '#8B6550' }
@@ -102,9 +105,6 @@ export function InstitutionTabs({
             ))}
           </div>
         </div>
-        {/* Fade hint vpravo na mobilu */}
-        <div className="absolute right-4 top-0 bottom-0 w-8 pointer-events-none md:hidden"
-          style={{ background: 'linear-gradient(to right, transparent, #FFFCF8)' }} />
       </div>
 
       {/* Obsah tabů */}
@@ -155,55 +155,97 @@ export function InstitutionTabs({
                 })()}
               </div>
 
-              {/* Status + Filtry row */}
-              <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-                {/* Status pills */}
-                {(() => {
-                  const statusCfg: Record<string, { label: string }> = {
-                    available:   { label: 'K adopci' },
-                    reserved:    { label: 'Rezervováno' },
-                    foster:      { label: 'V dočasné péči' },
-                    conditional: { label: 'Podmíněná' },
-                  }
-                  const present = Object.keys(statusCfg).filter(s => animals.some((a: any) => a.adoption_status === s))
-                  return present.length > 1 ? (
-                    <>
-                      <button onClick={() => setAnimalStatusFilter('')}
-                        className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer min-h-[32px]"
-                        style={!animalStatusFilter ? { background: accent, color: 'white', borderColor: accent } : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }}>
-                        Vše ({animals.length})
-                      </button>
-                      {present.map(s => {
-                        const cnt = animals.filter((a: any) => a.adoption_status === s).length
-                        return (
-                          <button key={s} onClick={() => setAnimalStatusFilter(s === animalStatusFilter ? '' : s)}
-                            className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer min-h-[32px]"
-                            style={animalStatusFilter === s ? { background: accent, color: 'white', borderColor: accent } : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }}>
-                            {statusCfg[s].label} ({cnt})
+              {/* Status pills + Filtry */}
+              {(() => {
+                const statusCfg: Record<string, { label: string; shortLabel: string }> = {
+                  available:   { label: 'K adopci',        shortLabel: 'K adopci' },
+                  reserved:    { label: 'Rezervováno',     shortLabel: 'Rezerv.' },
+                  foster:      { label: 'Dočasná péče',    shortLabel: 'Dočasná' },
+                  conditional: { label: 'Podmíněná',       shortLabel: 'Podmín.' },
+                }
+                const present = Object.keys(statusCfg).filter(s => animals.some((a: any) => a.adoption_status === s))
+                const showPills = present.length > 1
+                return (
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    {/* Status pills — pouze desktop */}
+                    <div className="hidden sm:flex flex-wrap gap-1.5">
+                      {showPills && (
+                        <>
+                          <button onClick={() => setAnimalStatusFilter('')}
+                            className="text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer min-h-[32px]"
+                            style={!animalStatusFilter ? { background: accent, color: 'white', borderColor: accent } : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }}>
+                            Vše ({animals.length})
                           </button>
-                        )
-                      })}
-                    </>
-                  ) : null
-                })()}
+                          {present.map(s => {
+                            const cnt = animals.filter((a: any) => a.adoption_status === s).length
+                            return (
+                              <button key={s} onClick={() => setAnimalStatusFilter(s === animalStatusFilter ? '' : s)}
+                                className="text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer min-h-[32px]"
+                                style={animalStatusFilter === s ? { background: accent, color: 'white', borderColor: accent } : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }}>
+                                <span className="hidden sm:inline">{statusCfg[s].label}</span>
+                                <span className="sm:hidden">{statusCfg[s].shortLabel}</span>
+                                <span className="ml-1 opacity-70">({cnt})</span>
+                              </button>
+                            )
+                          })}
+                        </>
+                      )}
+                    </div>
 
-                {/* Advanced filter toggle */}
-                <button
-                  onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer min-h-[32px] ml-auto"
-                  style={showAdvanced || advancedActiveCount > 0
-                    ? { background: accent, color: 'white', borderColor: accent }
-                    : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                    <path d="M1 3h10M3 6h6M5 9h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                  </svg>
-                  Filtry{advancedActiveCount > 0 ? ` · ${advancedActiveCount}` : ''}
-                </button>
-              </div>
+                    {/* Advanced filter toggle — mobil: full width, desktop: right-aligned */}
+                    <button
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="flex-shrink-0 flex items-center justify-center sm:justify-start gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer min-h-[32px] w-full sm:w-auto"
+                      style={showAdvanced || mobileAdvancedCount > 0
+                        ? { background: accent, color: 'white', borderColor: accent }
+                        : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }}>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M1 3h10M3 6h6M5 9h2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                      </svg>
+                      {/* Na mobilu zobrazujeme mobileAdvancedCount (včetně statusu), na desktopu jen advancedActiveCount */}
+                      <span className="sm:hidden">Filtry{mobileAdvancedCount > 0 ? ` · ${mobileAdvancedCount}` : ''}</span>
+                      <span className="hidden sm:inline">Filtry{advancedActiveCount > 0 ? ` · ${advancedActiveCount}` : ''}</span>
+                    </button>
+                  </div>
+                )
+              })()}
 
               {/* Advanced filters panel */}
               {showAdvanced && (
                 <div className="rounded-xl p-4 mb-4 space-y-3" style={{ background: '#FAFAF8', border: '1px solid #F0EDE8' }}>
+
+                  {/* Status — jen na mobilu (na desktopu jsou pills venku) */}
+                  {(() => {
+                    const statusCfg: Record<string, { label: string }> = {
+                      available:   { label: 'K adopci' },
+                      reserved:    { label: 'Rezervováno' },
+                      foster:      { label: 'Dočasná péče' },
+                      conditional: { label: 'Podmíněná' },
+                    }
+                    const present = Object.keys(statusCfg).filter(s => animals.some((a: any) => a.adoption_status === s))
+                    return present.length > 1 ? (
+                      <div className="sm:hidden">
+                        <p className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: '#8B6550' }}>Stav</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          <button onClick={() => setAnimalStatusFilter('')}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all"
+                            style={!animalStatusFilter ? { background: accent, color: 'white', borderColor: accent } : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }}>
+                            Vše ({animals.length})
+                          </button>
+                          {present.map(s => {
+                            const cnt = animals.filter((a: any) => a.adoption_status === s).length
+                            return (
+                              <button key={s} onClick={() => setAnimalStatusFilter(s === animalStatusFilter ? '' : s)}
+                                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border cursor-pointer transition-all"
+                                style={animalStatusFilter === s ? { background: accent, color: 'white', borderColor: accent } : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }}>
+                                {statusCfg[s].label} ({cnt})
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ) : null
+                  })()}
 
                   {/* Species — only if multiple */}
                   {hasMultipleSpecies && (
@@ -317,20 +359,21 @@ export function InstitutionTabs({
               {/* Animal grid */}
               {filteredAnimals.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-                  {filteredAnimals.map((a: any) => {
+                  {filteredAnimals.map((a: any, idx: number) => {
                     const age       = a.birth_year ? currentYear - a.birth_year : null
                     const ageLabel  = age === null ? null : age === 0 ? 'Mládě' : age === 1 ? '1 rok' : `${age} let`
                     const sexIcon   = a.sex === 'male' ? '♂' : a.sex === 'female' ? '♀' : null
                     const statusCfgPhoto: Record<string, { label: string; bg: string }> = {
-                      available:   { label: 'K adopci',    bg: 'rgba(34,107,17,0.85)' },
+                      available:   { label: 'K adopci',       bg: 'rgba(34,107,17,0.85)' },
                       reserved:    { label: '⏳ Rezervováno', bg: 'rgba(133,79,11,0.85)' },
-                      foster:      { label: '🏡 Dočasná péče',    bg: 'rgba(15,110,86,0.85)' },
-                      conditional: { label: '🤝 Podmíněná', bg: 'rgba(192,80,0,0.85)' },
+                      foster:      { label: '🏡 Dočasná péče', bg: 'rgba(15,110,86,0.85)' },
+                      conditional: { label: '🤝 Podmíněná',   bg: 'rgba(192,80,0,0.85)' },
                     }
                     const sc = statusCfgPhoto[a.adoption_status]
 
                     return (
-                      <div key={a.id} className={`bg-white rounded-xl overflow-hidden transition-all duration-200 hover:-translate-y-1 ${a.urgent ? 'ring-2 shadow-md' : 'border border-[#F0EDE8] hover:border-[#E8634A]/30 hover:shadow-sm'}`}
+                      <React.Fragment key={a.id}>
+                      <div className={`bg-white rounded-lg overflow-hidden transition-all duration-200 hover:-translate-y-1 ${a.urgent ? 'ring-2 shadow-md' : 'border border-[#F0EDE8] hover:border-[#E8634A]/30 hover:shadow-sm'}`}
                         style={a.urgent ? { boxShadow: `0 0 0 2px ${accent}40` } : {}}>
                         <Link href={`/animals/${a.id}`} className="no-underline group block">
                           <div className="relative h-36 md:h-40 overflow-hidden" style={{ background: '#F5E6D3' }}>
@@ -391,6 +434,21 @@ export function InstitutionTabs({
                           </div>
                         </div>
                       </div>
+
+                      {/* Reklama každých 8 karet — mobil: 1 sloupec (jako karta), desktop: přes celou šířku */}
+                      {filteredAnimals.length > 4 && (idx + 1) % 8 === 0 && (
+                        <React.Fragment key={`ad-${idx}`}>
+                          {/* Mobil: pill v 1 sloupci */}
+                          <div className="col-span-1 sm:hidden">
+                            <AdSlot slot="inline_grid" institutionId={i.id} />
+                          </div>
+                          {/* Desktop: banner přes celou šířku */}
+                          <div className="hidden sm:block sm:col-span-3 lg:col-span-4">
+                            <AdSlot slot="banner_animal" institutionId={i.id} />
+                          </div>
+                        </React.Fragment>
+                      )}
+                      </React.Fragment>
                     )
                   })}
                 </div>
@@ -552,6 +610,14 @@ export function InstitutionTabs({
               )}
             </div>
           )}
+
+          {/* Newsletter odběr — přesunut sem z Kontaktu */}
+          <div className="pt-2">
+            <NewsletterSubscribe
+              institutionId={i.id}
+              institutionName={i.name}
+            />
+          </div>
         </div>
       )}
 
@@ -621,13 +687,6 @@ export function InstitutionTabs({
               </a>
             )}
 
-            {/* Newsletter odběr */}
-            <div className="pt-2">
-              <NewsletterSubscribe
-                institutionId={i.id}
-                institutionName={i.name}
-              />
-            </div>
           </div>
 
           {/* Mapa */}

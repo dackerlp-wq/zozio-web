@@ -18,6 +18,7 @@ interface NavUser {
   name: string
   role: string | null
   institutionSlug: string | null
+  isAdvertiser?: boolean
 }
 
 interface NavbarProps {
@@ -162,6 +163,13 @@ export function Navbar({ user }: NavbarProps) {
                         <span>👤</span> Můj profil
                       </Link>
 
+                      {user.isAdvertiser && (
+                        <Link href="/portal/dashboard" onClick={() => setDropdown(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-espresso no-underline hover:bg-sand transition-colors">
+                          <span>📣</span> Správa reklam
+                        </Link>
+                      )}
+
                       {(user.role === 'admin' || user.role === 'institution_admin') && (
                         <Link href={`/admin/dashboard`} onClick={() => setDropdown(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-espresso no-underline hover:bg-sand transition-colors">
@@ -285,6 +293,13 @@ export function Navbar({ user }: NavbarProps) {
                   <span>👤</span>
                   <span className="font-bold text-espresso">Můj profil</span>
                 </Link>
+                {user.isAdvertiser && (
+                  <Link href="/portal/dashboard" onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-md no-underline hover:bg-sand transition-colors">
+                    <span>📣</span>
+                    <span className="font-bold text-espresso">Správa reklam</span>
+                  </Link>
+                )}
                 {(user.role === 'admin' || user.role === 'institution_admin' || user.role === 'staff') && (
                   <Link href="/admin/dashboard" onClick={() => setOpen(false)}
                     className="flex items-center gap-3 px-3 py-3 rounded-md no-underline hover:bg-sand transition-colors">

@@ -6,6 +6,7 @@ import { PortalAdForm } from '../PortalAdForm'
 import { SubmitAdButton } from '../SubmitAdButton'
 import { CsvExportButton } from './CsvExportButton'
 import type { Ad, AdStatus } from '@/types/database'
+import { calcPricing, SLOT_LABELS } from '@/lib/ad-pricing'
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -26,25 +27,6 @@ const STATUS_STYLE: Record<AdStatus, { bg: string; color: string }> = {
   approved:       { bg: '#EAF3DE', color: '#3B6D11' },
   rejected:       { bg: '#FAECE7', color: '#993C1D' },
   paused:         { bg: '#F0EDE8', color: '#8B6550' },
-}
-
-const SLOT_LABEL: Record<string, string> = {
-  inline_grid:   'Inline grid',
-  sidebar:       'Sidebar',
-  banner_adopt:  'Banner adopce',
-  banner_home:   'Banner homepage',
-  banner_animal: 'Banner zvíře',
-  newsletter:    'Newsletter',
-}
-
-// Orientační ceny bez DPH v Kč/měsíc
-const SLOT_PRICES: Record<string, number> = {
-  inline_grid:   1490,
-  sidebar:       1990,
-  banner_adopt:  2990,
-  banner_home:   3490,
-  banner_animal: 1990,
-  newsletter:    1490,
 }
 
 // CTR benchmark pro display reklamy (%)
@@ -81,16 +63,13 @@ export default async function AdDetailPage({ params }: PageProps) {
     ? Math.max(0, Math.round((new Date(ad.active_to).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24)))
     : null
 
-  // Orientační cena kampaně
-  const durationDays = Math.max(0, Math.round(
-    (new Date(ad.active_to).getTime() - new Date(ad.active_from).getTime()) / (1000 * 60 * 60 * 24)
-  ))
-  const discountPct = durationDays >= 90 ? 20 : durationDays >= 60 ? 10 : 0
-  const estSubtotal = ad.slots.reduce((s, slot) => {
-    const mp = SLOT_PRICES[slot] ?? 0
-    return s + (slot === 'newsletter' ? mp : Math.round((mp / 30) * durationDays))
-  }, 0)
-  const estTotal = Math.round(estSubtotal * (1 - discountPct / 100) * 1.21)
+  // Kompletní výpočet ceny (délka + region + DPH)
+  const pricing = calcPricing({
+    slots:          ad.slots,
+    active_from:    ad.active_from,
+    active_to:      ad.active_to,
+    target_regions: ad.target_regions ?? [],
+  })
 
   // Denní statistiky posledních 30 dní
   interface DailyStat { ad_id: string; day: string; impressions: number; clicks: number }
@@ -183,7 +162,7 @@ export default async function AdDetailPage({ params }: PageProps) {
             {ad.slots.map(s => (
               <span key={s} className="text-xs px-2 py-0.5 rounded font-medium"
                 style={{ background: '#F0EDE8', color: '#6B4030' }}>
-                {SLOT_LABEL[s] ?? s}
+                {SLOT_LABELS[s] ?? s}
               </span>
             ))}
           </div>
@@ -253,7 +232,7 @@ export default async function AdDetailPage({ params }: PageProps) {
                       <tr key={s.slot} className="border-t" style={{ borderColor: '#F0EDE8' }}>
                         <td className="px-4 py-2 font-medium text-xs flex items-center gap-1.5" style={{ color: '#1A0F0A' }}>
                           {topSlot && <span className="text-[10px]">⭐</span>}
-                          {SLOT_LABEL[s.slot] ?? s.slot}
+                          {SLOT_LABELS[s.slot as keyof typeof SLOT_LABELS] ?? s.slot}
                         </td>
                         <td className="px-3 py-2 text-right font-mono text-xs font-semibold" style={{ color: '#1A0F0A' }}>
                           {s.impressions.toLocaleString('cs-CZ')}
@@ -398,26 +377,91 @@ export default async function AdDetailPage({ params }: PageProps) {
           <InfoRow label="Popis" value={ad.description ?? '—'} />
           <InfoRow label="CTA tlačítko" value={ad.cta_label} />
           <InfoRow label="Cílová URL" value={ad.cta_url} link />
-          <InfoRow label="Období" value={`${ad.active_from} — ${ad.active_to} (${durationDays} dní)`} />
-          <InfoRow label="Plochy" value={ad.slots.map(s => SLOT_LABEL[s] ?? s).join(', ')} />
+          <InfoRow label="Období" value={`${ad.active_from} — ${ad.active_to} (${pricing.durationDays} dní)`} />
+          <InfoRow label="Plochy" value={ad.slots.map(s => SLOT_LABELS[s] ?? s).join(', ')} />
         </div>
 
-        {/* Orientační cena */}
-        {estTotal > 0 && (
-          <div className="mx-5 mb-5 px-4 py-3 rounded-xl flex items-center justify-between"
-            style={{ background: '#FFFCF8', border: '1px solid #F0EDE8' }}>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider mb-0.5" style={{ color: '#8B6550' }}>
-                Orientační cena kampaně
+        {/* Kompletní cenový rozpad */}
+        {pricing.total > 0 && (
+          <div className="mx-5 mb-5 rounded-xl overflow-hidden border" style={{ borderColor: '#F0EDE8' }}>
+            <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: '#FFFCF8' }}>
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#8B6550' }}>
+                Cena kampaně
               </p>
-              <p className="text-xs" style={{ color: '#A89080' }}>
-                {durationDays} dní · {ad.slots.length} {ad.slots.length === 1 ? 'plocha' : ad.slots.length <= 4 ? 'plochy' : 'ploch'}
-                {discountPct > 0 && ` · sleva ${discountPct} %`} · vč. DPH
-              </p>
+              <p className="text-xs" style={{ color: '#A89080' }}>orientační · bez závazku</p>
             </div>
-            <span className="font-display font-extrabold text-xl" style={{ color: '#E8634A' }}>
-              {estTotal.toLocaleString('cs-CZ')} Kč
-            </span>
+            <div className="px-4 py-3 bg-white space-y-1.5">
+              {/* Řádky per slot */}
+              {pricing.lines.map(line => (
+                <div key={line.slot} className="flex justify-between text-sm">
+                  <span style={{ color: '#2C1810' }}>
+                    {line.label}
+                    <span className="text-xs ml-1.5" style={{ color: '#A89080' }}>
+                      {line.isNewsletter ? '1 vydání' : `${pricing.durationDays} dní`}
+                    </span>
+                  </span>
+                  <span className="font-semibold tabular-nums" style={{ color: '#1A0F0A' }}>
+                    {line.basePrice.toLocaleString('cs-CZ')} Kč
+                  </span>
+                </div>
+              ))}
+
+              {/* Součty */}
+              <div className="border-t pt-2 mt-1 space-y-1" style={{ borderColor: '#F0EDE8' }}>
+                {pricing.subtotal !== pricing.afterDiscount && (
+                  <div className="flex justify-between text-xs">
+                    <span style={{ color: '#8B6550' }}>Mezisoučet bez DPH</span>
+                    <span className="tabular-nums" style={{ color: '#1A0F0A' }}>
+                      {pricing.subtotal.toLocaleString('cs-CZ')} Kč
+                    </span>
+                  </div>
+                )}
+                {pricing.durationDiscountPct > 0 && (
+                  <div className="flex justify-between text-xs">
+                    <span style={{ color: '#3B6D11' }}>Sleva za délku kampaně</span>
+                    <span className="tabular-nums font-semibold" style={{ color: '#3B6D11' }}>
+                      −{pricing.durationDiscountPct} %
+                    </span>
+                  </div>
+                )}
+                {pricing.regionDiscountPct > 0 && (
+                  <div className="flex justify-between text-xs">
+                    <span style={{ color: '#3B6D11' }}>
+                      Sleva za regionální cílení ({pricing.regionCount} {pricing.regionCount === 1 ? 'kraj' : pricing.regionCount <= 4 ? 'kraje' : 'krajů'})
+                    </span>
+                    <span className="tabular-nums font-semibold" style={{ color: '#3B6D11' }}>
+                      −{pricing.regionDiscountPct} %
+                    </span>
+                  </div>
+                )}
+                {pricing.totalDiscountPct > 0 && (
+                  <div className="flex justify-between text-sm font-semibold">
+                    <span style={{ color: '#3B6D11' }}>Celková sleva {pricing.totalDiscountPct} %</span>
+                    <span className="tabular-nums" style={{ color: '#3B6D11' }}>
+                      −{pricing.discountAmount.toLocaleString('cs-CZ')} Kč
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between text-xs">
+                  <span style={{ color: '#8B6550' }}>Základ DPH</span>
+                  <span className="tabular-nums" style={{ color: '#1A0F0A' }}>
+                    {pricing.afterDiscount.toLocaleString('cs-CZ')} Kč
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span style={{ color: '#8B6550' }}>DPH 21 %</span>
+                  <span className="tabular-nums" style={{ color: '#1A0F0A' }}>
+                    {pricing.vat.toLocaleString('cs-CZ')} Kč
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t" style={{ borderColor: '#F0EDE8' }}>
+                  <span className="font-display font-bold text-sm" style={{ color: '#1A0F0A' }}>Celkem s DPH</span>
+                  <span className="font-display font-extrabold text-xl tabular-nums" style={{ color: '#E8634A' }}>
+                    {pricing.total.toLocaleString('cs-CZ')} Kč
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -111,11 +111,13 @@ export default async function ArticleDetailPage({ params }: PageProps) {
       {inst && inst.otherArticles && inst.otherArticles.length > 0 && (
         <OtherArticles articles={inst.otherArticles} institutionName={inst.name} />
       )}
-      {/* Sidebar reklama — cílena na region instituce pokud je znám */}
+      {/* Sidebar reklama — cílena na region + instituci + kategorii článku */}
       <AdSlot
         slot="sidebar"
         lat={inst?.lat ?? undefined}
         lng={inst?.lng ?? undefined}
+        institutionId={inst?.id ?? undefined}
+        articleCategory={article.category ?? undefined}
       />
     </div>
   )

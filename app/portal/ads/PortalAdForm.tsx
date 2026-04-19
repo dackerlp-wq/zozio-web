@@ -1,28 +1,26 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Ad, AdSlotType, AdStatus } from '@/types/database'
 import { ALL_CZECH_REGIONS, shortRegionName, type CzechRegion } from '@/lib/region-from-coords'
+import { calcPricing, SLOT_PRICES, SLOT_LABELS } from '@/lib/ad-pricing'
 
-const SLOT_OPTIONS: { value: AdSlotType; label: string; desc: string }[] = [
-  { value: 'inline_grid',   label: 'Inline grid',      desc: 'Karta v gridu zvířat' },
-  { value: 'sidebar',       label: 'Sidebar',          desc: 'Postranní panel' },
-  { value: 'banner_adopt',  label: 'Banner adopce',    desc: 'Stránka /adopt' },
-  { value: 'banner_home',   label: 'Banner homepage',  desc: 'Domovská stránka' },
-  { value: 'banner_animal', label: 'Banner zvíře',     desc: 'Detail každého zvířete' },
-  { value: 'newsletter',    label: 'Newsletter',        desc: 'E-mailový bulletin' },
+const ARTICLE_CATEGORIES = [
+  { value: 'story',  label: '🐾 Příběhy adopce' },
+  { value: 'rescue', label: '🦉 Záchranné příběhy' },
+  { value: 'tips',   label: '💡 Tipy a rady' },
+  { value: 'news',   label: '📰 Novinky' },
 ]
 
-// Ceny bez DPH v Kč / měsíc (newsletter = cena za jedno vydání)
-const SLOT_PRICES: Record<AdSlotType, number> = {
-  inline_grid:   1490,
-  sidebar:       1990,
-  banner_adopt:  2990,
-  banner_home:   3490,
-  banner_animal: 1990,
-  newsletter:    1490,
-}
+const SLOT_OPTIONS: { value: AdSlotType; label: string; desc: string }[] = [
+  { value: 'inline_grid',   label: SLOT_LABELS.inline_grid,   desc: 'Karta v gridu zvířat' },
+  { value: 'sidebar',       label: SLOT_LABELS.sidebar,       desc: 'Postranní panel' },
+  { value: 'banner_adopt',  label: SLOT_LABELS.banner_adopt,  desc: 'Stránka /adopt' },
+  { value: 'banner_home',   label: SLOT_LABELS.banner_home,   desc: 'Domovská stránka' },
+  { value: 'banner_animal', label: SLOT_LABELS.banner_animal, desc: 'Detail každého zvířete' },
+  { value: 'newsletter',    label: SLOT_LABELS.newsletter,    desc: 'E-mailový bulletin' },
+]
 
 const STATUS_LABEL: Record<AdStatus, string> = {
   draft:          'Koncept',
@@ -51,18 +49,33 @@ export function PortalAdForm({ initial, mode }: PortalAdFormProps) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [institutions, setInstitutions] = useState<{ id: string; name: string; city: string }[]>([])
+  const [instSearch, setInstSearch] = useState('')
+
   const [form, setForm] = useState({
-    headline:        initial?.headline        ?? '',
-    description:     initial?.description     ?? '',
-    cta_label:       initial?.cta_label       ?? 'Více info',
-    cta_url:         initial?.cta_url         ?? '',
-    logo_url:        initial?.logo_url        ?? '',
-    image_url:       initial?.image_url       ?? '',
-    slots:           initial?.slots           ?? [] as AdSlotType[],
-    active_from:     initial?.active_from     ?? '',
-    active_to:       initial?.active_to       ?? '',
-    target_regions:  (initial?.target_regions ?? []) as CzechRegion[],
+    headline:                  initial?.headline                  ?? '',
+    description:               initial?.description               ?? '',
+    cta_label:                 initial?.cta_label                 ?? 'Více info',
+    cta_url:                   initial?.cta_url                   ?? '',
+    logo_url:                  initial?.logo_url                  ?? '',
+    image_url:                 initial?.image_url                 ?? '',
+    slots:                     initial?.slots                     ?? [] as AdSlotType[],
+    active_from:               initial?.active_from               ?? '',
+    active_to:                 initial?.active_to                 ?? '',
+    target_regions:            (initial?.target_regions            ?? []) as CzechRegion[],
+    target_institutions:       (initial?.target_institutions       ?? []) as string[],
+    target_article_categories: (initial?.target_article_categories ?? []) as string[],
   })
+
+  // Načtení útulků a záchranných stanic
+  useEffect(() => {
+    fetch('/api/institutions?approved=true&limit=200')
+      .then(r => r.json())
+      .then((data: { id: string; name: string; city: string }[]) => {
+        if (Array.isArray(data)) setInstitutions(data)
+      })
+      .catch(() => {})
+  }, [])
 
   const isNational = form.target_regions.length === 0
 
@@ -84,63 +97,25 @@ export function PortalAdForm({ initial, mode }: PortalAdFormProps) {
     }))
   }
 
-  // ── Cenová kalkulace ───────────────────────────────────────────────────────
-  const pricing = useMemo(() => {
-    const durationDays = form.active_from && form.active_to
-      ? Math.max(0, Math.round(
-          (new Date(form.active_to).getTime() - new Date(form.active_from).getTime())
-          / (1000 * 60 * 60 * 24)
-        ))
-      : 0
-
-    const lines = form.slots.map(slot => {
-      const monthlyPrice = SLOT_PRICES[slot] ?? 0
-      const isNewsletter = slot === 'newsletter'
-      const price = isNewsletter
-        ? monthlyPrice
-        : Math.round((monthlyPrice / 30) * durationDays)
-      return {
-        slot,
-        label: SLOT_OPTIONS.find(o => o.value === slot)?.label ?? slot,
-        price,
-        isNewsletter,
-      }
-    })
-
-    const subtotal = lines.reduce((s, l) => s + l.price, 0)
-
-    // Sleva za délku kampaně
-    const durationDiscountPct = durationDays >= 90 ? 20 : durationDays >= 60 ? 10 : 0
-
-    // Sleva za regionální cílení (menší dosah = nižší cena)
-    const regionCount = form.target_regions.length
-    const regionDiscountPct = !isNational && regionCount <= 5 ? 25
-      : !isNational && regionCount <= 13 ? 10
-      : 0
-
-    // Celková sleva (součet, max 35 %)
-    const totalDiscountPct = Math.min(durationDiscountPct + regionDiscountPct, 35)
-    const discountAmount = Math.round(subtotal * totalDiscountPct / 100)
-    const afterDiscount = subtotal - discountAmount
-    const vat = Math.round(afterDiscount * 0.21)
-    const total = afterDiscount + vat
-
-    return {
-      durationDays, lines, subtotal,
-      durationDiscountPct, regionDiscountPct, totalDiscountPct,
-      discountAmount, afterDiscount, vat, total,
-    }
-  }, [form.slots, form.active_from, form.active_to, form.target_regions, isNational])
+  // ── Cenová kalkulace — používá centrální lib/ad-pricing.ts ──────────────
+  const pricing = useMemo(() => calcPricing({
+    slots:          form.slots,
+    active_from:    form.active_from,
+    active_to:      form.active_to,
+    target_regions: form.target_regions,
+  }), [form.slots, form.active_from, form.active_to, form.target_regions])
 
   const showPricing = pricing.lines.length > 0 && pricing.durationDays > 0
 
   // ── Payload & akce ────────────────────────────────────────────────────────
   const getPayload = () => ({
     ...form,
-    description:    form.description    || null,
-    logo_url:       form.logo_url       || null,
-    image_url:      form.image_url      || null,
-    target_regions: form.target_regions, // [] = celá ČR
+    description:               form.description    || null,
+    logo_url:                  form.logo_url       || null,
+    image_url:                 form.image_url      || null,
+    target_regions:            form.target_regions,            // [] = celá ČR
+    target_institutions:       form.target_institutions,       // [] = všechny
+    target_article_categories: form.target_article_categories, // [] = všechny
   })
 
   const handleSave = async (e?: React.FormEvent) => {
@@ -396,65 +371,185 @@ export function PortalAdForm({ initial, mode }: PortalAdFormProps) {
           )}
         </div>
 
-        {/* Toggle: Celá ČR */}
-        <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border mb-4 transition-all"
-          style={isNational
-            ? { borderColor: '#E8634A', background: '#FAECE7' }
-            : { borderColor: '#E0DDD8', background: 'white' }}>
-          <input
-            type="checkbox"
-            className="w-4 h-4 accent-[#E8634A]"
-            checked={isNational}
-            onChange={() => setForm(f => ({ ...f, target_regions: [] }))}
-          />
-          <div className="flex-1">
-            <span className="text-sm font-bold" style={{ color: '#2C1810' }}>🇨🇿 Celá ČR</span>
-            <p className="text-xs mt-0.5" style={{ color: '#8B6550' }}>Reklama se zobrazí všem návštěvníkům bez ohledu na lokalitu</p>
+        {/* Přepínač módu */}
+        <div className="flex gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => setForm(f => ({ ...f, target_regions: [] }))}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-bold transition-all cursor-pointer"
+            style={isNational
+              ? { borderColor: '#E8634A', background: '#FAECE7', color: '#993C1D' }
+              : { borderColor: '#E0DDD8', background: 'white', color: '#6B4030' }}>
+            🇨🇿 Celá ČR
+            {isNational && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#E8634A', color: 'white' }}>✓ Aktivní</span>}
+          </button>
+          <button
+            type="button"
+            onClick={() => { if (isNational) { /* nic — uživatel klikne kraj */ } }}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-bold transition-all cursor-default"
+            style={!isNational
+              ? { borderColor: '#E8634A', background: '#FAECE7', color: '#993C1D' }
+              : { borderColor: '#E0DDD8', background: 'white', color: '#A89080' }}>
+            📍 Konkrétní kraje
+            {!isNational && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#E8634A', color: 'white' }}>
+                {form.target_regions.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Mřížka krajů — vždy interaktivní */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {ALL_CZECH_REGIONS.map(region => {
+            const selected = form.target_regions.includes(region)
+            return (
+              <label key={region}
+                className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border text-xs transition-all select-none"
+                style={selected
+                  ? { borderColor: '#E8634A', background: '#FAECE7', color: '#993C1D' }
+                  : { borderColor: '#E0DDD8', background: 'white', color: '#6B4030' }}>
+                <input
+                  type="checkbox"
+                  className="w-3.5 h-3.5 flex-shrink-0 accent-[#E8634A]"
+                  checked={selected}
+                  onChange={() => toggleRegion(region)}
+                />
+                <span className="font-medium leading-tight">{shortRegionName(region)}</span>
+              </label>
+            )
+          })}
+        </div>
+
+        {/* Výsledek výběru */}
+        {!isNational && form.target_regions.length > 0 && (
+          <div className="mt-3 px-3 py-2 rounded-lg text-xs flex items-start justify-between gap-3" style={{ background: '#F0EDE8', color: '#6B4030' }}>
+            <span>
+              📍 {form.target_regions.map(r => shortRegionName(r)).join(', ')}
+              {pricing.regionDiscountPct > 0 && (
+                <span className="ml-2 font-bold" style={{ color: '#3B6D11' }}>
+                  → sleva {pricing.regionDiscountPct} %
+                </span>
+              )}
+            </span>
+            <button type="button"
+              onClick={() => setForm(f => ({ ...f, target_regions: [] }))}
+              className="text-[10px] font-bold whitespace-nowrap cursor-pointer bg-transparent border-none hover:underline flex-shrink-0"
+              style={{ color: '#8B6550' }}>
+              Zrušit vše
+            </button>
           </div>
-          {isNational && (
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: '#E8634A', color: 'white' }}>
-              Doporučeno
+        )}
+      </div>
+
+      {/* ── Cílení na útulky ── */}
+      <div className="bg-white rounded-xl p-6 border" style={{ borderColor: '#F0EDE8' }}>
+        <div className="flex items-start justify-between mb-2">
+          <div>
+            <h2 className="font-display font-bold text-base" style={{ color: '#1A0F0A' }}>Útulky a záchranné stanice</h2>
+            <p className="text-xs mt-1" style={{ color: '#8B6550' }}>
+              Reklama se zobrazí s větší pravděpodobností u vybraných institucí — na jejich profilu, u jejich zvířat a v jejich článcích.
+              Prázdný výběr = zobrazí se u všech.
+            </p>
+          </div>
+          {form.target_institutions.length > 0 && (
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 ml-3"
+              style={{ background: '#EAF3DE', color: '#3B6D11' }}>
+              {form.target_institutions.length} vybráno
             </span>
           )}
-        </label>
+        </div>
 
-        {/* Mřížka krajů */}
-        <div className={`transition-all duration-200 ${isNational ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-          <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: '#8B6550' }}>
-            Nebo vyberte konkrétní kraje:
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {ALL_CZECH_REGIONS.map(region => {
-              const selected = form.target_regions.includes(region)
+        {/* Vyhledávání */}
+        <input
+          type="search"
+          placeholder="🔍 Hledat útulek nebo stanici…"
+          value={instSearch}
+          onChange={e => setInstSearch(e.target.value)}
+          className="w-full px-3 py-2 rounded-lg border text-sm mb-3 focus:outline-none focus:ring-2"
+          style={{ borderColor: '#E0DDD8', color: '#2C1810' }}
+        />
+
+        <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
+          {institutions
+            .filter(inst =>
+              instSearch === '' ||
+              inst.name.toLowerCase().includes(instSearch.toLowerCase()) ||
+              inst.city.toLowerCase().includes(instSearch.toLowerCase())
+            )
+            .map(inst => {
+              const selected = form.target_institutions.includes(inst.id)
               return (
-                <label key={region}
-                  className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border text-xs transition-all"
+                <label key={inst.id}
+                  className="flex items-center gap-2.5 cursor-pointer px-3 py-2 rounded-lg border text-xs transition-all"
                   style={selected
-                    ? { borderColor: '#E8634A', background: '#FAECE7', color: '#993C1D' }
+                    ? { borderColor: '#4CAF50', background: '#EAF3DE', color: '#2E5E10' }
                     : { borderColor: '#E0DDD8', background: 'white', color: '#6B4030' }}>
                   <input
                     type="checkbox"
-                    className="w-3.5 h-3.5 flex-shrink-0 accent-[#E8634A]"
+                    className="w-3.5 h-3.5 flex-shrink-0 accent-[#4CAF50]"
                     checked={selected}
-                    onChange={() => toggleRegion(region)}
+                    onChange={() => setForm(f => ({
+                      ...f,
+                      target_institutions: selected
+                        ? f.target_institutions.filter(id => id !== inst.id)
+                        : [...f.target_institutions, inst.id],
+                    }))}
                   />
-                  <span className="font-medium leading-tight">{shortRegionName(region)}</span>
+                  <span className="font-medium flex-1 min-w-0 truncate">{inst.name}</span>
+                  <span className="text-[10px] flex-shrink-0" style={{ color: '#A89080' }}>{inst.city}</span>
                 </label>
               )
-            })}
-          </div>
-
-          {/* Dosah info */}
-          {!isNational && form.target_regions.length > 0 && (
-            <div className="mt-3 px-3 py-2 rounded-lg text-xs" style={{ background: '#F0EDE8', color: '#6B4030' }}>
-              📍 Vybrané kraje: {form.target_regions.map(r => shortRegionName(r)).join(', ')}
-              {pricing.regionDiscountPct > 0 && (
-                <span className="ml-2 font-bold" style={{ color: '#3B6D11' }}>
-                  → sleva {pricing.regionDiscountPct} % za regionální cílení
-                </span>
-              )}
-            </div>
+            })
+          }
+          {institutions.length === 0 && (
+            <p className="text-xs text-center py-4" style={{ color: '#A89080' }}>Načítání institucí…</p>
           )}
+        </div>
+
+        {form.target_institutions.length > 0 && (
+          <button type="button"
+            onClick={() => setForm(f => ({ ...f, target_institutions: [] }))}
+            className="mt-3 text-xs font-semibold cursor-pointer bg-transparent border-none hover:underline"
+            style={{ color: '#8B6550' }}>
+            ✕ Zrušit výběr
+          </button>
+        )}
+      </div>
+
+      {/* ── Cílení na kategorie článků ── */}
+      <div className="bg-white rounded-xl p-6 border" style={{ borderColor: '#F0EDE8' }}>
+        <div className="mb-4">
+          <h2 className="font-display font-bold text-base" style={{ color: '#1A0F0A' }}>Kategorie článků</h2>
+          <p className="text-xs mt-1" style={{ color: '#8B6550' }}>
+            Reklama se zobrazí s vyšší prioritou u článků vybraných kategorií v postranním panelu.
+            Prázdný výběr = zobrazí se u všech.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {ARTICLE_CATEGORIES.map(cat => {
+            const selected = form.target_article_categories.includes(cat.value)
+            return (
+              <label key={cat.value}
+                className="flex items-center gap-2.5 cursor-pointer px-3 py-2.5 rounded-lg border text-sm transition-all"
+                style={selected
+                  ? { borderColor: '#F0A500', background: '#FEF9E7', color: '#854F0B' }
+                  : { borderColor: '#E0DDD8', background: 'white', color: '#6B4030' }}>
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 flex-shrink-0 accent-[#F0A500]"
+                  checked={selected}
+                  onChange={() => setForm(f => ({
+                    ...f,
+                    target_article_categories: selected
+                      ? f.target_article_categories.filter(v => v !== cat.value)
+                      : [...f.target_article_categories, cat.value],
+                  }))}
+                />
+                <span className="font-semibold">{cat.label}</span>
+              </label>
+            )
+          })}
         </div>
       </div>
 
@@ -478,7 +573,7 @@ export function PortalAdForm({ initial, mode }: PortalAdFormProps) {
                     </span>
                   </div>
                   <span className="font-semibold tabular-nums" style={{ color: '#1A0F0A' }}>
-                    {line.price.toLocaleString('cs-CZ')} Kč
+                    {line.basePrice.toLocaleString('cs-CZ')} Kč
                   </span>
                 </div>
               ))}

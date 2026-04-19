@@ -98,7 +98,8 @@ export default async function AnimalDetailPage({ params }: PageProps) {
     ? (() => { const d = new Date(intakeDateStr); d.setMonth(d.getMonth() + 4); return d })()
     : null
   const isInProtection = protectionEnd != null && protectionEnd > new Date() && !isInQuarantine
-  const shareUrl    = `${BASE}/animals/${id}`
+  const shareUrl       = `${BASE}/animals/${id}`
+  const institutionId  = institution?.id
 
   const age = a.birth_year
     ? `${new Date().getFullYear() - a.birth_year} ${new Date().getFullYear() - a.birth_year === 1 ? 'rok' : new Date().getFullYear() - a.birth_year < 5 ? 'roky' : 'let'}`
@@ -248,6 +249,15 @@ export default async function AnimalDetailPage({ params }: PageProps) {
               </section>
             )}
 
+            {/* Reklama — mobilní karta, zobrazí se mezi "Podobná zvířata" a formulářem */}
+            <div className="lg:hidden mb-6">
+              <AdSlot
+                slot="sidebar"
+                speciesId={a.species_id ?? undefined}
+                institutionId={institutionId}
+              />
+            </div>
+
             {/* Podobná zvířata */}
             {similar.length > 0 && (
               <section className="mb-8">
@@ -311,8 +321,6 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                 <NotYetBanner name={a.name} status={displayStatus} />
               )}
               {isFinished && <AdoptedBanner name={a.name} status={displayStatus} />}
-              {/* Reklama pod mobilním adopčním panelem */}
-              <AdSlot slot="banner_animal" speciesId={a.species_id ?? undefined} className="mt-4" />
             </div>
           </div>
 
@@ -392,8 +400,15 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                   <NotYetBanner name={a.name} status={displayStatus} />
                 )}
                 {isFinished && <AdoptedBanner name={a.name} status={displayStatus} />}
-                {/* Reklama pod desktop adopčním panelem */}
-                <AdSlot slot="banner_animal" speciesId={a.species_id ?? undefined} className="px-5 pb-5" />
+              </div>
+
+              {/* Reklama uvnitř sticky panelu — pod formulářem, aby nepřekrývala */}
+              <div className="px-4 pb-4 border-t border-border pt-4">
+                <AdSlot
+                  slot="sidebar"
+                  speciesId={a.species_id ?? undefined}
+                  institutionId={institutionId}
+                />
               </div>
             </StickyPanel>
           </div>

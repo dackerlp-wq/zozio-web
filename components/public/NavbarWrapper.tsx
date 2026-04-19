@@ -11,6 +11,8 @@ export async function NavbarWrapper() {
   let role: string | null = null
   let institutionSlug: string | null = null
 
+  let isAdvertiser = false
+
   if (user) {
     const service = createServiceClient()
 
@@ -34,6 +36,15 @@ export async function NavbarWrapper() {
       role = member?.role ?? null
       institutionSlug = (member?.institution as any)?.slug ?? null
     }
+
+    // Zjisti zda je inzerent (má záznam v ad_companies)
+    const { data: adCompany } = await service
+      .from('ad_companies')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    isAdvertiser = !!adCompany
   }
 
   return (
@@ -43,6 +54,7 @@ export async function NavbarWrapper() {
         name: user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? '',
         role,
         institutionSlug,
+        isAdvertiser,
       } : null}
     />
   )
