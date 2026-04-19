@@ -142,7 +142,6 @@ export async function POST(request: NextRequest) {
     }
 
     revalidatePath('/adopt')
-    revalidatePath('/rescue')
 
     return NextResponse.json({ success: true, id: data.id })
 

@@ -1,13 +1,12 @@
 import { cn } from '@/lib/utils'
 
-type TagVariant = 'sand' | 'coral' | 'amber' | 'green' | 'rescue'
+type TagVariant = 'sand' | 'coral' | 'amber' | 'green'
 
 const styles: Record<TagVariant, string> = {
-  sand:   'bg-sand text-brown-mid',
-  coral:  'bg-coral-light text-coral-dark',
-  amber:  'bg-amber-light text-[#8B6000]',
-  green:  'bg-success-bg text-success',
-  rescue: 'bg-rescue-bg text-rescue-dark',
+  sand:  'bg-sand text-brown-mid',
+  coral: 'bg-coral-light text-coral-dark',
+  amber: 'bg-amber-light text-[#8B6000]',
+  green: 'bg-success-bg text-success',
 }
 
 interface TagProps {

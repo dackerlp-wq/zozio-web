@@ -14,14 +14,16 @@ interface PageProps {
 const PAGE_SIZE = 20
 
 /** Vrátí efektivní zobrazovací status — 'quarantine' pokud je aktivní karanténa */
-function effectiveStatus(adoptionStatus: string, _inQuarantine: boolean | null, qEnd: string | null): string {
+type BadgeVariant = 'intake' | 'quarantine' | 'available' | 'reserved' | 'adopted' | 'foster' | 'treatment' | 'deceased' | 'not_for_adoption' | 'conditional' | 'released' | 'transferred' | 'healthy' | 'sick' | 'injured' | 'recovering' | 'chronic' | 'urgent'
+
+function effectiveStatus(adoptionStatus: string, _inQuarantine: boolean | null, qEnd: string | null): BadgeVariant {
   if (qEnd && new Date(qEnd) > new Date()) return 'quarantine'
-  return adoptionStatus
+  return adoptionStatus as BadgeVariant
 }
 
 /** Vrátí počet zbývajících dní karantény (záporné = skončila, null = nemá karanténu) */
 function computeQuarantineDays(start: string | null, end: string | null): number | null {
-  if (!start || !end) return null   // oba datumy musí být explicitně nastaveny
+  if (!start || !end) return null
   const endDate = new Date(end)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -73,40 +75,26 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
 
   if (!institution) redirect('/admin/dashboard')
 
-  const isShelter = institution.type === 'shelter'
-
-  // Species list for filter dropdown
-  const { data: speciesList } = await service
-    .from('animal_species')
-    .select('id, name_cs, icon')
-    .order('name_cs')
-
-  const statusField = isShelter ? 'adoption_status' : 'status'
-  const table       = isShelter ? 'animals' : 'rescue_cases'
+  const activeColor = '#E8634A'
 
   // Archivní stavy (nezobrazovat v hlavním výpisu)
-  const archiveStatuses = isShelter ? ['adopted', 'deceased'] : ['released', 'deceased']
+  const archiveStatuses = ['adopted', 'deceased']
   const isArchive = filterStatus === 'archive'
 
   // Počty pro záložky
-  const shelterTabStatuses = ['available', 'reserved', 'foster'] as const
-  const rescueTabStatuses  = ['intake', 'treatment'] as const
-  const tabStatuses = isShelter ? shelterTabStatuses : rescueTabStatuses
+  const tabStatuses = ['available', 'reserved', 'foster'] as const
 
   const [activeResult, archiveResult, ...tabCountResults] = await Promise.all([
-    // Aktivní zvířata (bez archivu)
-    service.from(table).select('id', { count: 'exact', head: true })
+    service.from('animals').select('id', { count: 'exact', head: true })
       .eq('institution_id', institution.id)
-      .not(statusField, 'in', `(${archiveStatuses.join(',')})`),
-    // Archivní zvířata
-    service.from(table).select('id', { count: 'exact', head: true })
+      .not('adoption_status', 'in', `(${archiveStatuses.join(',')})`),
+    service.from('animals').select('id', { count: 'exact', head: true })
       .eq('institution_id', institution.id)
-      .in(statusField, archiveStatuses),
-    // Jednotlivé záložky
+      .in('adoption_status', archiveStatuses),
     ...tabStatuses.map(s =>
-      service.from(table).select('id', { count: 'exact', head: true })
+      service.from('animals').select('id', { count: 'exact', head: true })
         .eq('institution_id', institution.id)
-        .eq(statusField, s)
+        .eq('adoption_status', s)
     ),
   ])
 
@@ -115,53 +103,41 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
   const tabCounts    = tabCountResults.map(r => r.count ?? 0)
 
   // Main query
-  const selectFields = isShelter
-    ? 'id, name, breed, birth_year, birth_month, urgent, adoption_status, health_status, in_quarantine, in_foster, quarantine_start, quarantine_end, origin, photos, published, chip_number, vaccinated, species:animal_species(id, name_cs, icon), intake_date, created_at'
-    : 'id, name, case_number, estimated_age, status, health_status, photos, species:animal_species(id, name_cs, icon), intake_date, created_at'
+  const selectFields = 'id, name, breed, birth_year, birth_month, urgent, adoption_status, health_status, in_quarantine, in_foster, quarantine_start, quarantine_end, origin, photos, published, chip_number, vaccinated, species:animal_species(id, name_cs, icon), intake_date, created_at'
 
   let animalsQuery = service
-    .from(table)
+    .from('animals')
     .select(selectFields, { count: 'exact' })
     .eq('institution_id', institution.id) as any
 
   if (isArchive) {
-    animalsQuery = animalsQuery.in(statusField, archiveStatuses)
+    animalsQuery = animalsQuery.in('adoption_status', archiveStatuses)
   } else if (filterStatus) {
-    animalsQuery = animalsQuery.eq(statusField, filterStatus)
+    animalsQuery = animalsQuery.eq('adoption_status', filterStatus)
   } else {
-    // Výchozí: skrýt archivní záznamy
-    animalsQuery = animalsQuery.not(statusField, 'in', `(${archiveStatuses.join(',')})`)
+    animalsQuery = animalsQuery.not('adoption_status', 'in', `(${archiveStatuses.join(',')})`)
   }
 
   if (filterSpecies) animalsQuery = animalsQuery.eq('species_id', filterSpecies)
-  if (q)             animalsQuery = isShelter
-    ? animalsQuery.or(`name.ilike.%${q}%,breed.ilike.%${q}%,chip_number.ilike.%${q}%`)
-    : animalsQuery.or(`name.ilike.%${q}%,case_number.ilike.%${q}%`)
+  if (q) animalsQuery = animalsQuery.or(`name.ilike.%${q}%,breed.ilike.%${q}%,chip_number.ilike.%${q}%`)
 
-  const { data: animals, count } = isShelter
-    ? await animalsQuery.order('urgent', { ascending: false }).order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1)
-    : await animalsQuery.order('created_at', { ascending: false }).range(offset, offset + PAGE_SIZE - 1)
+  const { data: animals, count } = await animalsQuery
+    .order('urgent', { ascending: false })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + PAGE_SIZE - 1)
 
   const items = (animals ?? []) as any[]
   const filteredCount = count ?? 0
   const totalPages = Math.ceil(filteredCount / PAGE_SIZE)
 
   // Tab definitions
-  const shelterTabs = [
+  const tabs = [
     { value: '',          label: 'Aktivní',     count: activeCount },
     { value: 'available', label: 'K adopci',    count: tabCounts[0] },
     { value: 'reserved',  label: 'Rezervovaná', count: tabCounts[1] },
     { value: 'foster',    label: 'Pěstounská',  count: tabCounts[2] },
     { value: 'archive',   label: 'Archiv',      count: archiveCount, muted: true },
   ]
-  const rescueTabs = [
-    { value: '',          label: 'Aktivní', count: activeCount },
-    { value: 'intake',    label: 'Příjem',  count: tabCounts[0] },
-    { value: 'treatment', label: 'Léčba',   count: tabCounts[1] },
-    { value: 'archive',   label: 'Archiv',  count: archiveCount, muted: true },
-  ]
-  const tabs = isShelter ? shelterTabs : rescueTabs
-  const activeColor = isShelter ? '#E8634A' : '#2E9E8F'
 
   function buildUrl(overrides: Record<string, string | undefined>) {
     const params = new URLSearchParams()
@@ -176,21 +152,21 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
       {/* Page header */}
       <div className="flex items-center justify-between gap-3 mb-4 md:mb-5">
         <h1 className="font-display font-extrabold text-xl md:text-3xl text-espresso truncate">
-          {isShelter ? '🐾 Všechna zvířata' : '🦉 Všichni pacienti'}
+          🐾 Všechna zvířata
         </h1>
         <Link href="/admin/animals/new" className="shrink-0">
           {/* Mobile: ikonové tlačítko */}
           <span
             className="md:hidden flex items-center justify-center w-10 h-10 rounded-full text-white font-bold text-xl shadow-sm"
             style={{ backgroundColor: activeColor }}
-            aria-label={isShelter ? 'Přidat zvíře' : 'Nový pacient'}
+            aria-label="Přidat zvíře"
           >
             +
           </span>
           {/* Desktop: plné tlačítko */}
           <span className="hidden md:inline-block">
-            <Button variant={isShelter ? 'primary' : 'rescue'} size="sm">
-              + {isShelter ? 'Přidat' : 'Nový pacient'}
+            <Button variant="primary" size="sm">
+              + Přidat
             </Button>
           </span>
         </Link>
@@ -230,13 +206,12 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
       <AdminAnimalSearch
         currentQ={q ?? ''}
         currentStatus={filterStatus ?? ''}
-        isShelter={isShelter}
         institutionName={institution.name}
       />
 
       {items.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-[#F0EDE8]">
-          <div className="text-5xl mb-4">{isShelter ? '🐾' : '🦉'}</div>
+          <div className="text-5xl mb-4">🐾</div>
           <h3 className="font-display font-bold text-xl text-espresso mb-2">
             {q || filterStatus ? 'Žádné výsledky' : 'Zatím žádné záznamy'}
           </h3>
@@ -251,30 +226,17 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
           {/* ── Mobile cards ── */}
           <div className="md:hidden space-y-2.5">
             {items.map((item: any) => {
-              const rawStatus = isShelter ? item.adoption_status : item.status
-              const statusVal = isShelter
-                ? effectiveStatus(rawStatus, item.in_quarantine, item.quarantine_end ?? null)
-                : rawStatus
-              const age = isShelter
-                ? computeAge(item.birth_year, item.birth_month)
-                : item.estimated_age ?? null
+              const statusVal = effectiveStatus(item.adoption_status, item.in_quarantine, item.quarantine_end ?? null)
+              const age = computeAge(item.birth_year, item.birth_month)
               const primaryPhoto = Array.isArray(item.photos) && item.photos.length > 0
                 ? (typeof item.photos[0] === 'string' ? item.photos[0] : item.photos[0]?.url)
                 : null
-              const metaParts = [
-                item.species?.name_cs,
-                age,
-                isShelter ? item.breed : item.case_number,
-              ].filter(Boolean)
-              const qDays = isShelter
-                ? computeQuarantineDays(item.quarantine_start ?? null, item.quarantine_end ?? null)
-                : null
+              const metaParts = [item.species?.name_cs, age, item.breed].filter(Boolean)
+              const qDays = computeQuarantineDays(item.quarantine_start ?? null, item.quarantine_end ?? null)
               const hasPhoto = Array.isArray(item.photos) && item.photos.length > 0
               const warnings: string[] = []
-              if (isShelter) {
-                if (!hasPhoto) warnings.push('Bez fotky')
-                if (!item.chip_number) warnings.push('Bez čipu')
-              }
+              if (!hasPhoto) warnings.push('Bez fotky')
+              if (!item.chip_number) warnings.push('Bez čipu')
               return (
                 <Link
                   key={item.id}
@@ -285,22 +247,22 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                   <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0 bg-[#F5E6D3] flex items-center justify-center text-2xl">
                     {primaryPhoto
                       ? <img src={primaryPhoto} alt={item.name ?? ''} className="w-full h-full object-cover" />
-                      : (item.species?.icon ?? (isShelter ? '🐾' : '🦉'))
+                      : (item.species?.icon ?? '🐾')
                     }
                   </div>
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-1">
-                      {isShelter && item.urgent && <span aria-label="Urgentní" title="Urgentní">🆘</span>}
-                      {isShelter && item.in_foster && <span aria-label="Foster" title="Foster">🏠</span>}
-                      {isShelter && item.published === true && (
+                      {item.urgent && <span aria-label="Urgentní" title="Urgentní">🆘</span>}
+                      {item.in_foster && <span aria-label="Foster" title="Foster">🏠</span>}
+                      {item.published === true && (
                         <span title="Viditelné na webu" className="inline-block w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
                       )}
-                      {isShelter && item.published === false && (
+                      {item.published === false && (
                         <span title="Skryté (draft)" className="inline-block w-2 h-2 rounded-full bg-[#D5CFC8] flex-shrink-0" />
                       )}
                       <span className="font-display font-bold text-[15px] text-espresso truncate">
-                        {item.name ?? item.case_number ?? '—'}
+                        {item.name ?? '—'}
                       </span>
                     </div>
                     <div className="text-xs text-[#8B6550] font-semibold truncate mb-1.5">
@@ -351,7 +313,7 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
               <thead>
                 <tr className="border-b border-[#F0EDE8] bg-[#FDFAF7]">
                   <th className="text-left px-5 py-3 font-body text-[11px] font-bold text-[#8B6550] uppercase tracking-wider">
-                    {isShelter ? 'Zvíře' : 'Pacient'}
+                    Zvíře
                   </th>
                   <th className="text-left px-5 py-3 font-body text-[11px] font-bold text-[#8B6550] uppercase tracking-wider">
                     Druh / Věk
@@ -367,25 +329,16 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
               </thead>
               <tbody>
                 {items.map((item: any) => {
-                  const rawStatusDesk = isShelter ? item.adoption_status : item.status
-                  const statusVal = isShelter
-                    ? effectiveStatus(rawStatusDesk, item.in_quarantine, item.quarantine_end ?? null)
-                    : rawStatusDesk
-                  const age = isShelter
-                    ? computeAge(item.birth_year, item.birth_month)
-                    : item.estimated_age ?? null
+                  const statusVal = effectiveStatus(item.adoption_status, item.in_quarantine, item.quarantine_end ?? null)
+                  const age = computeAge(item.birth_year, item.birth_month)
                   const primaryPhotoDesk = Array.isArray(item.photos) && item.photos.length > 0
                     ? (typeof item.photos[0] === 'string' ? item.photos[0] : item.photos[0]?.url)
                     : null
-                  const qDaysDesk = isShelter
-                    ? computeQuarantineDays(item.quarantine_start ?? null, item.quarantine_end ?? null)
-                    : null
+                  const qDaysDesk = computeQuarantineDays(item.quarantine_start ?? null, item.quarantine_end ?? null)
                   const hasPhotoDesk = Array.isArray(item.photos) && item.photos.length > 0
                   const warningsDesk: string[] = []
-                  if (isShelter) {
-                    if (!hasPhotoDesk) warningsDesk.push('Bez fotky')
-                    if (!item.chip_number) warningsDesk.push('Bez čipu')
-                  }
+                  if (!hasPhotoDesk) warningsDesk.push('Bez fotky')
+                  if (!item.chip_number) warningsDesk.push('Bez čipu')
                   return (
                     <tr
                       key={item.id}
@@ -397,29 +350,26 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
                           <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-[#F5E6D3] flex items-center justify-center text-lg">
                             {primaryPhotoDesk
                               ? <img src={primaryPhotoDesk} alt={item.name ?? ''} className="w-full h-full object-cover" />
-                              : (item.species?.icon ?? (isShelter ? '🐾' : '🦉'))
+                              : (item.species?.icon ?? '🐾')
                             }
                           </div>
                           <div>
                             <div className="flex items-center gap-1.5">
-                              {isShelter && item.urgent   && <span className="text-xs">🆘</span>}
-                              {item.in_quarantine          && <span className="text-xs" title="Karanténa">🚧</span>}
-                              {isShelter && item.in_foster && <span className="text-xs" title="Foster">🏠</span>}
-                              {isShelter && item.published === true && (
+                              {item.urgent      && <span className="text-xs">🆘</span>}
+                              {item.in_quarantine && <span className="text-xs" title="Karanténa">🚧</span>}
+                              {item.in_foster    && <span className="text-xs" title="Foster">🏠</span>}
+                              {item.published === true && (
                                 <span title="Viditelné na webu" className="inline-block w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
                               )}
-                              {isShelter && item.published === false && (
+                              {item.published === false && (
                                 <span title="Skryté (draft)" className="inline-block w-2 h-2 rounded-full bg-[#D5CFC8] flex-shrink-0" />
                               )}
                               <span className="font-display font-bold text-sm text-[#2C1810]">
-                                {item.name ?? item.case_number ?? '—'}
+                                {item.name ?? '—'}
                               </span>
                             </div>
-                            {isShelter && item.breed && (
+                            {item.breed && (
                               <div className="text-xs text-[#8B6550] mt-0.5">{item.breed}</div>
-                            )}
-                            {!isShelter && item.name && item.case_number && (
-                              <div className="text-xs text-[#8B6550] mt-0.5">{item.case_number}</div>
                             )}
                             {warningsDesk.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
@@ -500,7 +450,7 @@ export default async function AdminAnimalsPage({ searchParams }: PageProps) {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-5 py-4 border-t border-[#F0EDE8]">
                 <span className="text-xs font-semibold text-[#8B6550]">
-                  Zobrazeno {offset + 1}–{Math.min(offset + PAGE_SIZE, filteredCount)} z {filteredCount} {isShelter ? 'zvířat' : 'případů'}
+                  Zobrazeno {offset + 1}–{Math.min(offset + PAGE_SIZE, filteredCount)} z {filteredCount} zvířat
                 </span>
                 <div className="flex items-center gap-1">
                   <Link

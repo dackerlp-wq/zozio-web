@@ -14,13 +14,6 @@
   --shelter-bg:     #FDEAE6;
   --shelter-dark:   #C44B33;
 
-  --rescue:         #2E9E8F;
-  --rescue-bg:      #E4F7F5;
-  --rescue-dark:    #1F7268;
-  --rescue-light:   #A8E6DF;
-  --rescue-tag-bg:  #E1F5EE;
-  --rescue-tag-text:#0F6E56;
-
   --sand:           #F5E6D3;
   --cream:          #FDF8F2;
   --warm:           #FFFCF8;
@@ -60,12 +53,6 @@
   --color-shelter:          var(--shelter);
   --color-shelter-bg:       var(--shelter-bg);
   --color-shelter-dark:     var(--shelter-dark);
-  --color-rescue:           var(--rescue);
-  --color-rescue-bg:        var(--rescue-bg);
-  --color-rescue-dark:      var(--rescue-dark);
-  --color-rescue-light:     var(--rescue-light);
-  --color-rescue-tag-bg:    var(--rescue-tag-bg);
-  --color-rescue-tag-text:  var(--rescue-tag-text);
   --color-sand:             var(--sand);
   --color-cream:            var(--cream);
   --color-warm:             var(--warm);

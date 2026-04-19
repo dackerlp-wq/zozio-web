@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ZozLogo } from '@/components/ui/ZozLogo'
 import { Button } from '@/components/ui/Button'
 
-type Mode = 'visitor' | 'shelter' | 'rescue_station'
+type Mode = 'visitor' | 'shelter'
 
 const inputCls = 'w-full px-4 py-3 border-2 border-border rounded-xl text-sm outline-none focus:border-coral transition-colors bg-white text-text-primary'
 
@@ -100,11 +100,10 @@ function RegisterForm() {
       <h1 className="font-display font-extrabold text-2xl text-text-primary mb-6">Registrace</h1>
 
       {/* Přepínač typu */}
-      <div className="grid grid-cols-3 gap-2 mb-6 p-1 rounded-xl bg-sand">
+      <div className="grid grid-cols-2 gap-2 mb-6 p-1 rounded-xl bg-sand">
         {([
-          { id: 'visitor',        label: '👤 Návštěvník' },
-          { id: 'shelter',        label: '🏠 Útulek' },
-          { id: 'rescue_station', label: '🚑 Záchranná' },
+          { id: 'visitor', label: '👤 Návštěvník' },
+          { id: 'shelter', label: '🏠 Útulek' },
         ] as { id: Mode; label: string }[]).map(opt => (
           <button key={opt.id} onClick={() => setMode(opt.id)}
             className={`py-2 px-1 rounded-lg text-xs font-bold cursor-pointer border-none transition-all
@@ -119,10 +118,9 @@ function RegisterForm() {
 
       {/* Popis */}
       <div className={`mb-5 px-3 py-2.5 rounded-xl text-xs
-        ${mode === 'visitor' ? 'bg-sand text-text-body' : mode === 'shelter' ? 'bg-coral-tag-bg text-coral-tag-text' : 'bg-rescue-tag-bg text-rescue-tag-text'}`}>
-        {mode === 'visitor'        && 'Sleduj oblíbená zvířata, posílej žádosti o adopci a stávej se dobrovolníkem.'}
-        {mode === 'shelter'        && 'Registruj útulek, spravuj zvířata, přijímej adopční žádosti a vytvářej sbírky.'}
-        {mode === 'rescue_station' && 'Registruj záchrannou stanici, eviduj záchranné případy a přijímej dary.'}
+        ${mode === 'visitor' ? 'bg-sand text-text-body' : 'bg-coral-tag-bg text-coral-tag-text'}`}>
+        {mode === 'visitor' && 'Sleduj oblíbená zvířata, posílej žádosti o adopci a stávej se dobrovolníkem.'}
+        {mode === 'shelter' && 'Registruj útulek, spravuj zvířata, přijímej adopční žádosti a vytvářej sbírky.'}
       </div>
 
       <div className="space-y-4">

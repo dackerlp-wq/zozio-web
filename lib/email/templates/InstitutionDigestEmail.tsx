@@ -2,7 +2,7 @@ import * as React from 'react'
 import { BaseLayout } from './BaseLayout'
 import {
   EmailShell, EmailHeader, EmailBody, EmailFooter,
-  Greeting, BodyText, InfoCard, CtaButton, HighlightBox, Divider, colors,
+  Greeting, BodyText, CtaButton, HighlightBox, Divider, colors,
 } from './components'
 
 interface Animal {
@@ -26,15 +26,14 @@ interface Fundraiser {
 
 interface InstitutionDigestEmailProps {
   institutionName: string
-  isShelter: boolean
   period: 'week' | 'month'
   periodLabel: string // e.g. "tento týden" or "tento měsíc"
-  // Animals / rescue cases
+  // Animals
   newAnimals: Animal[]
   // Stats
-  statReceived: number   // new animals/cases received
-  statAdoptedOrReleased: number // adopted (shelter) or released (rescue)
-  statAvailableOrTreatment: number // available (shelter) or in treatment (rescue)
+  statReceived: number
+  statAdoptedOrReleased: number
+  statAvailableOrTreatment: number
   // Articles
   newArticles: Article[]
   // Fundraisers
@@ -45,22 +44,19 @@ interface InstitutionDigestEmailProps {
 }
 
 export function InstitutionDigestEmail({
-  institutionName, isShelter, period, periodLabel,
+  institutionName, period, periodLabel,
   newAnimals, statReceived, statAdoptedOrReleased, statAvailableOrTreatment,
   newArticles, activeFundraisers, institutionUrl, unsubscribeUrl,
 }: InstitutionDigestEmailProps) {
-  const color = isShelter ? colors.coral : colors.rescue
-  const colorBg = isShelter ? colors.shelterBg : colors.rescueBg
-  const headerColor = isShelter ? 'coral' : 'rescue'
-  const statLabel2 = isShelter ? 'adoptováno' : 'propuštěno'
-  const statLabel3 = isShelter ? 'čeká na adopci' : 'v léčbě'
+  const color = colors.coral
+  const colorBg = colors.shelterBg
 
   return (
     <BaseLayout previewText={`Novinky z ${institutionName} za ${periodLabel}`}>
       <EmailShell>
         <EmailHeader
-          color={headerColor}
-          emoji={isShelter ? '🏠' : '🚑'}
+          color="coral"
+          emoji="🏠"
           title={`Novinky z\n${institutionName}`}
           subtitle={`Přehled za ${periodLabel}`}
         />
@@ -75,9 +71,9 @@ export function InstitutionDigestEmail({
             <tbody>
               <tr>
                 {[
-                  { num: statReceived, label: isShelter ? 'nových zvířat' : 'nových případů', color },
-                  { num: statAdoptedOrReleased, label: statLabel2, color: colors.green },
-                  { num: statAvailableOrTreatment, label: statLabel3, color: colors.amber },
+                  { num: statReceived, label: 'nových zvířat', color },
+                  { num: statAdoptedOrReleased, label: 'adoptováno', color: colors.green },
+                  { num: statAvailableOrTreatment, label: 'čeká na adopci', color: colors.amber },
                 ].map((stat, i) => (
                   <td key={i} style={{ width: '33%', padding: i === 1 ? '0 6px' : '0' }}>
                     <div style={{ backgroundColor: '#fff', border: `1.5px solid ${colors.border}`, borderRadius: 14, padding: '18px 12px', textAlign: 'center' }}>
@@ -94,7 +90,7 @@ export function InstitutionDigestEmail({
           {newAnimals.length > 0 && (
             <>
               <Divider />
-              <BodyText><strong>{isShelter ? '🐾 Nová zvířata k adopci' : '🆕 Nové záchranné případy'}</strong></BodyText>
+              <BodyText><strong>🐾 Nová zvířata k adopci</strong></BodyText>
               <div style={{ backgroundColor: '#fff', border: `1.5px solid ${colors.border}`, borderRadius: 16, padding: '16px 20px', margin: '12px 0' }}>
                 {newAnimals.slice(0, 5).map((a, i) => (
                   <a key={i} href={a.url ?? institutionUrl} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: i > 0 ? `1px solid ${colors.border}` : 'none', textDecoration: 'none' }}>
@@ -152,10 +148,10 @@ export function InstitutionDigestEmail({
           )}
 
           <Divider />
-          <HighlightBox color={isShelter ? 'coral' : 'rescue'}>
+          <HighlightBox color="coral">
             Podpořte nás sdílením — každé sdílení pomáhá zvířatům najít domov. 🐾
           </HighlightBox>
-          <CtaButton href={institutionUrl} color={isShelter ? 'coral' : 'rescue'}>
+          <CtaButton href={institutionUrl} color="coral">
             Navštívit {institutionName}
           </CtaButton>
         </EmailBody>

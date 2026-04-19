@@ -11,13 +11,12 @@ export const revalidate = 300
 
 export const metadata: Metadata = {
   title: 'Zozio — Najdi svého nového přítele',
-  description: 'Adoptuj zvíře z útulku nebo podpoř záchrannou stanici. Stovky zvířat čekají na nový domov po celé ČR a SR.',
+  description: 'Adoptuj zvíře z útulku. Stovky zvířat čekají na nový domov po celé ČR a SR.',
 }
 
 export default async function HomePage() {
-  const [animals, rescueCases, fundraisers, stats, articles, pinnedArticle, species] = await Promise.all([
+  const [animals, fundraisers, stats, articles, pinnedArticle, species] = await Promise.all([
     getFeaturedAnimals(),
-    getFeaturedRescueCases(),
     getActiveFundraisers(),
     getStats(),
     getLatestArticles(),
@@ -30,7 +29,7 @@ export default async function HomePage() {
       <HeroSection animals={animals} species={species} />
       <StatsStrip stats={stats} />
       <AnimalsSection animals={animals} />
-      <RescueSection cases={rescueCases} fundraisers={fundraisers} />
+      <FundraisersSection fundraisers={fundraisers} />
       <StoriesSection articles={articles} pinnedArticle={pinnedArticle} />
       <InstitutionsCta />
     </main>
@@ -67,7 +66,7 @@ function HeroSection({ animals, species }: { animals: any[]; species: any[] }) {
 
             <p className="text-base md:text-xl leading-relaxed text-brown-mid mb-7 max-w-[480px]"
               style={{ animation: 'fadeUp .5s ease .1s both' }}>
-              Adoptuj zvíře z útulku nebo podpoř záchrannou stanici.
+              Adoptuj zvíře z útulku.
               Stovky zvířat čekají na nový domov po celé ČR a SR.
             </p>
 
@@ -77,9 +76,9 @@ function HeroSection({ animals, species }: { animals: any[]; species: any[] }) {
                   🐾 Najít zvíře k adopci
                 </Button>
               </Link>
-              <Link href="/rescue">
-                <Button variant="rescue" size="sm" className="whitespace-nowrap md:text-lg md:px-10 md:py-[17px]">
-                  🦉 Záchranné stanice
+              <Link href="/institutions">
+                <Button variant="sand" size="sm" className="whitespace-nowrap md:text-lg md:px-10 md:py-[17px]">
+                  🏠 Útulky
                 </Button>
               </Link>
             </div>
@@ -198,7 +197,7 @@ function HeroSection({ animals, species }: { animals: any[]; species: any[] }) {
 /* ── STATS ── */
 function StatsStrip({ stats }: { stats: { availableAnimals: number; adoptedTotal: number; institutionCount: number } }) {
   const items = [
-    { num: stats.institutionCount > 0 ? `${stats.institutionCount}+` : '10+', label: 'Útulků a stanic', icon: '🏠' },
+    { num: stats.institutionCount > 0 ? `${stats.institutionCount}+` : '10+', label: 'Útulků', icon: '🏠' },
     { num: stats.availableAnimals > 0 ? stats.availableAnimals.toString() : '50+', label: 'Čeká na domov', icon: '🐾' },
     { num: stats.adoptedTotal > 0 ? `${stats.adoptedTotal}+` : '100+', label: 'Úspěšných adopcí', icon: '💚' },
     { num: 'Zdarma', label: 'Základní plán pro všechny', icon: '✨' },
@@ -292,99 +291,55 @@ function AnimalCard({ animal }: { animal: any }) {
   )
 }
 
-/* ── ZÁCHRANNÉ STANICE + SBÍRKY ── */
-function RescueSection({ cases, fundraisers }: { cases: any[], fundraisers: any[] }) {
+/* ── SBÍRKY ── */
+function FundraisersSection({ fundraisers }: { fundraisers: any[] }) {
+  if (fundraisers.length === 0) return null
   return (
     <section className="py-12 md:py-20 px-4 md:px-12" style={{ background: '#F5F0EB' }}>
       <div className="max-w-[1200px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16">
-
-          {/* Záchranné případy */}
-          <div>
-            <span className="inline-flex items-center gap-1.5 bg-rescue-bg text-rescue-dark font-body text-xs font-bold px-3 py-1.5 rounded-pill uppercase tracking-wider mb-3">
-              🦉 Záchranné stanice
-            </span>
-            <h2 className="font-display font-extrabold text-2xl md:text-3xl text-espresso mb-5 leading-tight">
-              Volně žijící zvířata<br />potřebují tvoji pomoc
-            </h2>
-
-            <div className="space-y-3 mb-6">
-              {cases.slice(0, 3).map(c => (
-                <Link key={c.id} href={`/rescue/${c.id}`} className="no-underline">
-                  <div className="flex items-center gap-4 bg-white rounded-2xl p-4 hover:shadow-md hover:-translate-y-0.5 transition-all border border-[#E8E3DD]">
-                    <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-rescue-bg flex items-center justify-center text-2xl flex-shrink-0">
-                      {c.primary_photo ? (
-                        <Image src={c.primary_photo} alt={c.name ?? ''} fill className="object-cover" sizes="56px" />
-                      ) : (
-                        <span>{c.species?.icon ?? '🐾'}</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-display font-bold text-sm text-espresso truncate">{c.name ?? c.case_number}</div>
-                      <div className="text-xs text-gray">{c.species?.name_cs} · {c.institution?.city}</div>
-                      {c.cause_of_injury && (
-                        <div className="text-xs text-brown-mid mt-0.5 line-clamp-1">{c.cause_of_injury}</div>
-                      )}
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 bg-rescue-bg text-rescue-dark">
-                      {c.status === 'treatment' ? '🩺 Léčba' : c.status === 'rehabilitation' ? '💪 Rehab' : '🚑 Příjem'}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            <Link href="/rescue">
-              <Button variant="ghost-rescue">Všechny záchranné stanice →</Button>
-            </Link>
-          </div>
-
-          {/* Sbírky */}
+        <div className="flex items-end justify-between mb-6 md:mb-8">
           <div>
             <span className="inline-flex items-center gap-1.5 bg-amber-light text-warning font-body text-xs font-bold px-3 py-1.5 rounded-pill uppercase tracking-wider mb-3">
               💛 Aktivní sbírky
             </span>
-            <h2 className="font-display font-extrabold text-2xl md:text-3xl text-espresso mb-5 leading-tight">
-              Přispěj útulku<br />nebo záchranné stanici
+            <h2 className="font-display font-extrabold text-2xl md:text-3xl text-espresso leading-tight">
+              Přispěj útulku
             </h2>
-
-            <div className="space-y-3 mb-6">
-              {fundraisers.slice(0, 3).map(f => {
-                const percent  = Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100)
-                const isShelter = f.institution?.type === 'shelter'
-                return (
-                  <Link key={f.id} href={`/fundraisers/${f.id}`} className="no-underline block">
-                    <div className="bg-white rounded-2xl p-4 border border-[#E8E3DD] hover:shadow-md hover:-translate-y-0.5 transition-all">
-                      <div className="flex items-start justify-between mb-2 gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-display font-bold text-sm text-espresso leading-tight truncate">{f.title}</div>
-                          <div className="text-xs text-gray mt-0.5">{f.institution?.name}</div>
-                        </div>
-                        <span className="text-lg flex-shrink-0">
-                          {isShelter ? '🏠' : '🦉'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs mb-1.5">
-                        <span className="font-bold text-espresso">{f.current_amount.toLocaleString('cs-CZ')} Kč</span>
-                        <span className="text-gray">{percent}%</span>
-                      </div>
-                      <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#F0EDE8' }}>
-                        <div className="h-full rounded-full transition-all" style={{
-                          width: `${percent}%`,
-                          background: isShelter ? '#E8634A' : '#2E9E8F',
-                        }} />
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-
-            <Link href="/fundraisers">
-              <Button variant="amber">💛 Zobrazit všechny sbírky</Button>
-            </Link>
           </div>
+          <Link href="/fundraisers" className="hidden md:block flex-shrink-0 ml-4">
+            <Button variant="ghost">Zobrazit vše →</Button>
+          </Link>
         </div>
+
+        <div className="space-y-3 mb-6">
+          {fundraisers.slice(0, 3).map(f => {
+            const percent = Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100)
+            return (
+              <Link key={f.id} href={`/fundraisers/${f.id}`} className="no-underline block">
+                <div className="bg-white rounded-2xl p-4 border border-[#E8E3DD] hover:shadow-md hover:-translate-y-0.5 transition-all">
+                  <div className="flex items-start justify-between mb-2 gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-display font-bold text-sm text-espresso leading-tight truncate">{f.title}</div>
+                      <div className="text-xs text-gray mt-0.5">{f.institution?.name}</div>
+                    </div>
+                    <span className="text-lg flex-shrink-0">🏠</span>
+                  </div>
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="font-bold text-espresso">{f.current_amount.toLocaleString('cs-CZ')} Kč</span>
+                    <span className="text-gray">{percent}%</span>
+                  </div>
+                  <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: '#F0EDE8' }}>
+                    <div className="h-full rounded-full transition-all" style={{ width: `${percent}%`, background: '#E8634A' }} />
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+
+        <Link href="/fundraisers">
+          <Button variant="amber">💛 Zobrazit všechny sbírky</Button>
+        </Link>
       </div>
     </section>
   )
@@ -512,12 +467,12 @@ function InstitutionsCta() {
     <section className="py-12 md:py-16 px-4 md:px-12 bg-espresso">
       <div className="max-w-[1100px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
         <div>
-          <div className="font-display font-extrabold text-xs text-amber uppercase tracking-wider mb-2">Pro útulky a záchranné stanice</div>
+          <div className="font-display font-extrabold text-xs text-amber uppercase tracking-wider mb-2">Pro útulky</div>
           <h2 className="font-display font-extrabold text-2xl md:text-3xl text-white leading-tight">
-            Spravujte svou instituci<br className="hidden md:block" /> online přes Zozio
+            Spravujte svůj útulek<br className="hidden md:block" /> online přes Zozio
           </h2>
           <p className="text-sm text-gray-light mt-2 max-w-[400px]">
-            Adopce, záchranné případy, sbírky, dobrovolníci — vše na jednom místě. Začněte zdarma.
+            Adopce, sbírky, dobrovolníci — vše na jednom místě. Začněte zdarma.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
@@ -526,7 +481,7 @@ function InstitutionsCta() {
           </Link>
           <Link href="/auth/register" className="w-full sm:w-auto">
             <button className="w-full inline-flex items-center justify-center px-8 py-[17px] rounded-pill font-display font-bold text-base text-white border-2 border-white/30 hover:bg-white/10 transition-all cursor-pointer">
-              Registrovat instituci →
+              Registrovat útulek →
             </button>
           </Link>
         </div>
@@ -546,18 +501,6 @@ async function getFeaturedAnimals() {
     .order('urgent', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(8)
-  return data ?? []
-}
-
-async function getFeaturedRescueCases() {
-  const supabase = createServiceClient()
-  const { data } = await supabase
-    .from('rescue_cases')
-    .select('id, name, case_number, species:animal_species(name_cs,icon), institution:institutions(name,city), primary_photo, status, cause_of_injury')
-    .eq('published', true)
-    .in('status', ['intake', 'treatment', 'rehabilitation'])
-    .order('created_at', { ascending: false })
-    .limit(3)
   return data ?? []
 }
 
@@ -613,6 +556,7 @@ async function getSpecies() {
   const { data } = await supabase
     .from('animal_species')
     .select('id, name_cs, icon')
+    .eq('category', 'domestic')
     .order('name_cs')
   return data ?? []
 }

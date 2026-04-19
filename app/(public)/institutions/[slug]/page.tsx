@@ -32,8 +32,7 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
   if (!inst) notFound()
 
   const i         = inst as any
-  const isShelter = i.type === 'shelter'
-  const activeTab = tab ?? (isShelter ? 'animals' : 'rescue')
+  const activeTab = tab ?? 'animals'
 
   // Auth stav pro tlačítka
   const supabase = await createClient()
@@ -41,9 +40,8 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
 
   const service = createServiceClient()
 
-  const [animals, rescueCases, fundraisers, articles, volunteers, favRow, volunteerRow] = await Promise.all([
-    isShelter ? getAnimals(i.id)      : Promise.resolve([]),
-    !isShelter ? getRescueCases(i.id) : Promise.resolve([]),
+  const [animals, fundraisers, articles, volunteers, favRow, volunteerRow] = await Promise.all([
+    getAnimals(i.id),
     getFundraisers(i.id),
     getArticles(i.id),
     getVolunteerCount(i.id),
@@ -58,14 +56,11 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
   ])
 
   const tabs = [
-    ...(isShelter
-      ? [{ id: 'animals',    label: 'Zvířata',          count: (animals as any[]).length }]
-      : [{ id: 'rescue',     label: 'Záchranné případy', count: (rescueCases as any[]).length }]
-    ),
-    { id: 'fundraisers', label: 'Sbírky',    count: (fundraisers as any[]).length },
-    { id: 'stories',     label: 'Příběhy',   count: (articles as any[]).length },
-    { id: 'about',       label: 'O nás',     count: null },
-    { id: 'contact',     label: 'Kontakt',   count: null },
+    { id: 'animals',    label: 'Zvířata',  count: (animals as any[]).length },
+    { id: 'fundraisers', label: 'Sbírky',  count: (fundraisers as any[]).length },
+    { id: 'stories',     label: 'Příběhy', count: (articles as any[]).length },
+    { id: 'about',       label: 'O nás',   count: null },
+    { id: 'contact',     label: 'Kontakt', count: null },
   ]
 
   return (
@@ -73,9 +68,7 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
 
       {/* ── Cover ── */}
       <div className="relative h-44 md:h-60 overflow-hidden"
-        style={{ background: isShelter
-          ? 'linear-gradient(135deg, var(--espresso) 0%, var(--coral) 100%)'
-          : 'linear-gradient(135deg, #1C2E28 0%, var(--rescue) 100%)' }}>
+        style={{ background: 'linear-gradient(135deg, var(--espresso) 0%, var(--coral) 100%)' }}>
         {i.cover_url && (
           <Image src={i.cover_url} alt="" role="presentation" fill className="object-cover opacity-50" />
         )}
@@ -90,19 +83,17 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
             {/* Levá část — logo + název */}
             <div className="flex items-end gap-4 min-w-0">
               <div className="w-16 h-16 md:w-24 md:h-24 rounded-lg border-4 border-white flex-shrink-0 overflow-hidden flex items-center justify-center text-3xl shadow-lg"
-                style={{ background: isShelter ? '#FAECE7' : '#E1F5EE' }}>
+                style={{ background: '#FAECE7' }}>
                 {i.logo_url
                   ? <Image src={i.logo_url} alt={i.name} width={96} height={96} className="object-cover" />
-                  : <span>{isShelter ? '🏠' : '🚑'}</span>
+                  : <span>🏠</span>
                 }
               </div>
               <div className="pb-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
-                    style={isShelter
-                      ? { background: 'rgba(232,99,74,0.25)', color: '#FFD4C2', border: '1px solid rgba(232,99,74,0.35)' }
-                      : { background: 'rgba(46,158,143,0.25)', color: '#A8F0E4', border: '1px solid rgba(46,158,143,0.35)' }}>
-                    {isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
+                    style={{ background: 'rgba(232,99,74,0.25)', color: '#FFD4C2', border: '1px solid rgba(232,99,74,0.35)' }}>
+                    🏠 Útulek
                   </span>
                   {i.approval_status === 'approved' && (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
@@ -142,14 +133,10 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
         <div className="max-w-[1100px] mx-auto px-5 md:px-10">
           <dl className="grid grid-cols-4">
             {[
-              {
-                num:   isShelter ? (animals as any[]).length : (rescueCases as any[]).length,
-                label: isShelter ? 'zvířat' : 'záchranných případů',
-                color: isShelter ? 'var(--coral)' : 'var(--rescue)',
-              },
-              { num: (fundraisers as any[]).filter((f: any) => f.active).length, label: 'aktivních sbírek', color: 'var(--amber)' },
-              { num: volunteers, label: 'dobrovolníků', color: 'var(--text-muted)' },
-              { num: (articles as any[]).length, label: 'příběhů', color: 'var(--text-muted)' },
+              { num: (animals as any[]).length,                                      label: 'zvířat',          color: 'var(--coral)' },
+              { num: (fundraisers as any[]).filter((f: any) => f.active).length,     label: 'aktivních sbírek', color: 'var(--amber)' },
+              { num: volunteers,                                                      label: 'dobrovolníků',    color: 'var(--text-muted)' },
+              { num: (articles as any[]).length,                                      label: 'příběhů',         color: 'var(--text-muted)' },
             ].map(({ num, label, color }) => (
               <div key={label} className="px-6 py-4 border-r border-border last:border-r-0 first:pl-0">
                 <div className="font-display font-extrabold text-2xl" style={{ color }}>{num}</div>
@@ -167,9 +154,7 @@ export default async function InstitutionProfilePage({ params, searchParams }: P
           activeTab={activeTab}
           slug={slug}
           institution={i}
-          isShelter={isShelter}
           animals={animals as any[]}
-          rescueCases={rescueCases as any[]}
           fundraisers={fundraisers as any[]}
           articles={articles as any[]}
         />
@@ -202,18 +187,6 @@ async function getAnimals(id: string) {
     .in('adoption_status', ['available', 'reserved', 'foster', 'conditional'])
     .or(`quarantine_end.is.null,quarantine_end.lt.${today},adoption_status.eq.conditional`)
     .order('urgent', { ascending: false })
-    .order('created_at', { ascending: false })
-  return data ?? []
-}
-
-async function getRescueCases(id: string) {
-  const supabase = createServiceClient()
-  const { data } = await supabase
-    .from('rescue_cases')
-    .select('id, name, case_number, status, intake_date, cause_of_injury, primary_photo, species:animal_species(name_cs,icon)')
-    .eq('institution_id', id)
-    .eq('published', true)
-    .not('status', 'in', '("deceased")')
     .order('created_at', { ascending: false })
   return data ?? []
 }

@@ -23,8 +23,6 @@ export default async function SuperadminPage() {
 
   const pending  = institutions.filter(i => i.approval_status === 'pending').length
   const approved = institutions.filter(i => i.approval_status === 'approved').length
-  const shelters = institutions.filter(i => i.type === 'shelter').length
-  const rescues  = institutions.filter(i => i.type === 'rescue_station').length
   const paying   = institutions.filter(i => i.plan !== 'free').length
 
   return (
@@ -67,7 +65,7 @@ export default async function SuperadminPage() {
         <div className="grid grid-cols-4 gap-5 mb-10">
           <SuperStat icon="🏢" value={approved} label="Schválených institucí" sub={`${pending} čeká`} color="bg-success-bg text-success" href="/superadmin/institutions" />
           <SuperStat icon="👥" value={totalUsers} label="Uživatelů" sub="celkem registrovaných" color="bg-rescue-bg text-rescue-dark" href="/superadmin/users" />
-          <SuperStat icon="🐾" value={totalAnimals} label="Zvířat v systému" sub={`${shelters} útulků · ${rescues} stanic`} color="bg-coral-light text-coral-dark" href="/superadmin/institutions" />
+          <SuperStat icon="🐾" value={totalAnimals} label="Zvířat v systému" sub={`${approved} útulků`} color="bg-coral-light text-coral-dark" href="/superadmin/institutions" />
           <SuperStat icon="💰" value={paying} label="Platících institucí" sub={`z ${institutions.length} celkem`} color="bg-amber-light text-warning" href="/superadmin/institutions" />
         </div>
 

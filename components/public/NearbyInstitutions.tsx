@@ -156,7 +156,7 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
       {sorted.length === 0 ? (
         <div className="text-center py-20">
           <div className="text-5xl mb-4">🏠</div>
-          <p className="font-bold text-xl text-text-primary mb-2">Žádné instituce nenalezeny</p>
+          <p className="font-bold text-xl text-text-primary mb-2">Žádné útulky nenalezeny</p>
           <p className="text-sm text-text-muted">Zkus jiné hledání nebo filtr.</p>
         </div>
       ) : (
@@ -172,7 +172,7 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
               <button
                 onClick={() => setShowAll(!showAll)}
                 className="px-6 py-2.5 rounded-xl font-bold text-sm border cursor-pointer hover:opacity-80 transition-all border-[#E0DDD8] text-text-body bg-white">
-                {showAll ? 'Zobrazit méně ↑' : `Zobrazit všech ${sorted.length} institucí ↓`}
+                {showAll ? 'Zobrazit méně ↑' : `Zobrazit všech ${sorted.length} útulků ↓`}
               </button>
             </div>
           )}
@@ -181,22 +181,15 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
 
       {/* CTA pro registraci */}
       <div className="mt-14 p-6 rounded-2xl text-center border border-dashed border-[#E0DDD8] bg-warm-hover">
-        <p className="font-bold text-text-primary mb-1">Chybí zde vaše instituce?</p>
+        <p className="font-bold text-text-primary mb-1">Chybí zde váš útulek?</p>
         <p className="text-sm mb-4 text-text-muted">
           Registrace je zdarma a trvá 5 minut.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link href="/auth/register?type=shelter">
-            <button className="px-5 py-2.5 rounded-xl font-bold text-sm text-white border-none cursor-pointer hover:opacity-90 transition-all bg-coral">
-              Registrovat útulek →
-            </button>
-          </Link>
-          <Link href="/auth/register?type=rescue_station">
-            <button className="px-5 py-2.5 rounded-xl font-bold text-sm cursor-pointer border hover:opacity-80 transition-all bg-white text-text-primary border-[#E0DDD8]">
-              Záchrannou stanici →
-            </button>
-          </Link>
-        </div>
+        <Link href="/auth/register?type=shelter">
+          <button className="px-5 py-2.5 rounded-xl font-bold text-sm text-white border-none cursor-pointer hover:opacity-90 transition-all bg-coral">
+            Registrovat útulek →
+          </button>
+        </Link>
       </div>
     </div>
   )
@@ -204,26 +197,21 @@ export function NearbyInstitutions({ institutions }: NearbyInstitutionsProps) {
 
 /* ── Karta instituce ── */
 function InstitutionCard({ inst }: { inst: Institution & { distKm: number | null } }) {
-  const isShelter  = inst.type === 'shelter'
-  const accent     = isShelter ? 'var(--coral)' : 'var(--rescue)'
-  const accentBg   = isShelter ? 'var(--coral-tag-bg)' : 'var(--rescue-tag-bg)'
-  const accentText = isShelter ? 'var(--coral-tag-text)' : 'var(--rescue-tag-text)'
-
   return (
     <div className="relative group">
       <Link href={`/institutions/${inst.slug}`} className="no-underline">
         <div className="bg-white rounded-2xl overflow-hidden border border-border hover:-translate-y-1 transition-all duration-200 h-full flex flex-col"
-          style={{ borderTop: `3px solid ${accent}` }}>
+          style={{ borderTop: '3px solid var(--coral)' }}>
 
           {/* Cover oblast */}
           <div className="relative h-28 flex items-center justify-center overflow-hidden"
-            style={{ background: `linear-gradient(135deg, ${accentBg}, white)` }}>
+            style={{ background: 'linear-gradient(135deg, var(--coral-tag-bg), white)' }}>
             {/* Logo */}
             <div className="relative z-10 w-16 h-16 rounded-lg border-2 border-white shadow-sm flex items-center justify-center text-2xl overflow-hidden"
-              style={{ background: accentBg }}>
+              style={{ background: 'var(--coral-tag-bg)' }}>
               {inst.logo_url
                 ? <Image src={inst.logo_url} alt={inst.name} width={64} height={64} className="object-cover" />
-                : <span>{isShelter ? '🏠' : '🚑'}</span>
+                : <span>🏠</span>
               }
             </div>
 
@@ -244,8 +232,8 @@ function InstitutionCard({ inst }: { inst: Institution & { distKm: number | null
           <div className="p-4 flex flex-col flex-1">
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
-                style={{ background: accentBg, color: accentText }}>
-                {isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
+                style={{ background: 'var(--coral-tag-bg)', color: 'var(--coral-tag-text)' }}>
+                🏠 Útulek
               </span>
               {inst.approval_status === 'approved' && (
                 <span className="text-[10px] font-bold text-success-tag-text">✓ Ověřeno</span>
@@ -258,7 +246,7 @@ function InstitutionCard({ inst }: { inst: Institution & { distKm: number | null
             <div className="text-xs text-text-muted">
               📍 {inst.city}
               {inst.distKm !== null && (
-                <span className="ml-2 font-semibold" style={{ color: accent }}>
+                <span className="ml-2 font-semibold" style={{ color: 'var(--coral)' }}>
                   · {formatKm(inst.distKm)} od tebe
                 </span>
               )}

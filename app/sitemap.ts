@@ -6,16 +6,14 @@ const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://zozio.cz'
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = await createClient()
 
-  const [animalsData, rescueCasesData, institutionsData] = await Promise.all([
+  const [animalsData, institutionsData] = await Promise.all([
     supabase.from('animals').select('id, updated_at').eq('published', true).eq('adoption_status', 'available'),
-    supabase.from('rescue_cases').select('id, updated_at').eq('published', true).not('status', 'in', '("deceased")'),
     supabase.from('institutions').select('slug, updated_at').eq('approval_status', 'approved'),
   ])
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: BASE,               lastModified: new Date(), changeFrequency: 'daily',   priority: 1 },
     { url: `${BASE}/adopt`,    lastModified: new Date(), changeFrequency: 'daily',   priority: 0.9 },
-    { url: `${BASE}/rescue`,   lastModified: new Date(), changeFrequency: 'daily',   priority: 0.9 },
     { url: `${BASE}/institutions`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
     { url: `${BASE}/fundraisers`,  lastModified: new Date(), changeFrequency: 'daily',  priority: 0.8 },
     { url: `${BASE}/articles`,     lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
@@ -30,13 +28,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority:         0.7,
   }))
 
-  const rescueRoutes: MetadataRoute.Sitemap = (rescueCasesData.data ?? []).map(c => ({
-    url:              `${BASE}/rescue/${c.id}`,
-    lastModified:     new Date(c.updated_at ?? Date.now()),
-    changeFrequency:  'weekly',
-    priority:         0.7,
-  }))
-
   const institutionRoutes: MetadataRoute.Sitemap = (institutionsData.data ?? []).map(i => ({
     url:              `${BASE}/institutions/${i.slug}`,
     lastModified:     new Date(i.updated_at ?? Date.now()),
@@ -44,5 +35,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority:         0.8,
   }))
 
-  return [...staticRoutes, ...animalRoutes, ...rescueRoutes, ...institutionRoutes]
+  return [...staticRoutes, ...animalRoutes, ...institutionRoutes]
 }

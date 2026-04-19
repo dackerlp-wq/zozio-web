@@ -50,29 +50,16 @@ export default async function ProfilPage() {
       .order('created_at', { ascending: false }),
   ])
 
-  const favInstIds     = (favInstitutions ?? []).map((f: any) => f.institution_id)
-  const shelterIds     = (favInstitutions ?? []).filter((f: any) => f.institution?.type === 'shelter').map((f: any) => f.institution_id)
-  const rescueIds      = (favInstitutions ?? []).filter((f: any) => f.institution?.type === 'rescue_station').map((f: any) => f.institution_id)
+  const favInstIds = (favInstitutions ?? []).map((f: any) => f.institution_id)
 
-  const [{ data: newAnimals }, { data: newRescueCases }, { data: newArticles }] = await Promise.all([
-    shelterIds.length
+  const [{ data: newAnimals }, { data: newArticles }] = await Promise.all([
+    favInstIds.length
       ? supabase
           .from('animals')
           .select('id, name, primary_photo, adoption_status, created_at, species:animal_species(name_cs, icon), institution:institutions(name, slug)')
-          .in('institution_id', shelterIds)
+          .in('institution_id', favInstIds)
           .eq('published', true)
           .eq('adoption_status', 'available')
-          .order('created_at', { ascending: false })
-          .limit(4)
-      : Promise.resolve({ data: [] }),
-
-    rescueIds.length
-      ? supabase
-          .from('rescue_cases')
-          .select('id, name, case_number, status, intake_date, primary_photo, species:animal_species(name_cs, icon), institution:institutions(name, slug)')
-          .in('institution_id', rescueIds)
-          .eq('published', true)
-          .not('status', 'in', '("deceased")')
           .order('created_at', { ascending: false })
           .limit(4)
       : Promise.resolve({ data: [] }),
@@ -97,7 +84,6 @@ export default async function ProfilPage() {
           favInstitutions={favInstitutions ?? []}
           volunteers={volunteers ?? []}
           newAnimals={newAnimals ?? []}
-          newRescueCases={newRescueCases ?? []}
           newArticles={newArticles ?? []}
           newsletterSubscribed={!!newsletterRow}
           myApplications={myApplications ?? []}

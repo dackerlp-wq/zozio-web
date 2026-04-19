@@ -833,436 +833,6 @@ function FoundAnimals({
   )
 }
 
-/* ─── patient-card (rescue) ───────────────────────────── */
-function PatientCard({ animal, inst, medRecords }: { animal: Row; inst: string; medRecords: Row[] }) {
-  return (
-    <div className="print-page">
-      <DocHeader
-        title="Karta pacienta záchranné stanice"
-        subtitle="Ošetření volně žijícího živočicha"
-        institutionName={inst}
-        docNumber={animal.evidence_number ?? undefined}
-      />
-
-      <h2>Identifikace pacienta</h2>
-      <Fields items={[
-        ['Druh živočicha', animal.species_name ?? animal.species_id ?? '—'],
-        ['Jméno / označení', animal.name],
-        ['Pohlaví', sexLabel(animal.sex)],
-        ['Odhadovaný věk', animal.birth_year ? `nar. ${animal.birth_year}` : (animal.age_months ? `${animal.age_months} měs.` : '—')],
-        ['Barva / popis', animal.color ?? '—'],
-        ['Hmotnost (kg)', animal.weight_kg ?? '—'],
-      ]} />
-      <Fields items={[
-        ['Číslo čipu / kroužku', animal.chip_number ?? '—'],
-        ['Číslo evidence', animal.evidence_number ?? '—'],
-        ['Původ nálezu', originLabel(animal.origin)],
-        ['Místo nálezu', animal.found_location ?? '—'],
-        ['Datum nálezu', czDate(animal.found_date ?? animal.intake_date)],
-        ['Nálezce', animal.intake_finder_name ?? animal.finder_name ?? '—'],
-      ]} />
-
-      <h2>Stav při příjmu</h2>
-      <Fields items={[
-        ['Datum příjmu', czDate(animal.intake_date)],
-        ['Důvod příjmu', intakeReasonLabel(animal.intake_reason)],
-        ['Stav při příjmu', healthStatusLabel(animal.intake_condition ?? animal.health_status)],
-        ['Příjmový pracovník', animal.intake_worker ?? '—'],
-        ['Popis poranění', animal.intake_notes ?? '—'],
-        ['', ''],
-      ]} />
-
-      <h2>Průběh léčby a ošetření</h2>
-      <table>
-        <thead>
-          <tr>
-            <th style={{ width: '16%' }}>Datum</th>
-            <th style={{ width: '12%' }}>Typ záznamu</th>
-            <th>Diagnóza / popis ošetření</th>
-            <th style={{ width: '18%' }}>Medikace / výkon</th>
-            <th style={{ width: '16%' }}>Ošetřující</th>
-          </tr>
-        </thead>
-        <tbody>
-          {medRecords.length > 0 ? medRecords.map((r, i) => (
-            <tr key={i}>
-              <td>{czDate(r.record_date)}</td>
-              <td style={{ fontSize: '8pt', color: '#666' }}>{r.record_type ?? '—'}</td>
-              <td style={{ fontWeight: r.title ? 600 : 400 }}>{r.title ?? '—'}{r.description ? <><br/><span style={{ fontSize: '8pt', color: '#555', fontWeight: 400 }}>{r.description}</span></> : null}</td>
-              <td style={{ fontSize: '8.5pt' }}>{r.medications ?? r.treatment ?? '—'}</td>
-              <td style={{ fontSize: '8.5pt' }}>{r.vet_name ?? r.recorded_by ?? '—'}</td>
-            </tr>
-          )) : (
-            <>
-              <tr><td style={{ height: '24px', color: '#999', fontSize: '8.5pt', fontStyle: 'italic' }} colSpan={5}>Žádné záznamy o léčbě v systému — doplňte ručně:</td></tr>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}><td style={{ height: '28px' }}>&nbsp;</td><td></td><td></td><td></td><td></td></tr>
-              ))}
-            </>
-          )}
-        </tbody>
-      </table>
-
-      <h2>Výsledek péče</h2>
-      <Fields items={[
-        ['Výsledný stav', healthStatusLabel(animal.health_status)],
-        ['Datum odchodu', czDate(animal.exit_date)],
-        ['Typ odchodu', exitTypeLabel(animal.exit_type)],
-        ['Prognóza při příjmu', animal.rescue_prognosis ?? '—'],
-        ['Medikace', animal.medications ?? '—'],
-        ['Poznámky', animal.medical_notes ?? '—'],
-      ]} />
-
-      {animal.care_instructions && (
-        <>
-          <h3>Pokyny pro péči</h3>
-          <p style={{ fontSize: '10pt', margin: '0 0 12px', whiteSpace: 'pre-wrap' }}>{animal.care_instructions}</p>
-        </>
-      )}
-
-      <div className="sig-row">
-        <div className="sig-box">
-          <div className="sig-label">Podpis ošetřujícího pracovníka</div>
-        </div>
-        <div className="sig-box">
-          <div className="sig-label">Datum a razítko stanice</div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ─── rescue-intake-list ──────────────────────────────── */
-function RescueIntakeList({
-  animals,
-  inst,
-  dateFrom,
-  dateTo,
-}: {
-  animals: Row[]
-  inst: string
-  dateFrom: string
-  dateTo: string
-}) {
-  return (
-    <div className="print-page">
-      <DocHeader
-        title="Příjmový list záchranné stanice"
-        subtitle={`Evidence přijatých pacientů · ${czDate(dateFrom)} — ${czDate(dateTo)}`}
-        institutionName={inst}
-      />
-
-      <div className="stats-grid">
-        <div className="stat-cell">
-          <div className="stat-num">{animals.length}</div>
-          <div className="stat-lbl">Celkem přijato</div>
-        </div>
-        <div className="stat-cell">
-          <div className="stat-num">{animals.filter(a => a.chip_number || a.ring_number).length}</div>
-          <div className="stat-lbl">Označeno</div>
-        </div>
-        <div className="stat-cell">
-          <div className="stat-num">{animals.filter(a => a.found_location).length}</div>
-          <div className="stat-lbl">Se zázn. místa</div>
-        </div>
-        <div className="stat-cell">
-          <div className="stat-num">{animals.filter(a => a.intake_finder_name || a.finder_name).length}</div>
-          <div className="stat-lbl">S nálezcem</div>
-        </div>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Druh / Jméno</th>
-            <th>Datum příjmu</th>
-            <th>Místo nálezu</th>
-            <th>Stav při příjmu</th>
-            <th>Nálezce / telefon</th>
-            <th>Označení</th>
-            <th>Evidence č.</th>
-          </tr>
-        </thead>
-        <tbody>
-          {animals.map((a, i) => (
-            <tr key={String(a.id)}>
-              <td style={{ fontWeight: 700, color: '#666' }}>{i + 1}</td>
-              <td style={{ fontWeight: 700 }}>{a.species_name ?? '—'}<br/><span style={{ fontWeight: 400, fontSize: '8.5pt', color: '#666' }}>{a.name}</span></td>
-              <td>{czDate(a.intake_date)}</td>
-              <td>{a.found_location ?? '—'}</td>
-              <td style={{ fontSize: '8.5pt' }}>{a.intake_condition ?? a.health_status ?? '—'}</td>
-              <td style={{ fontSize: '8.5pt' }}>{a.intake_finder_name ?? a.finder_name ?? '—'}{a.intake_finder_phone ? <><br/>{a.intake_finder_phone}</> : ''}</td>
-              <td style={{ fontFamily: 'monospace', fontSize: '8pt' }}>{a.chip_number ?? '—'}</td>
-              <td style={{ fontFamily: 'monospace', fontSize: '8pt' }}>{a.evidence_number ?? '—'}</td>
-            </tr>
-          ))}
-          {animals.length === 0 && (
-            <tr><td colSpan={8} style={{ textAlign: 'center', color: '#888', padding: '20px' }}>Žádní pacienti v daném období</td></tr>
-          )}
-        </tbody>
-      </table>
-
-      <div className="sig-row">
-        <div className="sig-box"><div className="sig-label">Podpis zodpovědné osoby</div></div>
-        <div className="sig-box"><div className="sig-label">Datum a razítko stanice</div></div>
-      </div>
-    </div>
-  )
-}
-
-/* ─── rescue-release-list ─────────────────────────────── */
-function RescueReleaseList({
-  animals,
-  inst,
-  dateFrom,
-  dateTo,
-}: {
-  animals: Row[]
-  inst: string
-  dateFrom: string
-  dateTo: string
-}) {
-  return (
-    <div className="print-page">
-      <DocHeader
-        title="Propouštěcí list záchranné stanice"
-        subtitle={`Evidence vypuštěných a předaných pacientů · ${czDate(dateFrom)} — ${czDate(dateTo)}`}
-        institutionName={inst}
-      />
-
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Druh / Jméno</th>
-            <th>Datum příjmu</th>
-            <th>Datum odchodu</th>
-            <th>Typ odchodu</th>
-            <th>Délka pobytu (dní)</th>
-            <th>Stav při odchodu</th>
-            <th>Místo vypuštění / kam předáno</th>
-          </tr>
-        </thead>
-        <tbody>
-          {animals.map((a, i) => {
-            const days = a.intake_date && a.exit_date
-              ? Math.floor((new Date(String(a.exit_date)).getTime() - new Date(String(a.intake_date)).getTime()) / 86400000)
-              : '—'
-            return (
-              <tr key={String(a.id)}>
-                <td style={{ fontWeight: 700, color: '#666' }}>{i + 1}</td>
-                <td style={{ fontWeight: 700 }}>{a.species_name ?? '—'}<br/><span style={{ fontWeight: 400, fontSize: '8.5pt', color: '#666' }}>{a.name}</span></td>
-                <td>{czDate(a.intake_date)}</td>
-                <td style={{ fontWeight: 700 }}>{czDate(a.exit_date)}</td>
-                <td>{exitTypeLabel(a.exit_type)}</td>
-                <td style={{ textAlign: 'center', fontWeight: 700 }}>{String(days)}</td>
-                <td style={{ fontSize: '8.5pt' }}>{a.health_status ?? '—'}</td>
-                <td style={{ fontSize: '8.5pt' }}>{a.transfer_institution ?? a.found_location ?? a.exit_notes ?? '—'}</td>
-              </tr>
-            )
-          })}
-          {animals.length === 0 && (
-            <tr><td colSpan={8} style={{ textAlign: 'center', color: '#888', padding: '20px' }}>Žádní propuštění pacienti v daném období</td></tr>
-          )}
-        </tbody>
-      </table>
-
-      <div className="sig-row">
-        <div className="sig-box"><div className="sig-label">Podpis zodpovědné osoby</div></div>
-        <div className="sig-box"><div className="sig-label">Datum a razítko stanice</div></div>
-      </div>
-    </div>
-  )
-}
-
-/* ─── death-list ──────────────────────────────────────── */
-function DeathList({
-  animals,
-  inst,
-  dateFrom,
-  dateTo,
-}: {
-  animals: Row[]
-  inst: string
-  dateFrom: string
-  dateTo: string
-}) {
-  return (
-    <div className="print-page">
-      <DocHeader
-        title="Úhynová evidence"
-        subtitle={`Povinná evidence dle vyhlášky · Období: ${czDate(dateFrom)} — ${czDate(dateTo)}`}
-        institutionName={inst}
-      />
-
-      <div className="stats-grid">
-        <div className="stat-cell">
-          <div className="stat-num">{animals.length}</div>
-          <div className="stat-lbl">Celkem</div>
-        </div>
-        <div className="stat-cell">
-          <div className="stat-num">{animals.filter(a => a.exit_type === 'death').length}</div>
-          <div className="stat-lbl">Přirozené úhyny</div>
-        </div>
-        <div className="stat-cell">
-          <div className="stat-num">{animals.filter(a => a.exit_type === 'euthanasia').length}</div>
-          <div className="stat-lbl">Eutanazie</div>
-        </div>
-        <div className="stat-cell">
-          <div className="stat-num">{animals.filter(a => a.disposal_method).length}</div>
-          <div className="stat-lbl">Se záz. likvidace</div>
-        </div>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Jméno / druh</th>
-            <th>Datum příjmu</th>
-            <th>Datum úhynu</th>
-            <th>Typ</th>
-            <th>Příčina</th>
-            <th>Ošetřující veterinář</th>
-            <th>Způsob likvidace</th>
-            <th>Doklad č.</th>
-          </tr>
-        </thead>
-        <tbody>
-          {animals.map((a, i) => (
-            <tr key={String(a.id)}>
-              <td style={{ fontWeight: 700, color: '#666' }}>{i + 1}</td>
-              <td style={{ fontWeight: 700 }}>{a.name}<br/><span style={{ fontWeight: 400, fontSize: '8.5pt', color: '#666' }}>{a.species_name ?? '—'}</span></td>
-              <td>{czDate(a.intake_date)}</td>
-              <td style={{ fontWeight: 700 }}>{czDate(a.death_date ?? a.exit_date)}</td>
-              <td>{a.exit_type === 'euthanasia' ? 'Eutanazie' : 'Úhyn'}</td>
-              <td style={{ fontSize: '8.5pt' }}>{a.death_cause ?? a.death_type ?? '—'}</td>
-              <td style={{ fontSize: '8.5pt' }}>{a.death_vet ?? a.vet_name ?? '—'}</td>
-              <td style={{ fontSize: '8.5pt' }}>{a.disposal_method ?? '—'}</td>
-              <td style={{ fontFamily: 'monospace', fontSize: '8pt' }}>{a.disposal_doc_number ?? '—'}</td>
-            </tr>
-          ))}
-          {animals.length === 0 && (
-            <tr><td colSpan={9} style={{ textAlign: 'center', color: '#888', padding: '20px' }}>Žádné úhyny v daném období</td></tr>
-          )}
-        </tbody>
-      </table>
-
-      <p className="note-text">
-        Likvidace kadaverů provedena v souladu s nař. EP a Rady (ES) č. 1069/2009 a zák. č. 166/1999 Sb.
-      </p>
-
-      <div className="sig-row">
-        <div className="sig-box"><div className="sig-label">Podpis zodpovědné osoby</div></div>
-        <div className="sig-box"><div className="sig-label">Datum a razítko organizace</div></div>
-      </div>
-    </div>
-  )
-}
-
-/* ─── rescue-summary ──────────────────────────────────── */
-function RescueSummary({
-  animals,
-  inst,
-  dateFrom,
-  dateTo,
-}: {
-  animals: Row[]
-  inst: string
-  dateFrom: string
-  dateTo: string
-}) {
-  const intakes = animals.filter(a => a.intake_date >= dateFrom && a.intake_date <= dateTo)
-  const exits = animals.filter(a => a.exit_date && a.exit_date >= dateFrom && a.exit_date <= dateTo)
-  const released = exits.filter(a => a.exit_type === 'release' || a.exit_type === 'released')
-  const deaths = exits.filter(a => a.exit_type === 'death' || a.exit_type === 'euthanasia')
-  const transferred = exits.filter(a => a.exit_type === 'transfer')
-
-  const speciesCount = intakes.reduce<Record<string, number>>((acc, a) => {
-    const k = a.species_name ?? 'Jiné'
-    acc[k] = (acc[k] ?? 0) + 1
-    return acc
-  }, {})
-
-  return (
-    <div className="print-page">
-      <DocHeader
-        title="Přehledová zpráva záchranné stanice"
-        subtitle={`Období: ${czDate(dateFrom)} — ${czDate(dateTo)}`}
-        institutionName={inst}
-      />
-
-      <div className="stats-grid">
-        <div className="stat-cell">
-          <div className="stat-num">{intakes.length}</div>
-          <div className="stat-lbl">Nových příjmů</div>
-        </div>
-        <div className="stat-cell">
-          <div className="stat-num">{released.length}</div>
-          <div className="stat-lbl">Vypuštěno</div>
-        </div>
-        <div className="stat-cell">
-          <div className="stat-num">{deaths.length}</div>
-          <div className="stat-lbl">Úhynů</div>
-        </div>
-        <div className="stat-cell">
-          <div className="stat-num">{transferred.length}</div>
-          <div className="stat-lbl">Převodů</div>
-        </div>
-      </div>
-
-      <h2>Pacienti podle druhu (příjmy v období)</h2>
-      <table>
-        <thead>
-          <tr><th>Druh živočicha</th><th>Počet</th><th>%</th></tr>
-        </thead>
-        <tbody>
-          {Object.entries(speciesCount).sort((a, b) => b[1] - a[1]).map(([sp, cnt]) => (
-            <tr key={sp}>
-              <td>{sp}</td>
-              <td style={{ fontWeight: 700 }}>{cnt}</td>
-              <td>{intakes.length ? Math.round((cnt / intakes.length) * 100) : 0} %</td>
-            </tr>
-          ))}
-          {intakes.length === 0 && (
-            <tr><td colSpan={3} style={{ textAlign: 'center', color: '#888' }}>Žádné příjmy</td></tr>
-          )}
-        </tbody>
-      </table>
-
-      <h2>Výsledky péče (odchody v období)</h2>
-      <table>
-        <thead>
-          <tr><th>Výsledek</th><th>Počet</th><th>%</th></tr>
-        </thead>
-        <tbody>
-          {Object.entries(
-            exits.reduce<Record<string, number>>((acc, a) => {
-              const k = exitTypeLabel(a.exit_type)
-              acc[k] = (acc[k] ?? 0) + 1
-              return acc
-            }, {})
-          ).map(([type, count]) => (
-            <tr key={type}>
-              <td>{type}</td>
-              <td style={{ fontWeight: 700 }}>{count}</td>
-              <td>{exits.length ? Math.round((count / exits.length) * 100) : 0} %</td>
-            </tr>
-          ))}
-          {exits.length === 0 && (
-            <tr><td colSpan={3} style={{ textAlign: 'center', color: '#888' }}>Žádné odchody</td></tr>
-          )}
-        </tbody>
-      </table>
-
-      <div className="sig-row">
-        <div className="sig-box"><div className="sig-label">Vedoucí stanice / podpis</div></div>
-        <div className="sig-box"><div className="sig-label">Datum a razítko stanice</div></div>
-      </div>
-    </div>
-  )
-}
 
 /* ══════════════════════════════════════════════════════════
    PAGE — data fetching + routing
@@ -1270,7 +840,6 @@ function RescueSummary({
 
 const VALID_TYPES = new Set([
   'animal-card', 'handover-protocol', 'intake-list', 'exit-list', 'summary-report', 'found-animals',
-  'patient-card', 'rescue-intake-list', 'rescue-release-list', 'death-list', 'rescue-summary',
 ])
 
 export default async function PrintPage({
@@ -1305,7 +874,7 @@ export default async function PrintPage({
   const instName = sp.inst ?? 'Organizace'
 
   /* ── Fetch data based on type ── */
-  const animalTypes = new Set(['animal-card', 'handover-protocol', 'patient-card'])
+  const animalTypes = new Set(['animal-card', 'handover-protocol'])
   const dateFrom = sp.dateFrom ?? new Date().toISOString().slice(0, 8) + '01'
   const dateTo   = sp.dateTo   ?? new Date().toISOString().slice(0, 10)
 
@@ -1320,7 +889,6 @@ export default async function PrintPage({
 
   let animal: Row | null = null
   let animals: Row[] = []
-  let medRecords: Row[] = []
 
   if (animalTypes.has(type)) {
     if (!sp.animalId) notFound()
@@ -1332,35 +900,19 @@ export default async function PrintPage({
       .single()
     if (error || !data) notFound()
     animal = withSpecies(data as Row)
-
-    // Fetch medical records for patient-card
-    if (type === 'patient-card') {
-      const { data: mrData } = await service
-        .from('animal_medical_records')
-        .select('*')
-        .eq('animal_id', sp.animalId)
-        .order('record_date', { ascending: false })
-      medRecords = (mrData ?? []) as Row[]
-    }
   } else {
     let query = service
       .from('animals')
       .select('*')
       .eq('institution_id', instId)
 
-    if (type === 'exit-list' || type === 'rescue-release-list') {
+    if (type === 'exit-list') {
       query = query
         .not('exit_type', 'is', null)
         .gte('exit_date', dateFrom)
         .lte('exit_date', dateTo)
         .order('exit_date')
-    } else if (type === 'death-list') {
-      query = query
-        .in('exit_type', ['death', 'euthanasia'])
-        .gte('exit_date', dateFrom)
-        .lte('exit_date', dateTo)
-        .order('exit_date')
-    } else if (type === 'summary-report' || type === 'rescue-summary') {
+    } else if (type === 'summary-report') {
       query = query
         .lte('intake_date', dateTo)
         .order('intake_date')
@@ -1396,21 +948,6 @@ export default async function PrintPage({
       break
     case 'found-animals':
       docContent = <FoundAnimals animals={animals} inst={instName} dateFrom={dateFrom} dateTo={dateTo} />
-      break
-    case 'patient-card':
-      docContent = <PatientCard animal={animal!} inst={instName} medRecords={medRecords} />
-      break
-    case 'rescue-intake-list':
-      docContent = <RescueIntakeList animals={animals} inst={instName} dateFrom={dateFrom} dateTo={dateTo} />
-      break
-    case 'rescue-release-list':
-      docContent = <RescueReleaseList animals={animals} inst={instName} dateFrom={dateFrom} dateTo={dateTo} />
-      break
-    case 'death-list':
-      docContent = <DeathList animals={animals} inst={instName} dateFrom={dateFrom} dateTo={dateTo} />
-      break
-    case 'rescue-summary':
-      docContent = <RescueSummary animals={animals} inst={instName} dateFrom={dateFrom} dateTo={dateTo} />
       break
   }
 

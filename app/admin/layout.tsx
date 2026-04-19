@@ -56,7 +56,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </main>
       <AdminBottomNav
-        institutionType={institution?.type as 'shelter' | 'rescue_station' | null ?? null}
         isSuperadmin={isSuperadmin}
       />
     </div>

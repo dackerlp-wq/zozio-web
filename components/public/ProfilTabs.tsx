@@ -51,13 +51,12 @@ interface Props {
   favInstitutions: any[]
   volunteers: any[]
   newAnimals: any[]
-  newRescueCases: any[]
   newArticles: any[]
   newsletterSubscribed: boolean
   myApplications: any[]
 }
 
-export function ProfilTabs({ user, favAnimals, favInstitutions, volunteers, newAnimals, newRescueCases, newArticles, newsletterSubscribed, myApplications }: Props) {
+export function ProfilTabs({ user, favAnimals, favInstitutions, volunteers, newAnimals, newArticles, newsletterSubscribed, myApplications }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('feed')
   const [showVolunteerModal, setShowVolunteerModal] = useState(false)
@@ -91,13 +90,13 @@ export function ProfilTabs({ user, favAnimals, favInstitutions, volunteers, newA
 
   const name = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'příteli'
   const initials = name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
-  const hasFeed = newAnimals.length + newRescueCases.length + newArticles.length > 0
+  const hasFeed = newAnimals.length + newArticles.length > 0
   const pendingVolunteers = volunteers.filter((v: any) => v.status === 'pending').length
 
   const activeApplications = myApplications.filter((a: any) => !['rejected', 'adopted', 'cancelled'].includes(a.status)).length
 
   const tabs: { id: Tab; label: string; icon: string; count?: number }[] = [
-    { id: 'feed',         icon: '🔔', label: 'Aktuality',      count: hasFeed ? newAnimals.length + newRescueCases.length + newArticles.length : 0 },
+    { id: 'feed',         icon: '🔔', label: 'Aktuality',      count: hasFeed ? newAnimals.length + newArticles.length : 0 },
     { id: 'animals',      icon: '🐾', label: 'Zvířata',        count: favAnimals.length },
     { id: 'institutions', icon: '🏛',  label: 'Instituce',     count: favInstitutions.length },
     { id: 'volunteering', icon: '🙋', label: 'Dobrovolnictví', count: volunteers.length },
@@ -222,7 +221,7 @@ export function ProfilTabs({ user, favAnimals, favInstitutions, volunteers, newA
                 <div className="text-4xl mb-3">🔔</div>
                 <p className="font-bold text-[#1A0F0A] mb-1">Zatím žádné aktuality</p>
                 <p className="text-sm mb-5" style={{ color: '#8B6550' }}>
-                  Sleduj útulky a záchranné stanice — uvidíš jejich nová zvířata a příběhy.
+                  Sleduj útulky — uvidíš jejich nová zvířata a příběhy.
                 </p>
                 <Link href="/institutions"
                   className="inline-flex px-5 py-2.5 rounded-[100px] text-sm font-bold text-white no-underline"
@@ -251,33 +250,6 @@ export function ProfilTabs({ user, favAnimals, favInstitutions, volunteers, newA
                               <div className="font-bold text-xs text-[#1A0F0A] truncate">{a.name}</div>
                               <div className="text-[10px] truncate mt-0.5" style={{ color: '#8B6550' }}>
                                 {a.species?.name_cs} · {a.institution?.name}
-                              </div>
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Záchranné případy — karty */}
-                {newRescueCases.length > 0 && (
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wider mb-3 px-0.5" style={{ color: '#8B6550' }}>🚑 Záchranné případy</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {newRescueCases.slice(0, 4).map((rc: any) => (
-                        <Link key={rc.id} href={`/rescue-cases/${rc.id}`} className="no-underline group">
-                          <div className="bg-white rounded-xl border border-[#F0EDE8] overflow-hidden hover:-translate-y-0.5 transition-all">
-                            <div className="h-32 relative flex items-center justify-center" style={{ background: '#E1F5EE' }}>
-                              {rc.primary_photo
-                                ? <Image src={rc.primary_photo} alt={rc.name ?? rc.case_number} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
-                                : <span className="text-3xl">{rc.species?.icon ?? '🦉'}</span>
-                              }
-                            </div>
-                            <div className="p-2.5">
-                              <div className="font-bold text-xs text-[#1A0F0A] truncate">{rc.name ?? rc.case_number}</div>
-                              <div className="text-[10px] truncate mt-0.5" style={{ color: '#8B6550' }}>
-                                {rc.species?.name_cs} · {rc.institution?.name}
                               </div>
                             </div>
                           </div>

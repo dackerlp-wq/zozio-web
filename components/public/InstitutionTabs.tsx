@@ -13,28 +13,18 @@ interface InstitutionTabsProps {
   activeTab:    string
   slug:         string
   institution:  any
-  isShelter:    boolean
   animals:      any[]
-  rescueCases:  any[]
   fundraisers:  any[]
   articles:     any[]
 }
 
-const RESCUE_STATUSES = [
-  { id: '',               label: 'Vše' },
-  { id: 'intake',         label: 'Příjem' },
-  { id: 'treatment',      label: 'Léčba' },
-  { id: 'rehabilitation', label: 'Rehabilitace' },
-  { id: 'released',       label: 'Propuštěn' },
-  { id: 'transferred',    label: 'Přemístěn' },
-]
+const accent = '#E8634A'
 
 export function InstitutionTabs({
   tabs, activeTab, slug, institution: i,
-  isShelter, animals, rescueCases, fundraisers, articles,
+  animals, fundraisers, articles,
 }: InstitutionTabsProps) {
   const router = useRouter()
-  const [rescueFilter, setRescueFilter] = useState('')
   const [animalStatusFilter, setAnimalStatusFilter] = useState('')
   const [animalSearch, setAnimalSearch] = useState('')
   const [animalSuggestOpen, setAnimalSuggestOpen] = useState(false)
@@ -44,13 +34,7 @@ export function InstitutionTabs({
   const [speciesFilter, setSpeciesFilter] = useState('')
   const [showAdvanced, setShowAdvanced]   = useState(false)
 
-  const accent = isShelter ? '#E8634A' : '#2E9E8F'
-
   const setTab = (id: string) => router.push(`/institutions/${slug}?tab=${id}`, { scroll: false })
-
-  const filteredRescue = rescueFilter
-    ? rescueCases.filter(c => c.status === rescueFilter)
-    : rescueCases
 
   // ── Derived lists for filters ──
   const speciesList = Array.from(
@@ -416,75 +400,6 @@ export function InstitutionTabs({
         </div>
       )}
 
-      {/* ── Tab: Záchranné případy ── */}
-      {activeTab === 'rescue' && (
-        <div>
-          {rescueCases.length === 0 ? (
-            <EmptyTab icon="🦉" text="Zatím žádné záchranné případy." />
-          ) : (
-            <>
-              {/* Status filtry */}
-              <div className="flex gap-2 overflow-x-auto pb-1 mb-5" style={{ scrollbarWidth: 'none' }}>
-                {RESCUE_STATUSES.map(s => {
-                  const cnt = s.id ? rescueCases.filter(c => c.status === s.id).length : rescueCases.length
-                  if (s.id && cnt === 0) return null
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => setRescueFilter(s.id)}
-                      className="flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-full border transition-all cursor-pointer"
-                      style={rescueFilter === s.id
-                        ? { background: accent, color: 'white', borderColor: accent }
-                        : { background: 'white', color: '#6B4030', borderColor: '#E0DDD8' }
-                      }
-                    >
-                      {s.label} {cnt > 0 && <span className="ml-1 opacity-70">({cnt})</span>}
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                {filteredRescue.map((c: any) => {
-                  const daysIn = c.intake_date
-                    ? Math.floor((Date.now() - new Date(c.intake_date).getTime()) / 86_400_000)
-                    : null
-                  return (
-                    <Link key={c.id} href={`/rescue/${c.id}`} className="no-underline group">
-                      <div className="bg-white rounded-xl overflow-hidden border border-[#F0EDE8] hover:border-[#2E9E8F]/40 hover:-translate-y-1 transition-all h-full flex flex-col">
-                        <div className="relative h-36 md:h-40 overflow-hidden flex-shrink-0" style={{ background: '#E1F5EE' }}>
-                          {c.primary_photo
-                            ? <Image src={c.primary_photo} alt={c.name ?? ''} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width:640px) 50vw, 33vw" />
-                            : <div className="w-full h-full flex items-center justify-center text-5xl">{c.species?.icon ?? '🐾'}</div>
-                          }
-                          <div className="absolute top-2 left-2">
-                            <RescueStatusPill status={c.status} />
-                          </div>
-                        </div>
-                        <div className="p-3 flex-1 flex flex-col">
-                          <div className="font-bold text-sm text-[#1A0F0A] mb-1 leading-tight">
-                            {c.name ?? c.case_number}
-                          </div>
-                          <div className="text-xs" style={{ color: '#8B6550' }}>{c.species?.name_cs}</div>
-                          {c.cause_of_injury && (
-                            <div className="text-xs mt-1 line-clamp-1" style={{ color: '#6B4030' }}>{c.cause_of_injury}</div>
-                          )}
-                          {daysIn !== null && (
-                            <div className="mt-auto pt-2 text-[11px]" style={{ color: '#8B6550' }}>
-                              🏥 {daysIn === 0 ? 'Dnes přijat' : `${daysIn} dní ve stanici`}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
       {/* ── Tab: Sbírky ── */}
       {activeTab === 'fundraisers' && (
         <div>
@@ -711,7 +626,6 @@ export function InstitutionTabs({
               <NewsletterSubscribe
                 institutionId={i.id}
                 institutionName={i.name}
-                isShelter={isShelter}
               />
             </div>
           </div>
@@ -765,55 +679,5 @@ function EmptyTab({ icon, text }: { icon: string; text: string }) {
       <div className="text-5xl mb-4">{icon}</div>
       <p className="text-sm" style={{ color: '#8B6550' }}>{text}</p>
     </div>
-  )
-}
-
-function StatusPill({ status }: { status: string }) {
-  const config: Record<string, { label: string; bg: string; color: string }> = {
-    available: { label: 'K adopci',    bg: '#EAF3DE', color: '#3B6D11' },
-    reserved:  { label: 'Rezervováno', bg: '#FAEEDA', color: '#854F0B' },
-    foster:    { label: 'Ve foster',   bg: '#E1F5EE', color: '#0F6E56' },
-  }
-  const c = config[status]
-  if (!c) return null
-  return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0"
-      style={{ background: c.bg, color: c.color }}>
-      {c.label}
-    </span>
-  )
-}
-
-function StatusPillPhoto({ status }: { status: string }) {
-  const config: Record<string, { label: string; bg: string; color: string }> = {
-    available: { label: '✓ K adopci',    bg: 'rgba(34,107,17,0.85)',  color: 'white' },
-    reserved:  { label: '⏳ Rezervováno', bg: 'rgba(133,79,11,0.85)', color: 'white' },
-    foster:    { label: '🏡 Ve foster',   bg: 'rgba(15,110,86,0.85)', color: 'white' },
-  }
-  const c = config[status]
-  if (!c) return null
-  return (
-    <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm backdrop-blur-sm"
-      style={{ background: c.bg, color: c.color }}>
-      {c.label}
-    </span>
-  )
-}
-
-function RescueStatusPill({ status }: { status: string }) {
-  const config: Record<string, { label: string; bg: string; color: string }> = {
-    intake:         { label: 'Příjem',       bg: '#FAECE7', color: '#993C1D' },
-    treatment:      { label: 'Léčba',        bg: '#FAEEDA', color: '#854F0B' },
-    rehabilitation: { label: 'Rehabilitace', bg: '#E1F5EE', color: '#0F6E56' },
-    released:       { label: 'Propuštěn',    bg: '#EAF3DE', color: '#3B6D11' },
-    transferred:    { label: 'Přemístěn',    bg: '#F0EDE8', color: '#5F5E5A' },
-  }
-  const c = config[status]
-  if (!c) return null
-  return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
-      style={{ background: c.bg, color: c.color }}>
-      {c.label}
-    </span>
   )
 }

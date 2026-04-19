@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 
 export const metadata: Metadata = {
-  title: 'Proč být na Zozio? | Platforma pro útulky a záchranné stanice',
+  title: 'Proč být na Zozio? | Platforma pro útulky',
   description: 'Zozio řeší reálné problémy útulků — od papírování a adopcí přes sbírky až po dobrovolníky. Přečtěte si, jak konkrétně pomůžeme vašemu útulku.',
 }
 
@@ -38,7 +38,7 @@ const problems = [
   {
     icon: '📱',
     problem: 'Admin systém nefunguje na mobilu',
-    solution: 'Zozio je plně mobilní. Přidáváte zvíře přímo ze záchranné akce.',
+    solution: 'Zozio je plně mobilní. Přidáváte zvíře přímo z příjmu.',
   },
 ]
 
@@ -87,7 +87,7 @@ const features = [
   },
   {
     tag: 'SBÍRKY',
-    color: 'rescue',
+    color: 'coral',
     icon: '💛',
     title: 'Sbírky pro konkrétní zvíře nebo projekt',
     desc: 'Cílená sbírka na veterinární péči, operaci nebo vybavení. Sdílejte příběh a zapojte veřejnost. Přehled kdo přispěl, kolik chybí do cíle.',
@@ -171,7 +171,7 @@ const features = [
   },
   {
     tag: 'WIDGET',
-    color: 'rescue',
+    color: 'coral',
     icon: '🔌',
     title: 'Widget pro váš web — zvířata k adopci automaticky',
     desc: 'Jeden řádek kódu na váš stávající web a všechna zvířata k adopci se zobrazí automaticky — vždy aktuální, bez ruční aktualizace. Plní zákonnou povinnost provozu webu se seznamem zvířat (§ 25 odst. 4 zák. č. 246/1992 Sb.).',
@@ -260,74 +260,6 @@ const legalShelter = [
   },
 ]
 
-const legalRescue = [
-  {
-    icon: '📜',
-    obligation: 'Povolení k provozu od MŽP',
-    law: '§ 42 zák. č. 114/1992 Sb.',
-    detail: 'Záchrannou stanici lze provozovat POUZE na základě rozhodnutí Ministerstva životního prostředí. Označení "záchranná stanice" smí používat jen držitel platného povolení.',
-    howZozio: 'Zozio eviduje číslo a datum povolení MŽP jako součást profilu instituce — dokladovatelné pro kontroly ČIŽP.',
-  },
-  {
-    icon: '🦉',
-    obligation: 'Evidence každého přijatého živočicha',
-    law: 'Vyhl. č. 316/2009 Sb. o handicapovaných živočiších',
-    detail: 'Záchranná stanice musí evidovat druh, datum a místo nálezu, zdravotní stav při příjmu a kdo zvíře přinesl.',
-    howZozio: 'Každý záchranný případ v Zozio má příjmový list se všemi zákonem požadovanými údaji. Exportovatelné pro státní správu.',
-  },
-  {
-    icon: '🩺',
-    obligation: 'Dokumentace průběhu péče',
-    law: 'Vyhl. č. 316/2009 Sb.',
-    detail: 'Záznamy o léčbě, rehabilitaci a krmení musí být vedeny u každého živočicha po celou dobu jeho pobytu ve stanici.',
-    howZozio: 'Záložka Léčba a Rehabilitace zaznamenává každý veterinární úkon, medikaci a průběh zotavení s datem a zodpovědnou osobou.',
-  },
-  {
-    icon: '🌿',
-    obligation: 'Evidence propuštění do přírody',
-    law: 'Vyhl. č. 316/2009 Sb.',
-    detail: 'Záznamy o datu, místě a způsobu navrácení živočicha do přírody (nebo doklad o uhynutí/utracení) musí být uchovávány.',
-    howZozio: 'Workflow propuštění v Zozio zaznamenává místo, datum a osobu zodpovědnou za propuštění. Stav "Propuštěn do přírody" uzavře případ s kompletní historií.',
-  },
-  {
-    icon: '🌍',
-    obligation: 'CITES — evidence chráněných druhů',
-    law: 'Zákon č. 100/2004 Sb.; vyhl. č. 227/2004 Sb.',
-    detail: 'Při péči o exempláře druhů CITES (příloha A, B) musí stanice vést registraci u MŽP, hlásit úhyn nebo předání a mít doklady o původu.',
-    howZozio: 'Označení CITES v kartě živočicha upozorní pracovníky na zvláštní evidenční povinnosti. Záznamy o původu a přesunech dohledatelné.',
-  },
-  {
-    icon: '📁',
-    obligation: 'Záznamy o personálu — 3 roky po ukončení',
-    law: 'Vyhl. č. 316/2009 Sb.',
-    detail: 'Dokumentace o odborné průpravě všech osob pečujících o živočichy musí být uchovávána 3 roky po ukončení jejich činnosti.',
-    howZozio: 'Evidence pracovníků a dobrovolníků v Zozio zahrnuje záznamy o aktivitách a certifikacích — archivovatelné i po ukončení spolupráce.',
-  },
-]
-
-const rescueExtras = [
-  {
-    icon: '🦉',
-    title: 'Evidence záchranných případů',
-    desc: 'Příjem → Léčba → Rehabilitace → Propuštění. Každý pacient má svoji kartu s diagnózou, léčbou a výsledkem.',
-  },
-  {
-    icon: '🩺',
-    title: 'Veterinární záznamy',
-    desc: 'Diagnózy, průběh léčby, veterinář, datum. Vše přehledně u každého případu — žádné papírové kartičky.',
-  },
-  {
-    icon: '📈',
-    title: 'Statistiky záchran',
-    desc: 'Kolik zvířat přišlo, kolik se uzdravilo, kolik se propustilo do přírody. Data pro výroční zprávy i granty.',
-  },
-  {
-    icon: '🌍',
-    title: 'Veřejné záchranné případy',
-    desc: 'Sdílejte příběhy léčby s veřejností. Fotky, pokrok, sbírka na konkrétní případ — zapojte fanoušky do záchrany.',
-  },
-]
-
 const stats = [
   { number: '3× více', label: 'adopcí oproti útulkům bez online profilu' },
   { number: '5 min', label: 'průměrná doba přidání nového zvířete' },
@@ -341,7 +273,7 @@ const plans = [
     price: '0 Kč',
     period: 'navždy zdarma',
     hot: false,
-    features: ['Do 15 zvířat / pacientů', 'Veřejný profil instituce', 'Adopční / příjmový formulář', 'Základní statistiky'],
+    features: ['Do 15 zvířat', 'Veřejný profil instituce', 'Adopční formulář', 'Základní statistiky'],
     missing: ['E-mail notifikace', 'Sbírky', 'Dobrovolníci', 'Export dat'],
     cta: 'Začít zdarma',
     href: '/auth/register',
@@ -351,7 +283,7 @@ const plans = [
     price: '490 Kč',
     period: 'měsíčně',
     hot: true,
-    features: ['Neomezená zvířata / pacienti', 'E-mail notifikace', '1 aktivní sbírka', 'Správa dobrovolníků', 'Export dat (CSV)', 'Pokročilé statistiky'],
+    features: ['Neomezená zvířata', 'E-mail notifikace', '1 aktivní sbírka', 'Správa dobrovolníků', 'Export dat (CSV)', 'Pokročilé statistiky'],
     missing: ['Více poboček'],
     cta: '30 dní zdarma →',
     href: '/auth/register',
@@ -379,7 +311,7 @@ const faq = [
   },
   {
     q: 'Funguje Zozio na telefonu?',
-    a: 'Ano, celý admin panel je plně mobilně responzivní. Přidávat zvířata, schvalovat žádosti nebo spravovat sbírky jde přímo z telefonu — třeba přímo ze záchranné akce v terénu.',
+    a: 'Ano, celý admin panel je plně mobilně responzivní. Přidávat zvířata, schvalovat žádosti nebo spravovat sbírky jde přímo z telefonu.',
   },
   {
     q: 'Mohu migrovat data ze starého systému?',
@@ -400,13 +332,11 @@ const faq = [
 const ACCENT: Record<string, string> = {
   coral:   '#E8634A',
   amber:   '#F0A500',
-  rescue:  '#2E9E8F',
   shelter: '#E8634A',
 }
 const ACCENT_BG: Record<string, string> = {
   coral:   '#FDEAE6',
   amber:   '#FEF3D6',
-  rescue:  '#E4F7F5',
   shelter: '#FDEAE6',
 }
 
@@ -423,13 +353,13 @@ export default function ProcBytNaZozioPage() {
         </div>
         <div className="max-w-[860px] mx-auto text-center relative z-10">
           <div className="inline-flex items-center gap-2 bg-coral/20 text-coral font-body text-xs font-bold px-4 py-2 rounded-pill mb-6">
-            🏠 Pro útulky a záchranné stanice v ČR a SR
+            🏠 Pro útulky v ČR a SR
           </div>
           <h1 className="font-display font-extrabold text-white leading-tight mb-6" style={{ fontSize: 'clamp(34px, 5.5vw, 64px)' }}>
             Proč být<br />na Zozio?
           </h1>
           <p className="text-lg text-gray-light max-w-[620px] mx-auto leading-relaxed mb-10">
-            Útulky a záchranné stanice stráví hodiny administrativou místo péčí o zvířata.
+            Útulky stráví hodiny administrativou místo péčí o zvířata.
             Zozio to obrátí — digitální správa adopcí, sbírek a dobrovolníků za méně času.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12">
@@ -578,7 +508,7 @@ export default function ProcBytNaZozioPage() {
               Zozio vám pomáhá plnit zákon
             </h2>
             <p className="text-base max-w-[600px] mx-auto leading-relaxed" style={{ color: '#9B8070' }}>
-              Útulky a záchranné stanice mají přesně definované zákonné povinnosti — od evidence zvířat přes GDPR až po reporty pro státní správu.
+              Útulky mají přesně definované zákonné povinnosti — od evidence zvířat přes GDPR až po reporty pro státní správu.
               Nesplnění hrozí pokutami až <strong className="text-white">100 000 Kč</strong> pro fyzické
               a až <strong className="text-white">3 000 000 Kč</strong> pro právnické osoby.
               Zozio tyto povinnosti řeší automaticky.
@@ -586,7 +516,7 @@ export default function ProcBytNaZozioPage() {
           </div>
 
           {/* Útulky */}
-          <div className="mb-12">
+          <div>
             <div className="flex items-center gap-3 mb-6">
               <span className="text-2xl">🏠</span>
               <h3 className="font-display font-extrabold text-xl text-white">Útulky pro psy a kočky</h3>
@@ -614,76 +544,12 @@ export default function ProcBytNaZozioPage() {
             </div>
           </div>
 
-          {/* Záchranné stanice */}
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <span className="text-2xl">🚑</span>
-              <h3 className="font-display font-extrabold text-xl text-white">Záchranné stanice pro volně žijící živočichy</h3>
-              <span className="text-xs font-bold px-3 py-1 rounded-pill" style={{ background: 'rgba(46,158,143,0.2)', color: '#2E9E8F' }}>
-                Zákon č. 114/1992 Sb. + vyhl. 316/2009 Sb.
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {legalRescue.map(item => (
-                <div key={item.obligation} className="rounded-lg p-5 border" style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}>
-                  <div className="flex items-start gap-3 mb-3">
-                    <span className="text-2xl flex-shrink-0">{item.icon}</span>
-                    <div>
-                      <div className="font-display font-bold text-white text-sm mb-0.5">{item.obligation}</div>
-                      <div className="text-[10px] font-bold font-mono" style={{ color: '#F0A500' }}>{item.law}</div>
-                    </div>
-                  </div>
-                  <p className="text-xs leading-relaxed mb-3" style={{ color: '#7A6A5A' }}>{item.detail}</p>
-                  <div className="flex items-start gap-2 rounded-md p-2.5" style={{ background: 'rgba(46,158,143,0.08)', borderLeft: '3px solid #2E9E8F' }}>
-                    <span className="flex-shrink-0 text-xs font-bold mt-0.5" style={{ color: '#2E9E8F' }}>✓</span>
-                    <p className="text-xs font-semibold leading-relaxed" style={{ color: '#C8A898' }}>{item.howZozio}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Disclaimer */}
           <div className="mt-10 rounded-lg p-5 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
             <p className="text-xs leading-relaxed" style={{ color: '#5A4A3A' }}>
               Informace jsou informativní a nezahrnují veškeré právní předpisy. Doporučujeme konzultovat konkrétní povinnosti s právníkem nebo příslušným orgánem státní správy (SVS, MŽP, ČIŽP).
               Zozio neposkytuje právní poradenství.
             </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── ZÁCHRANNÉ STANICE EXTRA ── */}
-      <section className="py-16 md:py-20 px-4 md:px-12 bg-rescue-bg">
-        <div className="max-w-[1100px] mx-auto">
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-            <div className="md:w-[320px] flex-shrink-0">
-              <div className="inline-flex items-center gap-2 bg-rescue/20 font-body text-xs font-bold px-4 py-2 rounded-pill mb-4"
-                style={{ color: '#1F7268' }}>
-                🚑 PRO ZÁCHRANNÉ STANICE
-              </div>
-              <h2 className="font-display font-extrabold text-2xl md:text-3xl text-rescue-dark mb-3">
-                Speciální funkce pro záchranné stanice
-              </h2>
-              <p className="text-sm text-rescue-dark/70 leading-relaxed mb-6">
-                Záchranné stanice léčí volně žijící zraněná zvířata — sovy, lišky, ježky, vydry. Pro ně má Zozio vlastní workflow od příjmu až po propuštění.
-              </p>
-              <Link href="/auth/register?type=rescue_station">
-                <Button variant="rescue" className="w-full justify-center">
-                  Registrovat záchrannou stanici
-                </Button>
-              </Link>
-            </div>
-
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {rescueExtras.map(r => (
-                <div key={r.title} className="bg-white rounded-lg p-5 border border-rescue/20 shadow-sm">
-                  <div className="text-2xl mb-3">{r.icon}</div>
-                  <div className="font-display font-bold text-rescue-dark text-base mb-2">{r.title}</div>
-                  <div className="text-xs text-rescue-dark/70 leading-relaxed">{r.desc}</div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>
@@ -709,7 +575,7 @@ export default function ProcBytNaZozioPage() {
 
             <div className="space-y-4">
               {[
-                { time: '08:15', icon: '🐶', title: 'Příjem nového psa', desc: 'Přijíždí nové zvíře. Pověřený pracovník ho zaregistruje v Zozio přímo z telefonu — jméno, druh, přibližný věk, fotky ze záchranné akce. Celé to trvá 5 minut.' },
+                { time: '08:15', icon: '🐶', title: 'Příjem nového psa', desc: 'Přijíždí nové zvíře. Pověřený pracovník ho zaregistruje v Zozio přímo z telefonu — jméno, druh, přibližný věk, fotky při příjmu. Celé to trvá 5 minut.' },
                 { time: '08:30', icon: '📸', title: 'Profil okamžitě viditelný online', desc: 'Jakmile ho uložíte, pes má vlastní profil na zozio.cz — s fotkami, charakteristikou a tlačítkem "Mám zájem". Google ho začne indexovat do 48 hodin.' },
                 { time: '10:00', icon: '📋', title: 'První žádost o adopci', desc: 'Jana z Brna narazila na profil psa na Googlu. Vyplnila adopční žádost online. Vy dostanete e-mail — žádost vidíte v přehledu admin panelu.' },
                 { time: '14:30', icon: '📅', title: 'Naplánovaná schůzka jedním klikem', desc: 'Žádost vypadá dobře. Kliknutím změníte stav na "Schůzka naplánována" — Jana automaticky dostane e-mail s potvrzením a instrukcemi.' },
@@ -831,7 +697,7 @@ export default function ProcBytNaZozioPage() {
             </a>
           </div>
           <p className="text-xs text-white/50 mt-6">
-            Zozio je platforma pro útulky a záchranné stanice v ČR a SR
+            Zozio je platforma pro útulky v ČR a SR
           </p>
         </div>
       </section>

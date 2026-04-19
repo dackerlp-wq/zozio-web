@@ -54,25 +54,19 @@ export async function GET(req: NextRequest) {
 
   const { data: institution } = await service
     .from('institutions')
-    .select('id, name, type')
+    .select('id, name')
     .eq('id', membership.institution_id)
     .single()
   if (!institution) return new NextResponse('Not found', { status: 404 })
 
-  const isShelter = institution.type === 'shelter'
-  const table     = isShelter ? 'animals' : 'rescue_cases'
-  const statusField = isShelter ? 'adoption_status' : 'status'
-
-  const selectFields = isShelter
-    ? 'id, name, breed, sex, birth_year, birth_month, chip_number, adoption_status, intake_date, created_at, color, weight_kg, species:animal_species(name_cs)'
-    : 'id, name, case_number, status, intake_date, created_at, estimated_age, species:animal_species(name_cs)'
+  const selectFields = 'id, name, breed, sex, birth_year, birth_month, chip_number, adoption_status, intake_date, created_at, color, weight_kg, species:animal_species(name_cs)'
 
   let query = service
-    .from(table)
+    .from('animals')
     .select(selectFields)
     .eq('institution_id', institution.id) as any
 
-  if (status)   query = query.eq(statusField, status)
+  if (status)   query = query.eq('adoption_status', status)
 
   if (yearStr) {
     const year = Number(yearStr)
@@ -98,7 +92,7 @@ export async function GET(req: NextRequest) {
   // ── Počty stavů ───────────────────────────────────────────────────────────
   const counts: Record<string, number> = {}
   for (const item of items) {
-    const s = isShelter ? item.adoption_status : item.status
+    const s = item.adoption_status
     counts[s] = (counts[s] ?? 0) + 1
   }
 
@@ -115,34 +109,20 @@ export async function GET(req: NextRequest) {
   lines.push('')
 
   // Záhlaví tabulky
-  if (isShelter) {
-    lines.push(row('Jméno', 'Druh', 'Plemeno', 'Pohlaví', 'Rok nar.', 'Číslo čipu', 'Status', 'Datum příjmu', 'Barva', 'Hmotnost (kg)'))
-    for (const a of items) {
-      lines.push(row(
-        a.name,
-        a.species?.name_cs,
-        a.breed,
-        SEX_LABELS[a.sex] ?? a.sex,
-        a.birth_year,
-        a.chip_number,
-        STATUS_LABELS[a.adoption_status] ?? a.adoption_status,
-        formatDate(a.intake_date ?? a.created_at),
-        a.color,
-        a.weight_kg,
-      ))
-    }
-  } else {
-    lines.push(row('Jméno', 'Číslo případu', 'Druh', 'Odh. věk', 'Status', 'Datum příjmu'))
-    for (const a of items) {
-      lines.push(row(
-        a.name,
-        a.case_number,
-        a.species?.name_cs,
-        a.estimated_age,
-        STATUS_LABELS[a.status] ?? a.status,
-        formatDate(a.intake_date ?? a.created_at),
-      ))
-    }
+  lines.push(row('Jméno', 'Druh', 'Plemeno', 'Pohlaví', 'Rok nar.', 'Číslo čipu', 'Status', 'Datum příjmu', 'Barva', 'Hmotnost (kg)'))
+  for (const a of items) {
+    lines.push(row(
+      a.name,
+      a.species?.name_cs,
+      a.breed,
+      SEX_LABELS[a.sex] ?? a.sex,
+      a.birth_year,
+      a.chip_number,
+      STATUS_LABELS[a.adoption_status] ?? a.adoption_status,
+      formatDate(a.intake_date ?? a.created_at),
+      a.color,
+      a.weight_kg,
+    ))
   }
 
   // Souhrnná část

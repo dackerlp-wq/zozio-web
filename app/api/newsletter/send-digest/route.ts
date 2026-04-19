@@ -60,7 +60,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const isShelter = institution.type === 'shelter'
     const periodLabel = period === 'week' ? 'tento týden' : 'tento měsíc'
     const since = new Date()
     since.setDate(since.getDate() - (period === 'week' ? 7 : 30))
@@ -68,29 +67,18 @@ export async function POST(request: NextRequest) {
 
     // Načti data za období
     const [animalsRes, statsRes, articlesRes, fundraisersRes, subscribersRes] = await Promise.all([
-      // Nová zvířata / případy
-      isShelter
-        ? service.from('animals')
-            .select('id, name, adoption_status, species:animal_species(icon)')
-            .eq('institution_id', institution_id)
-            .gte('created_at', sinceIso)
-            .order('created_at', { ascending: false })
-            .limit(10)
-        : service.from('rescue_cases')
-            .select('id, name, case_number, status, species:animal_species(icon)')
-            .eq('institution_id', institution_id)
-            .gte('created_at', sinceIso)
-            .order('created_at', { ascending: false })
-            .limit(10),
+      // Nová zvířata
+      service.from('animals')
+        .select('id, name, adoption_status, species:animal_species(icon)')
+        .eq('institution_id', institution_id)
+        .gte('created_at', sinceIso)
+        .order('created_at', { ascending: false })
+        .limit(10),
 
-      // Celkové statistiky (všechna zvířata, ne jen nová)
-      isShelter
-        ? service.from('animals')
-            .select('adoption_status')
-            .eq('institution_id', institution_id)
-        : service.from('rescue_cases')
-            .select('status')
-            .eq('institution_id', institution_id),
+      // Celkové statistiky
+      service.from('animals')
+        .select('adoption_status')
+        .eq('institution_id', institution_id),
 
       // Nové články
       service.from('articles')
@@ -126,21 +114,19 @@ export async function POST(request: NextRequest) {
 
     // Statistiky
     const statReceived = animals.length
-    const statAdoptedOrReleased = isShelter
-      ? allAnimals.filter((a: any) => a.adoption_status === 'adopted').length
-      : allAnimals.filter((a: any) => a.status === 'released').length
-    const statAvailableOrTreatment = isShelter
-      ? allAnimals.filter((a: any) => a.adoption_status === 'available').length
-      : allAnimals.filter((a: any) => ['intake', 'treatment', 'rehabilitation'].includes(a.status)).length
+    const statAdoptedOrReleased = allAnimals.filter((a: any) => a.adoption_status === 'adopted').length
+    const statAvailableOrTreatment = allAnimals.filter((a: any) => a.adoption_status === 'available').length
+
+    const STATUS_LABELS_DIGEST: Record<string, string> = {
+      available: 'K adopci', reserved: 'Rezervováno', adopted: 'Adoptováno', foster: 'Pěstounská péče',
+    }
 
     // Formátuj zvířata
     const newAnimals = animals.map((a: any) => ({
-      name: a.name ?? a.case_number ?? 'Neznámé',
-      emoji: (a.species as any)?.icon ?? (isShelter ? '🐾' : '🦉'),
-      status: isShelter
-        ? ({ available: 'K adopci', reserved: 'Rezervováno', adopted: 'Adoptováno', foster: 'Pěstounská péče' } as Record<string, string>)[a.adoption_status] ?? a.adoption_status
-        : ({ intake: 'Příjem', treatment: 'Léčba', rehabilitation: 'Rehabilitace', released: 'Propuštěno', deceased: 'Uhynulo' } as Record<string, string>)[a.status] ?? a.status,
-      url: `https://zozio.cz/${isShelter ? 'animals' : 'rescue'}/${a.id}`,
+      name: a.name ?? 'Neznámé',
+      emoji: (a.species as any)?.icon ?? '🐾',
+      status: STATUS_LABELS_DIGEST[a.adoption_status] ?? a.adoption_status,
+      url: `https://zozio.cz/animals/${a.id}`,
     }))
 
     const institutionUrl = `https://zozio.cz/institutions/${institution.slug}`
@@ -151,7 +137,6 @@ export async function POST(request: NextRequest) {
         const unsubscribeUrl = `https://zozio.cz/api/newsletter/unsubscribe?token=${sub.unsubscribe_token}`
         const html = await render(React.createElement(InstitutionDigestEmail, {
           institutionName: institution.name,
-          isShelter,
           period,
           periodLabel,
           newAnimals,

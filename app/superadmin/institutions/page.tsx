@@ -108,15 +108,14 @@ export default async function SuperadminInstitutionsPage({ searchParams }: PageP
                       <div className="text-xs text-gray">{inst.email}</div>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-bold
-                        ${inst.type === 'shelter' ? 'bg-shelter-bg text-shelter-dark' : 'bg-rescue-bg text-rescue-dark'}`}>
-                        {inst.type === 'shelter' ? '🏠 Útulok' : '🚑 Záchranná st.'}
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-bold bg-shelter-bg text-shelter-dark">
+                        🏠 Útulok
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-sm text-gray font-semibold">{inst.city}</td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-bold
-                        ${inst.plan === 'free' ? 'bg-gray-pale text-gray' : inst.plan === 'pro' ? 'bg-amber-light text-warning' : 'bg-rescue-bg text-rescue-dark'}`}>
+                        ${inst.plan === 'free' ? 'bg-gray-pale text-gray' : inst.plan === 'pro' ? 'bg-amber-light text-warning' : 'bg-coral-light text-coral-dark'}`}>
                         {inst.plan?.toUpperCase()}
                       </span>
                     </td>

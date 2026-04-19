@@ -12,13 +12,12 @@ export async function POST(request: NextRequest) {
     const service = createServiceClient()
 
     await service.from('animal_status_history').insert({
-      animal_id:      body.animal_id      ?? null,
-      rescue_case_id: body.rescue_case_id ?? null,
-      old_status:     body.old_status     ?? null,
-      new_status:     body.new_status,
-      note:           body.note           ?? null,
-      action:         body.action         ?? 'update',
-      changed_by:     user.id,
+      animal_id:  body.animal_id  ?? null,
+      old_status: body.old_status ?? null,
+      new_status: body.new_status,
+      note:       body.note       ?? null,
+      action:     body.action     ?? 'update',
+      changed_by: user.id,
     })
 
     return NextResponse.json({ success: true })

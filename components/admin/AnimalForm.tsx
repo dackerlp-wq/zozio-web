@@ -38,7 +38,7 @@ interface AuditLogEntry {
 
 interface AnimalFormProps {
   institutionId:   string
-  institutionType: 'shelter' | 'rescue_station'
+  institutionType?: string
   species:         Species[]
   mode:            'create' | 'edit'
   initialData?:    Record<string, unknown>
@@ -48,7 +48,7 @@ interface AnimalFormProps {
   currentUser?:    { id: string; name: string }
 }
 
-type Tab = 'basic' | 'health' | 'personality' | 'photos' | 'adopce' | 'rescue' | 'history'
+type Tab = 'basic' | 'health' | 'personality' | 'photos' | 'adopce' | 'history'
 
 interface PendingPhoto { file: File; preview: string }
 
@@ -325,9 +325,6 @@ function initFormData(data?: Record<string, unknown>) {
     published:        Boolean(d.published),
     found_location:   String(d.found_location ?? ''),
     found_date:       String(d.found_date ?? ''),
-    rescue_find_type: String(d.rescue_find_type ?? ''),
-    rescue_prognosis: String(d.rescue_prognosis ?? 'unknown'),
-    rescue_public_description: String(d.rescue_public_description ?? ''),
     internal_notes:   String(d.internal_notes ?? ''),
     not_for_adoption_reason: String(d.not_for_adoption_reason ?? ''),
     conditional_adopter_name:  String(d.conditional_adopter_name ?? ''),
@@ -341,12 +338,11 @@ type FormState = ReturnType<typeof initFormData>
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function AnimalForm({
-  institutionId, institutionType, species: initialSpecies,
+  institutionId, species: initialSpecies,
   mode, initialData, animal, statusHistory = [], auditLog = [],
 }: AnimalFormProps) {
-  const router    = useRouter()
-  const isShelter = institutionType === 'shelter'
-  const source    = initialData ?? animal
+  const router = useRouter()
+  const source = initialData ?? animal
 
   const [form, setForm] = useState<FormState>(() => initFormData(source))
   const [activeTab, setActiveTab] = useState<Tab>('basic')
@@ -431,7 +427,7 @@ export function AnimalForm({
       const res = await fetch('/api/species', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name_cs: customSpeciesName.trim(), category: isShelter ? 'domestic' : 'wild' }),
+        body: JSON.stringify({ name_cs: customSpeciesName.trim(), category: 'domestic' }),
       })
       const newSpecies = await res.json()
       if (!res.ok) throw new Error(newSpecies.error)
@@ -589,9 +585,6 @@ export function AnimalForm({
         adopter_requirements: form.adopter_requirements || null,
         in_foster: form.in_foster, published: publish,
         found_location: form.found_location || null, found_date: form.found_date || null,
-        rescue_find_type: form.rescue_find_type || null,
-        rescue_prognosis: form.rescue_prognosis || null,
-        rescue_public_description: form.rescue_public_description || null,
         internal_notes: form.internal_notes || null,
         not_for_adoption_reason: form.not_for_adoption_reason || null,
         conditional_adopter_name:  form.conditional_adopter_name || null,
@@ -660,14 +653,13 @@ export function AnimalForm({
   const tabs: { id: Tab; icon: string; label: string }[] = [
     { id: 'basic',       icon: '🐾', label: 'Základní' },
     { id: 'health',      icon: '💊', label: 'Zdraví' },
-    ...(isShelter ? [{ id: 'personality' as Tab, icon: '❤️', label: 'Povaha' }] : []),
+    { id: 'personality' as Tab, icon: '❤️', label: 'Povaha' },
     { id: 'photos',      icon: '📷', label: 'Fotky' },
     { id: 'adopce',      icon: '📋', label: 'Adopce' },
-    ...(!isShelter ? [{ id: 'rescue' as Tab, icon: '🦉', label: 'Záchrana' }] : []),
     ...(mode === 'edit' ? [{ id: 'history' as Tab, icon: '🕐', label: 'Historie' }] : []),
   ]
 
-  const statusCards  = isShelter ? SHELTER_STATUS_CARDS : RESCUE_STATUS_CARDS
+  const statusCards = SHELTER_STATUS_CARDS
   const allPhotoUrls = [...existingPhotos, ...pendingPhotos.map(p => p.preview)]
   const errorCount   = Object.keys(errors).length
 
@@ -985,7 +977,7 @@ export function AnimalForm({
         )}
 
         {/* ═══ TAB: PERSONALITY (shelter) ═══ */}
-        {activeTab === 'personality' && isShelter && (
+        {activeTab === 'personality' && (
           <div>
             <InfoBox type="tip" icon="💛">Čím víc vyplníš, tím snáz se zvíře adoptuje. Zájemci filtrují podle těchto vlastností.</InfoBox>
 
@@ -1174,52 +1166,6 @@ export function AnimalForm({
               <SectionTitle>Publikace</SectionTitle>
               <ToggleRow label="Publikovat na webu" desc="Zvíře se zobrazí na veřejných stránkách zozio.cz"
                 checked={form.published} onChange={v => set('published', v)} />
-            </div>
-          </div>
-        )}
-
-        {/* ═══ TAB: RESCUE (rescue_station) ═══ */}
-        {activeTab === 'rescue' && !isShelter && (
-          <div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-              <Field label="Druh nálezu" hint="Jak bylo zvíře nalezeno">
-                <input className={inputCls} value={form.rescue_find_type}
-                  onChange={e => set('rescue_find_type', e.target.value)}
-                  placeholder="Střet s vozidlem, vypadlé z hnízda..." />
-              </Field>
-
-              <Field label="Prognóza">
-                <select className={selectCls} value={form.rescue_prognosis} onChange={e => set('rescue_prognosis', e.target.value)}>
-                  {RESCUE_PROGNOSIS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </Field>
-
-              <Field label="Místo nálezu">
-                <input className={inputCls} value={form.found_location} onChange={e => set('found_location', e.target.value)} placeholder="Např. Praha 5..." />
-              </Field>
-
-              <Field label="Datum nálezu">
-                <input type="date" className={inputCls} value={form.found_date} onChange={e => set('found_date', e.target.value)} />
-              </Field>
-
-              <Field label="Vztah k lidem">
-                <select className={selectCls} value={form.good_with_adults} onChange={e => set('good_with_adults', e.target.value)}>
-                  {GOOD_WITH_ADULTS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </Field>
-
-              <div className="sm:col-span-2">
-                <Field label="Veřejný popis případu" hint="Záchranný příběh zobrazený na webu">
-                  <textarea className={textareaCls + ' min-h-[100px]'} value={form.rescue_public_description}
-                    onChange={e => set('rescue_public_description', e.target.value)} placeholder="Sova byla nalezena..." />
-                </Field>
-              </div>
-
-              <div className="sm:col-span-2">
-                <Field label="Interní poznámky">
-                  <textarea className={textareaCls} value={form.internal_notes} onChange={e => set('internal_notes', e.target.value)} />
-                </Field>
-              </div>
             </div>
           </div>
         )}

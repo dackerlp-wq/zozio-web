@@ -13,8 +13,6 @@ interface SettingsFormProps {
 
 export function SettingsForm({ institution, userRole }: SettingsFormProps) {
   const router    = useRouter()
-  const isShelter = institution.type === 'shelter'
-
   const [form, setForm] = useState({
     name:              institution.name              ?? '',
     short_description: institution.short_description ?? '',
@@ -184,10 +182,7 @@ export function SettingsForm({ institution, userRole }: SettingsFormProps) {
               <textarea
                 value={form.description}
                 onChange={e => update('description', e.target.value)}
-                placeholder={isShelter
-                  ? 'Jsme útulok v Praze, který pečuje o opuštěná zvířata...'
-                  : 'Záchranná stanice pro volně žijící živočichy...'
-                }
+                placeholder="Jsme útulok v Praze, který pečuje o opuštěná zvířata..."
                 rows={5}
                 className={`${inputCls} resize-none`}
               />
@@ -534,11 +529,10 @@ export function SettingsForm({ institution, userRole }: SettingsFormProps) {
           </p>
 
           {/* Preview */}
-          <div className={`relative w-24 h-24 rounded-xl overflow-hidden border-2 border-gray-pale mb-3 flex items-center justify-center text-3xl
-            ${isShelter ? 'bg-coral-tag-bg' : 'bg-rescue-tag-bg'}`}>
+          <div className="relative w-24 h-24 rounded-xl overflow-hidden border-2 border-gray-pale mb-3 flex items-center justify-center text-3xl bg-coral-tag-bg">
             {logoUrl
               ? <Image src={logoUrl} alt="Logo" fill className="object-cover" />
-              : <span>{isShelter ? '🏠' : '🚑'}</span>
+              : <span>🏠</span>
             }
             {logoUploading && (
               <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
@@ -577,9 +571,7 @@ export function SettingsForm({ institution, userRole }: SettingsFormProps) {
 
           {/* Preview */}
           <div className="relative w-full h-20 rounded-xl overflow-hidden border-2 border-gray-pale mb-3 flex items-center justify-center"
-            style={{ background: isShelter
-              ? 'linear-gradient(135deg, var(--espresso), var(--coral))'
-              : 'linear-gradient(135deg, #1C2E28, var(--rescue))' }}>
+            style={{ background: 'linear-gradient(135deg, var(--espresso), var(--coral))' }}>
             {coverUrl
               ? <Image src={coverUrl} alt="Cover" fill className="object-cover opacity-80" />
               : <span className="text-xs text-white/60 font-medium">Žádné cover foto</span>
@@ -612,12 +604,12 @@ export function SettingsForm({ institution, userRole }: SettingsFormProps) {
         </div>
 
         {/* Typ a stav */}
-        <div className={`rounded-lg p-5 ${isShelter ? 'bg-shelter-bg' : 'bg-rescue-bg'}`}>
-          <div className={`text-xs font-bold uppercase tracking-wider mb-2 ${isShelter ? 'text-shelter-dark' : 'text-rescue-dark'}`}>
+        <div className="rounded-lg p-5 bg-shelter-bg">
+          <div className="text-xs font-bold uppercase tracking-wider mb-2 text-shelter-dark">
             Typ instituce
           </div>
           <div className="font-display font-extrabold text-xl text-espresso">
-            {isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
+            🏠 Útulek
           </div>
           <div className={`text-xs font-semibold mt-2 ${institution.approval_status === 'approved' ? 'text-success' : 'text-warning'}`}>
             {institution.approval_status === 'approved' ? '✓ Schváleno' : '⏳ Čeká na schválení'}

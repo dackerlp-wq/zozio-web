@@ -42,7 +42,6 @@ export default async function AdminDocumentsPage() {
   return (
     <DocumentsPage
       animals={animals}
-      institutionType={institution.type as 'shelter' | 'rescue_station'}
       institutionName={institution.name}
       institutionId={String(institution.id)}
     />

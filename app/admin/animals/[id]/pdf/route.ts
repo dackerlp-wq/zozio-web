@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import {
-  ADOPTION_STATUS_LABEL, RESCUE_STATUS_LABEL,
+  ADOPTION_STATUS_LABEL,
   HEALTH_STATUS_LABEL, INTAKE_REASON_LABEL, SEX_LABEL, SIZE_LABEL,
 } from '@/lib/animal-labels'
 
@@ -28,17 +28,18 @@ export async function GET(
 
   const { data: institution } = await service
     .from('institutions')
-    .select('id, name, type, city, email, phone')
+    .select('id, name, city, email, phone')
     .eq('id', membership.institution_id)
     .single()
 
   if (!institution) return new NextResponse('Instituce nenalezena', { status: 404 })
 
-  const isShelter = institution.type === 'shelter'
-
-  const { data: animal } = isShelter
-    ? await service.from('animals').select('*, species:animal_species(name_cs, icon)').eq('id', id).eq('institution_id', institution.id).single()
-    : await service.from('rescue_cases').select('*, species:animal_species(name_cs, icon)').eq('id', id).eq('institution_id', institution.id).single()
+  const { data: animal } = await service
+    .from('animals')
+    .select('*, species:animal_species(name_cs, icon)')
+    .eq('id', id)
+    .eq('institution_id', institution.id)
+    .single()
 
   if (!animal) return new NextResponse('Záznam nenalezen', { status: 404 })
 
@@ -94,46 +95,35 @@ export async function GET(
     <div style="font-size:11px;color:#8B7355">Karta vytisknuta: ${today}</div>
     <div style="font-size:11px;color:#8B7355">${institution.name}</div>
     <div style="font-size:11px;color:#8B7355">${institution.city ?? ''}</div>
-    <div style="background:${isShelter
-        ? ADOPTION_STATUS_LABEL[a.adoption_status ?? ''] ? '#E8634A' : '#8B7355'
-        : '#2E9E8F'};
+    <div style="background:${ADOPTION_STATUS_LABEL[a.adoption_status ?? ''] ? '#E8634A' : '#8B7355'};
       color:white;font-weight:700;font-size:12px;padding:3px 10px;border-radius:100px;margin-top:6px;display:inline-block">
-      ${isShelter
-        ? (ADOPTION_STATUS_LABEL[a.adoption_status ?? ''] ?? a.adoption_status)
-        : (RESCUE_STATUS_LABEL[a.status ?? ''] ?? a.status)}
+      ${ADOPTION_STATUS_LABEL[a.adoption_status ?? ''] ?? a.adoption_status}
     </div>
   </div>
 </div>
 
 ${section('Základní informace', `
   ${row('ID záznamu', a.id?.slice(0, 8) + '...')}
-  ${isShelter ? row('Číslo čipu', a.chip_number) : row('Číslo případu', a.case_number)}
-  ${isShelter ? row('Číslo pasu', a.passport_number) : row('Číslo kroužku', a.ring_number)}
+  ${row('Číslo čipu', a.chip_number)}
+  ${row('Číslo pasu', a.passport_number)}
   ${row('Pohlaví', SEX_LABEL[a.sex ?? ''] ?? '—')}
-  ${isShelter
-    ? row('Rok narození', a.birth_year?.toString())
-    : row('Odhadovaný věk', a.estimated_age)}
-  ${isShelter
-    ? row('Velikost', SIZE_LABEL[a.size ?? ''] ?? '—')
-    : row('Váha', a.weight_g ? a.weight_g + ' g' : null)}
+  ${row('Rok narození', a.birth_year?.toString())}
+  ${row('Velikost', SIZE_LABEL[a.size ?? ''] ?? '—')}
   ${row('Barva', a.color)}
   ${row('Zdravotní stav', HEALTH_STATUS_LABEL[a.health_status ?? ''] ?? '—')}
 `)}
 
 ${section('Zdravotní záznamy', `
-  ${isShelter ? row('Očkovaný', bool(a.vaccinated), a.vaccinated) : ''}
-  ${isShelter ? row('Kastrovaný', bool(a.neutered), a.neutered) : ''}
-  ${isShelter ? row('Čipovaný', bool(a.microchipped), a.microchipped) : ''}
+  ${row('Očkovaný', bool(a.vaccinated), a.vaccinated)}
+  ${row('Kastrovaný', bool(a.neutered), a.neutered)}
+  ${row('Čipovaný', bool(a.microchipped), a.microchipped)}
   ${row('Datum čipování', a.chip_date)}
   ${row('Veterinář', a.vet_name ? `${a.vet_name}${a.vet_phone ? ' · ' + a.vet_phone : ''}` : null)}
   ${row('Poslední vet. návštěva', a.last_vet_visit)}
   ${row('Aktuální léky', a.medications)}
   ${row('V karanténě', a.in_quarantine ? `Ano${a.quarantine_until ? ' do ' + a.quarantine_until : ''}` : null, a.in_quarantine)}
-  ${isShelter && a.in_foster ? row('Foster péče', `${a.foster_name ?? ''}${a.foster_phone ? ' · ' + a.foster_phone : ''}${a.foster_since ? ' (od ' + a.foster_since + ')' : ''}`, true) : ''}
+  ${a.in_foster ? row('Foster péče', `${a.foster_name ?? ''}${a.foster_phone ? ' · ' + a.foster_phone : ''}${a.foster_since ? ' (od ' + a.foster_since + ')' : ''}`, true) : ''}
   ${row('Zdravotní poznámky', a.medical_notes)}
-  ${!isShelter ? row('Příčina zranění', a.cause_of_injury) : ''}
-  ${!isShelter ? row('Diagnóza', a.diagnosis) : ''}
-  ${!isShelter ? row('Průběh léčby', a.treatment_notes) : ''}
 `)}
 
 ${section('Původ a příjem', `
@@ -142,7 +132,7 @@ ${section('Původ a příjem', `
   ${row('Místo nálezu', a.found_location)}
   ${row('Datum nálezu', a.found_date)}
   ${row('Nalézatel', a.finder_name ? `${a.finder_name}${a.finder_phone ? ' · ' + a.finder_phone : ''}` : null)}
-  ${isShelter ? row('Předchozí majitel', a.previous_owner ? `${a.previous_owner}${a.previous_owner_phone ? ' · ' + a.previous_owner_phone : ''}` : null) : ''}
+  ${row('Předchozí majitel', a.previous_owner ? `${a.previous_owner}${a.previous_owner_phone ? ' · ' + a.previous_owner_phone : ''}` : null)}
   ${row('Poznámky k příjmu', a.intake_notes)}
 `)}
 

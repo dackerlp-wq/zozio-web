@@ -21,12 +21,11 @@ import {
 interface WelcomeEmailProps {
   contactName: string
   institutionName: string
-  institutionType: 'shelter' | 'rescue_station'
   email: string
 }
 
-export function WelcomeEmail({ contactName, institutionName, institutionType, email }: WelcomeEmailProps) {
-  const typeLabel = institutionType === 'shelter' ? '🏠 Útulek' : '🚑 Záchranná stanice'
+export function WelcomeEmail({ contactName, institutionName, email }: WelcomeEmailProps) {
+  const typeLabel = '🏠 Útulek'
   return (
     <BaseLayout previewText={`Vítejte v Zozio! Vaše registrace ${institutionName} byla přijata.`}>
       <EmailShell>

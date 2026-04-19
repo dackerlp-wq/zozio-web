@@ -11,19 +11,18 @@ interface DonationWidgetProps {
     active:         boolean
     deadline?:      string | null
   }
-  variant?: 'shelter' | 'rescue'
 }
 
 const PRESET_AMOUNTS = [100, 250, 500, 1000]
 
-export function DonationWidget({ fundraiser: f, variant = 'rescue' }: DonationWidgetProps) {
+export function DonationWidget({ fundraiser: f }: DonationWidgetProps) {
   const [selected,  setSelected]  = useState<number | null>(250)
   const [custom,    setCustom]    = useState('')
   const [submitted, setSubmitted] = useState(false)
 
-  const accent = variant === 'rescue' ? 'var(--rescue)' : 'var(--coral)'
-  const accentBg = variant === 'rescue' ? 'var(--rescue-tag-bg)' : 'var(--coral-tag-bg)'
-  const accentText = variant === 'rescue' ? 'var(--rescue-tag-text)' : 'var(--coral-tag-text)'
+  const accent = 'var(--coral)'
+  const accentBg = 'var(--coral-tag-bg)'
+  const accentText = 'var(--coral-tag-text)'
 
   const pct      = Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100)
   const amount   = custom ? parseInt(custom) : (selected ?? 0)

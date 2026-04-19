@@ -38,9 +38,6 @@ export default async function EditAnimalPage({
 
   if (!rawInstitution) redirect('/admin/dashboard')
 
-  const institutionType = String(rawInstitution.type) as 'shelter' | 'rescue_station'
-  const isShelter = institutionType === 'shelter'
-
   /* ── Animal ── */
   const { data: animal } = await service
     .from('animals')
@@ -53,11 +50,11 @@ export default async function EditAnimalPage({
 
   const a = animal as Record<string, unknown>
 
-  /* ── Species (filtrujeme podle typu instituce) ── */
+  /* ── Species (tylko domácí druhy) ── */
   const { data: speciesRows } = await service
     .from('animal_species')
     .select('id, name_cs, icon, category')
-    .eq('category', isShelter ? 'domestic' : 'wild')
+    .eq('category', 'domestic')
     .order('name_cs')
 
   const species = (speciesRows ?? []).map((s) => ({
@@ -98,7 +95,7 @@ export default async function EditAnimalPage({
           </a>
           <span className="text-[#D5CFC8]">·</span>
           <a
-            href={isShelter ? `/animals/${id}` : `/rescue/${id}`}
+            href={`/animals/${id}`}
             target="_blank"
             className="text-sm text-[#E8634A] hover:opacity-70 font-semibold transition-opacity"
           >
@@ -134,7 +131,6 @@ export default async function EditAnimalPage({
 
       <AnimalForm
         institutionId={String(rawInstitution.id)}
-        institutionType={institutionType}
         species={species}
         mode="edit"
         animal={a}

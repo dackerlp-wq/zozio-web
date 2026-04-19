@@ -57,8 +57,6 @@ export default async function DashboardPage() {
 
   if (!institution) redirect('/auth/register')
 
-  const isShelter = institution.type === 'shelter'
-
   const now             = new Date()
   const thisMonthStart  = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   const lastMonthStart  = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
@@ -66,17 +64,11 @@ export default async function DashboardPage() {
 
   const [animalsData, applicationsData, fundraisersData, volunteersData, longStayData] =
     await Promise.all([
-      isShelter
-        ? service.from('animals').select('adoption_status, intake_date, created_at').eq('institution_id', institution.id)
-        : service.from('rescue_cases').select('status, intake_date, created_at').eq('institution_id', institution.id),
-      isShelter
-        ? service.from('adoption_applications').select('status, created_at').eq('institution_id', institution.id)
-        : Promise.resolve({ data: [] }),
+      service.from('animals').select('adoption_status, intake_date, created_at').eq('institution_id', institution.id),
+      service.from('adoption_applications').select('status, created_at').eq('institution_id', institution.id),
       service.from('fundraisers').select('title, goal_amount, current_amount, active').eq('institution_id', institution.id).eq('active', true),
       service.from('volunteers').select('status').eq('institution_id', institution.id),
-      isShelter
-        ? service.from('animals').select('id, name, intake_date').eq('institution_id', institution.id).eq('adoption_status', 'available').lt('intake_date', longStayDate).order('intake_date', { ascending: true }).limit(5)
-        : service.from('rescue_cases').select('id, name, case_number, intake_date').eq('institution_id', institution.id).in('status', ['intake', 'treatment', 'rehabilitation']).lt('intake_date', longStayDate).order('intake_date', { ascending: true }).limit(5),
+      service.from('animals').select('id, name, intake_date').eq('institution_id', institution.id).eq('adoption_status', 'available').lt('intake_date', longStayDate).order('intake_date', { ascending: true }).limit(5),
     ])
 
   const animals      = (animalsData.data    ?? []) as any[]
@@ -86,23 +78,16 @@ export default async function DashboardPage() {
   const longStay     = (longStayData.data    ?? []) as any[]
 
   // Počty stavů
-  const inactiveStatuses = isShelter ? ['adopted', 'deceased'] : ['released', 'deceased']
-  const totalInCare = animals.filter((a: any) => {
-    const s = isShelter ? a.adoption_status : a.status
-    return !inactiveStatuses.includes(s)
-  }).length
+  const inactiveStatuses = ['adopted', 'deceased']
+  const totalInCare = animals.filter((a: any) => !inactiveStatuses.includes(a.adoption_status)).length
 
-  const adoptedTotal = isShelter
-    ? animals.filter((a: any) => a.adoption_status === 'adopted').length
-    : animals.filter((a: any) => a.status === 'released').length
+  const adoptedTotal = animals.filter((a: any) => a.adoption_status === 'adopted').length
 
   const newThisMonth = animals.filter((a: any) =>
     new Date(a.intake_date ?? a.created_at) >= new Date(thisMonthStart)
   ).length
 
-  const adoptedThisMonth = isShelter
-    ? applications.filter((a: any) => a.status === 'adopted' && new Date(a.created_at) >= new Date(thisMonthStart)).length
-    : animals.filter((a: any) => a.status === 'released' && new Date(a.created_at) >= new Date(thisMonthStart)).length
+  const adoptedThisMonth = applications.filter((a: any) => a.status === 'adopted' && new Date(a.created_at) >= new Date(thisMonthStart)).length
 
   const newLastMonth = animals.filter((a: any) => {
     const d = new Date(a.intake_date ?? a.created_at)
@@ -126,25 +111,23 @@ export default async function DashboardPage() {
   const activeVolunteers    = volunteers.filter((v: any) => v.status === 'active').length
   const pendingVolunteers   = volunteers.filter((v: any) => v.status === 'pending').length
 
-  // Status breakdown pro útulky
-  const statusBreakdown = isShelter
-    ? SHELTER_STATUSES.map(s => ({ ...s, count: animals.filter((a: any) => a.adoption_status === s.key).length })).filter(s => s.count > 0)
-    : []
+  // Status breakdown
+  const statusBreakdown = SHELTER_STATUSES
+    .map(s => ({ ...s, count: animals.filter((a: any) => a.adoption_status === s.key).length }))
+    .filter(s => s.count > 0)
 
   // Čekající žádosti
   let recentApplications: any[] = []
-  if (isShelter) {
-    try {
-      const { data } = await service
-        .from('adoption_applications')
-        .select('id, applicant_name, status, created_at, animal:animals(name, species:animal_species(name_cs))')
-        .eq('institution_id', institution.id)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(5)
-      recentApplications = data ?? []
-    } catch { recentApplications = [] }
-  }
+  try {
+    const { data } = await service
+      .from('adoption_applications')
+      .select('id, applicant_name, status, created_at, animal:animals(name, species:animal_species(name_cs))')
+      .eq('institution_id', institution.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(5)
+    recentApplications = data ?? []
+  } catch { recentApplications = [] }
 
   // Aktivita
   let activity: any[] = []
@@ -171,8 +154,8 @@ export default async function DashboardPage() {
           </h1>
         </div>
         <Link href="/admin/animals/new" className="shrink-0">
-          <Button variant={isShelter ? 'primary' : 'rescue'} size="sm">
-            + {isShelter ? 'Přidat zvíře' : 'Nový pacient'}
+          <Button variant="primary" size="sm">
+            + Přidat zvíře
           </Button>
         </Link>
       </div>
@@ -237,30 +220,20 @@ export default async function DashboardPage() {
           color="#E8634A"
         />
         <StatTile
-          label={isShelter ? 'Adoptováno' : 'Propuštěno'}
+          label="Adoptováno"
           value={adoptedTotal}
           sub={adoptedThisMonth > 0 ? `${adoptedThisMonth} tento měsíc` : 'od začátku'}
           href="/admin/animals"
           color="#2A7D4F"
         />
-        {isShelter ? (
-          <StatTile
-            label="Čekající žádosti"
-            value={pendingApplications}
-            sub={`celkem ${applications.length} žádostí`}
-            href="/admin/applications"
-            color="#F0A500"
-            alert={pendingApplications > 0}
-          />
-        ) : (
-          <StatTile
-            label="Aktivní sbírky"
-            value={fundraisers.length}
-            sub="právě probíhají"
-            href="/admin/fundraisers"
-            color="#F0A500"
-          />
-        )}
+        <StatTile
+          label="Čekající žádosti"
+          value={pendingApplications}
+          sub={`celkem ${applications.length} žádostí`}
+          href="/admin/applications"
+          color="#F0A500"
+          alert={pendingApplications > 0}
+        />
         <StatTile
           label="Dobrovolníci"
           value={activeVolunteers}
@@ -295,7 +268,7 @@ export default async function DashboardPage() {
         <div className="space-y-4 min-w-0">
 
           {/* Čekající žádosti */}
-          {isShelter && recentApplications.length > 0 && (
+          {recentApplications.length > 0 && (
             <div className="bg-white rounded-lg border border-[#F0EDE8] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-[#F0EDE8]">
                 <h2 className="font-display font-extrabold text-sm text-[#2C1810]">Čekající žádosti o adopci</h2>
@@ -332,13 +305,13 @@ export default async function DashboardPage() {
           {/* Trendy – 3 karty */}
           <div className="grid grid-cols-3 gap-3">
             <TrendTile
-              label={`Nové ${isShelter ? 'příjmy' : 'případy'}`}
+              label="Nové příjmy"
               value={newThisMonth}
               sub={`min. měsíc: ${newLastMonth}`}
               trend={trend}
             />
             <TrendTile
-              label={isShelter ? 'Adopce' : 'Propuštění'}
+              label="Adopce"
               value={adoptedThisMonth}
               sub={`celkem: ${adoptedTotal}`}
             />
@@ -429,10 +402,8 @@ export default async function DashboardPage() {
           <div>
             <h2 className="font-display font-extrabold text-sm text-[#2C1810] mb-2">Rychlé akce</h2>
             <div className="grid grid-cols-2 lg:grid-cols-1 gap-2">
-              <QuickBtn href="/admin/animals/new" label={isShelter ? 'Přidat zvíře' : 'Nový pacient'} primary />
-              {isShelter && (
-                <QuickBtn href="/admin/applications" label="Žádosti o adopci" badge={pendingApplications || undefined} />
-              )}
+              <QuickBtn href="/admin/animals/new" label="Přidat zvíře" primary />
+              <QuickBtn href="/admin/applications" label="Žádosti o adopci" badge={pendingApplications || undefined} />
               <QuickBtn href="/admin/fundraisers/new" label="Nová sbírka" />
               <QuickBtn href="/admin/volunteers" label="Dobrovolníci" badge={pendingVolunteers || undefined} />
               <QuickBtn href="/admin/articles/new" label="Nový článek" />

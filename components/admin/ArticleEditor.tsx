@@ -7,11 +7,10 @@ import type { Article } from '@/types/database'
 
 interface ArticleEditorProps {
   institutionId: string
-  institutionType: string
+  institutionType?: string
   mode: 'create' | 'edit'
-  article?: Partial<Article> & { animal_id?: string; rescue_case_id?: string }
+  article?: Partial<Article> & { animal_id?: string }
   animals?: { id: string; name: string }[]
-  rescueCases?: { id: string; name: string | null; case_number: string | null }[]
 }
 
 function slugify(str: string) {
@@ -22,21 +21,19 @@ function slugify(str: string) {
     + '-' + Date.now().toString(36)
 }
 
-export function ArticleEditor({ institutionId, institutionType, mode, article, animals = [], rescueCases = [] }: ArticleEditorProps) {
+export function ArticleEditor({ institutionId, mode, article, animals = [] }: ArticleEditorProps) {
   const router    = useRouter()
   const editorRef = useRef<HTMLDivElement>(null)
   const fileRef   = useRef<HTMLInputElement>(null)
   const coverRef  = useRef<HTMLInputElement>(null)
-  const isShelter = institutionType === 'shelter'
 
   const [form, setForm] = useState({
-    title:          article?.title          ?? '',
-    perex:          article?.perex          ?? '',
-    category:       article?.category       ?? 'story',
-    author_name:    article?.author_name    ?? '',
-    published:      article?.published      ?? false,
-    animal_id:      article?.animal_id      ?? '',
-    rescue_case_id: article?.rescue_case_id ?? '',
+    title:       article?.title       ?? '',
+    perex:       article?.perex       ?? '',
+    category:    article?.category    ?? 'story',
+    author_name: article?.author_name ?? '',
+    published:   article?.published   ?? false,
+    animal_id:   article?.animal_id   ?? '',
   })
   const [coverUrl, setCoverUrl]             = useState<string>(article?.cover_url ?? '')
   const [content, setContent]               = useState<string>(article?.content ?? '')
@@ -111,8 +108,7 @@ export function ArticleEditor({ institutionId, institutionType, mode, article, a
       cover_url:       coverUrl            || null,
       category:        form.category,
       author_name:     form.author_name    || null,
-      animal_id:       form.animal_id      || null,
-      rescue_case_id:  form.rescue_case_id || null,
+      animal_id:       form.animal_id || null,
       published:       publish || form.published,
       published_at:    (publish || form.published) && !article?.published_at
                          ? new Date().toISOString()
@@ -265,7 +261,6 @@ export function ArticleEditor({ institutionId, institutionType, mode, article, a
             <label className="text-xs font-bold text-brown uppercase tracking-wider">Kategorie</label>
             <select value={form.category} onChange={e => update('category', e.target.value)} className={inputCls}>
               <option value="story">🐾 Příběh adopce</option>
-              <option value="rescue">🦉 Záchranný příběh</option>
               <option value="tips">💡 Tipy a rady</option>
               <option value="news">📰 Novinky</option>
             </select>
@@ -286,27 +281,15 @@ export function ArticleEditor({ institutionId, institutionType, mode, article, a
               Na profilu zvířete se zobrazí odkaz na tento článek.
             </p>
 
-            {isShelter ? (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-brown">Zvíře (volitelné)</label>
-                <select value={form.animal_id} onChange={e => update('animal_id', e.target.value)} className={inputCls}>
-                  <option value="">— Nepropojovat —</option>
-                  {animals.map(a => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-brown">Záchranný případ (volitelné)</label>
-                <select value={form.rescue_case_id} onChange={e => update('rescue_case_id', e.target.value)} className={inputCls}>
-                  <option value="">— Nepropojovat —</option>
-                  {rescueCases.map(c => (
-                    <option key={c.id} value={c.id}>{c.name ?? c.case_number}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-brown">Zvíře (volitelné)</label>
+              <select value={form.animal_id} onChange={e => update('animal_id', e.target.value)} className={inputCls}>
+                <option value="">— Nepropojovat —</option>
+                {animals.map(a => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <label className="flex items-center gap-3 cursor-pointer pt-1">

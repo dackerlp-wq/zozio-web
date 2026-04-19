@@ -21,42 +21,23 @@ export async function GET(req: NextRequest) {
 
   const { data: institution } = await service
     .from('institutions')
-    .select('id, type')
+    .select('id')
     .eq('id', membership.institution_id)
     .single()
   if (!institution) return NextResponse.json([])
 
-  const isShelter = institution.type === 'shelter'
+  const { data } = await service
+    .from('animals')
+    .select('id, name, breed, chip_number, species:animal_species(name_cs)')
+    .eq('institution_id', institution.id)
+    .or(`name.ilike.%${q}%,breed.ilike.%${q}%,chip_number.ilike.%${q}%`)
+    .limit(6)
 
-  if (isShelter) {
-    const { data } = await service
-      .from('animals')
-      .select('id, name, breed, chip_number, species:animal_species(name_cs)')
-      .eq('institution_id', institution.id)
-      .or(`name.ilike.%${q}%,breed.ilike.%${q}%,chip_number.ilike.%${q}%`)
-      .limit(6)
-
-    return NextResponse.json(
-      (data ?? []).map((a: any) => ({
-        id: a.id,
-        label: a.name ?? '—',
-        sub: [a.species?.name_cs, a.breed].filter(Boolean).join(' · '),
-      }))
-    )
-  } else {
-    const { data } = await service
-      .from('rescue_cases')
-      .select('id, name, case_number, species:animal_species(name_cs)')
-      .eq('institution_id', institution.id)
-      .or(`name.ilike.%${q}%,case_number.ilike.%${q}%`)
-      .limit(6)
-
-    return NextResponse.json(
-      (data ?? []).map((a: any) => ({
-        id: a.id,
-        label: a.name ?? a.case_number ?? '—',
-        sub: [a.species?.name_cs, a.case_number].filter(Boolean).join(' · '),
-      }))
-    )
-  }
+  return NextResponse.json(
+    (data ?? []).map((a: any) => ({
+      id: a.id,
+      label: a.name ?? '—',
+      sub: [a.species?.name_cs, a.breed].filter(Boolean).join(' · '),
+    }))
+  )
 }

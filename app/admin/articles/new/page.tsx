@@ -25,16 +25,12 @@ export default async function NewArticlePage() {
 
   if (!institution) redirect('/admin/dashboard')
 
-  const isShelter = institution.type === 'shelter'
-
-  const [animalsData, rescueCasesData] = await Promise.all([
-    isShelter
-      ? service.from('animals').select('id, name').eq('institution_id', institution.id).eq('published', true).order('name')
-      : Promise.resolve({ data: [] }),
-    !isShelter
-      ? service.from('rescue_cases').select('id, name, case_number').eq('institution_id', institution.id).not('status', 'in', '("released","deceased")').order('created_at', { ascending: false })
-      : Promise.resolve({ data: [] }),
-  ])
+  const { data: animalsData } = await service
+    .from('animals')
+    .select('id, name')
+    .eq('institution_id', institution.id)
+    .eq('published', true)
+    .order('name')
 
   return (
     <div>
@@ -48,10 +44,8 @@ export default async function NewArticlePage() {
       </h1>
       <ArticleEditor
         institutionId={institution.id}
-        institutionType={institution.type}
         mode="create"
-        animals={(animalsData.data ?? []) as any[]}
-        rescueCases={(rescueCasesData.data ?? []) as any[]}
+        animals={(animalsData ?? []) as any[]}
       />
     </div>
   )

@@ -220,7 +220,7 @@ export function ApplicationActions({
                 📅 Změnit termín schůzky
               </Button>
               <Button
-                variant="rescue"
+                variant="primary"
                 size="sm"
                 className="w-full justify-center"
                 loading={loading}

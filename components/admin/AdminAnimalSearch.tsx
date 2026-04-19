@@ -8,26 +8,16 @@ interface Suggestion { id: string; label: string; sub: string }
 interface Props {
   currentQ:        string
   currentStatus:   string
-  isShelter:       boolean
   institutionName: string
 }
 
-const SHELTER_STATUSES = [
+const STATUSES = [
   { value: 'available',      label: 'K adopci' },
   { value: 'reserved',       label: 'Rezervováno' },
   { value: 'adopted',        label: 'Adoptováno' },
   { value: 'foster',         label: 'Pěstounská péče' },
   { value: 'intake',         label: 'V příjmu' },
   { value: 'treatment',      label: 'Léčba' },
-  { value: 'rehabilitation', label: 'Rehabilitace' },
-  { value: 'deceased',       label: 'Uhynulo' },
-]
-
-const RESCUE_STATUSES = [
-  { value: 'intake',         label: 'V příjmu' },
-  { value: 'treatment',      label: 'Léčba' },
-  { value: 'rehabilitation', label: 'Rehabilitace' },
-  { value: 'released',       label: 'Propuštěno' },
   { value: 'deceased',       label: 'Uhynulo' },
 ]
 
@@ -40,11 +30,11 @@ const currentYear = new Date().getFullYear()
 const YEARS = Array.from({ length: 6 }, (_, i) => currentYear - i)
 
 export function AdminAnimalSearch({
-  currentQ, currentStatus, isShelter, institutionName,
+  currentQ, currentStatus, institutionName,
 }: Props) {
   const router       = useRouter()
   const searchParams = useSearchParams()
-  const accentColor  = isShelter ? '#E8634A' : '#2E9E8F'
+  const accentColor  = '#E8634A'
 
   const [q, setQ]                     = useState(currentQ)
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
@@ -148,7 +138,7 @@ export function AdminAnimalSearch({
     setTimeout(() => setShowExport(false), 200)
   }
 
-  const statuses = isShelter ? SHELTER_STATUSES : RESCUE_STATUSES
+  const statuses = STATUSES
 
   return (
     <>
@@ -172,9 +162,7 @@ export function AdminAnimalSearch({
                 onChange={e => { setQ(e.target.value); if (e.target.value.length >= 2) setShowSug(true) }}
                 onFocus={() => { if (suggestions.length > 0) setShowSug(true) }}
                 onKeyDown={e => e.key === 'Escape' && setShowSug(false)}
-                placeholder={isShelter
-                  ? 'Hledat podle jména, rasy nebo čísla čipu...'
-                  : 'Hledat podle jména nebo čísla případu...'}
+                placeholder="Hledat podle jména, rasy nebo čísla čipu..."
                 className="w-full pl-9 pr-3 py-2.5 bg-white border-2 border-[#F0EDE8] rounded-l-lg font-body text-sm text-[#2C1810] placeholder:text-[#A09890] outline-none focus:border-[#E8634A]/50 transition-colors"
                 autoComplete="off"
               />

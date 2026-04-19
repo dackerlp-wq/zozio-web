@@ -8,15 +8,14 @@ import { InstitutionSearch } from '@/components/public/InstitutionSearch'
 export const revalidate = 300
 
 export const metadata: Metadata = {
-  title: 'Útulky a záchranné stanice | Zozio',
-  description: 'Adresář útulků a záchranných stanic v ČR a SR. Najdi instituci ve svém okolí.',
+  title: 'Útulky | Zozio',
+  description: 'Adresář útulků v ČR a SR. Najdi útulek ve svém okolí.',
 }
 
 const PAGE_SIZE = 24
 
 interface PageProps {
   searchParams: Promise<{
-    type?: string
     city?: string
     q?:   string
     lat?: string
@@ -28,49 +27,28 @@ interface PageProps {
 export default async function InstitutionsPage({ searchParams }: PageProps) {
   const params  = await searchParams
   const page    = Math.max(1, parseInt(params.page ?? '1'))
-  const type    = params.type ?? 'all'
   const hasLoc  = !!(params.lat && params.lng)
 
-  // ── 4 paralelní dotazy ──────────────────────────────────────────────────────
-  // allLite: lehká data všech institucí → cities + typeCounts + search suggestions
-  // animalCounts: počty dostupných zvířat per institution_id
-  // caseCounts:   počty záchranných případů per institution_id
-  // paginated:    stránkovaný výsledek pro aktuální filtry
-  const [{ institutions, total }, allLite, animalCounts, caseCounts] = await Promise.all([
+  const [{ institutions, total }, allLite, animalCounts] = await Promise.all([
     getInstitutions(params, page),
     getAllInstitutionsLite(),
     getAllAnimalCounts(),
-    getAllCaseCounts(),
   ])
-  // ────────────────────────────────────────────────────────────────────────────
 
   // Odvodit z allLite (bez dalších dotazů)
   const filtered = allLite.filter(i =>
     (!params.q   || i.name.toLowerCase().includes(params.q.toLowerCase()) || i.city.toLowerCase().includes(params.q.toLowerCase())) &&
     (!params.city || i.city === params.city)
   )
-  const typeCounts = {
-    all:     filtered.length,
-    shelter: filtered.filter(i => i.type === 'shelter').length,
-    rescue:  filtered.filter(i => i.type === 'rescue_station').length,
-  }
   const cities = [...new Set(allLite.map(i => i.city).filter(Boolean))].sort()
 
   // Připojit stats ke stránkovaným institucím
   const institutionsWithStats = institutions.map((inst: any) => ({
     ...inst,
-    _animalCount:   animalCounts[inst.id] ?? 0,
-    _activeCount:   caseCounts[inst.id]?.active   ?? 0,
-    _releasedCount: caseCounts[inst.id]?.released ?? 0,
+    _animalCount: animalCounts[inst.id] ?? 0,
   }))
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
-
-  const tabs = [
-    { id: 'all',            label: 'Všechny',           count: typeCounts.all },
-    { id: 'shelter',        label: 'Útulky',            count: typeCounts.shelter },
-    { id: 'rescue_station', label: 'Záchranné stanice', count: typeCounts.rescue },
-  ]
 
   function buildUrl(overrides: Record<string, string | undefined>) {
     const next = { ...params, ...overrides }
@@ -89,7 +67,7 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
           <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#E8634A' }}>Adresář</p>
           <h1 className="font-display font-extrabold text-[#1A0F0A] mb-4"
             style={{ fontSize: 'clamp(28px, 4vw, 42px)' }}>
-            Útulky a záchranné stanice
+            Útulky
           </h1>
 
           <div className="flex flex-wrap gap-2 max-w-[700px]">
@@ -110,39 +88,13 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
           </div>
         </div>
 
-        {/* Tabs */}
-        <nav aria-label="Filtr typu instituce"
-          className="flex gap-0 border-b mb-6 overflow-x-auto"
-          style={{ borderColor: '#F0EDE8', scrollbarWidth: 'none' } as any}>
-          {tabs.map(tab => (
-            <Link key={tab.id}
-              href={buildUrl({ type: tab.id, page: undefined })}
-              aria-current={type === tab.id ? 'page' : undefined}
-              className="no-underline flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border-b-2 -mb-px whitespace-nowrap transition-all"
-              style={type === tab.id
-                ? { color: '#E8634A', borderBottomColor: '#E8634A' }
-                : { color: '#6B4030', borderBottomColor: 'transparent' }
-              }>
-              {tab.label}
-              <span aria-hidden="true"
-                className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1 rounded-full text-[10px] font-bold"
-                style={type === tab.id
-                  ? { background: '#E8634A', color: 'white' }
-                  : { background: '#F0EDE8', color: '#6B4030' }
-                }>
-                {tab.count}
-              </span>
-            </Link>
-          ))}
-        </nav>
-
         {/* Stats row + GPS */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
           <p className="text-sm font-medium" style={{ color: '#8B6550' }}>
             {hasLoc
-              ? `📍 Seřazeno podle vzdálenosti · ${total} institucí`
+              ? `📍 Seřazeno podle vzdálenosti · ${total} útulků`
               : total === 0 ? 'Žádné výsledky'
-              : `${total} institucí${totalPages > 1 ? ` · strana ${page} z ${totalPages}` : ''}`
+              : `${total} útulků${totalPages > 1 ? ` · strana ${page} z ${totalPages}` : ''}`
             }
           </p>
           <InstitutionGpsButton
@@ -156,7 +108,7 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
         {institutionsWithStats.length === 0 ? (
           <div className="text-center py-24">
             <div className="text-6xl mb-5">🏠</div>
-            <p className="font-bold text-xl text-[#1A0F0A] mb-2">Žádné instituce nenalezeny</p>
+            <p className="font-bold text-xl text-[#1A0F0A] mb-2">Žádné útulky nenalezeny</p>
             <p className="text-sm mb-6" style={{ color: '#8B6550' }}>Zkus jiné hledání nebo zrušit filtry.</p>
             <Link href="/institutions"
               className="inline-flex px-5 py-2.5 rounded-lg font-bold text-sm text-white no-underline"
@@ -181,22 +133,15 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
         <div className="mt-14 p-6 md:p-8 rounded-xl text-center"
           style={{ background: 'white', border: '1.5px dashed #E0DDD8' }}>
           <div className="text-3xl mb-3">🏠</div>
-          <p className="font-bold text-lg text-[#1A0F0A] mb-1">Chybí zde vaše instituce?</p>
+          <p className="font-bold text-lg text-[#1A0F0A] mb-1">Chybí zde váš útulek?</p>
           <p className="text-sm mb-5" style={{ color: '#8B6550' }}>
             Registrace je zdarma a trvá 5 minut.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/auth/register?type=shelter"
-              className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg font-bold text-sm text-white no-underline hover:opacity-90 transition-all"
-              style={{ background: '#E8634A' }}>
-              Registrovat útulek →
-            </Link>
-            <Link href="/auth/register?type=rescue_station"
-              className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg font-bold text-sm no-underline border hover:opacity-80 transition-all"
-              style={{ background: 'white', color: '#1A0F0A', borderColor: '#E0DDD8' }}>
-              Záchrannou stanici →
-            </Link>
-          </div>
+          <Link href="/auth/register?type=shelter"
+            className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg font-bold text-sm text-white no-underline hover:opacity-90 transition-all"
+            style={{ background: '#E8634A' }}>
+            Registrovat útulek →
+          </Link>
         </div>
       </div>
     </main>
@@ -205,22 +150,13 @@ export default async function InstitutionsPage({ searchParams }: PageProps) {
 
 /* ── Karta instituce ── */
 function InstitutionCard({ inst }: { inst: any }) {
-  const isShelter  = inst.type === 'shelter'
-  const accent     = isShelter ? '#E8634A' : '#2E9E8F'
-  const accentBg   = isShelter ? '#FAECE7' : '#E1F5EE'
-  const accentText = isShelter ? '#993C1D' : '#0F6E56'
-
-  const hasAnimalStat  = isShelter && inst._animalCount > 0
-  const hasActiveStat  = !isShelter && inst._activeCount > 0
-  const hasReleasedStat = !isShelter && inst._releasedCount > 0
-
   return (
     <Link href={`/institutions/${inst.slug}`} className="no-underline group">
       <div className="bg-white rounded-xl overflow-hidden border border-[#F0EDE8] group-hover:-translate-y-1 group-hover:shadow-md transition-all duration-200 h-full flex flex-col">
 
         {/* Cover */}
         <div className="relative h-24 sm:h-32 overflow-hidden flex-shrink-0"
-          style={{ background: `linear-gradient(135deg, ${accentBg} 0%, white 100%)` }}>
+          style={{ background: 'linear-gradient(135deg, #FAECE7 0%, white 100%)' }}>
           {inst.cover_url && (
             <Image src={inst.cover_url} alt="" fill
               sizes="(max-width:640px) 50vw,(max-width:1024px) 33vw,25vw"
@@ -229,8 +165,8 @@ function InstitutionCard({ inst }: { inst: any }) {
 
           {/* Type badge */}
           <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
-            style={{ background: accentBg, color: accentText }}>
-            {isShelter ? '🏠 Útulek' : '🚑 Stanice'}
+            style={{ background: '#FAECE7', color: '#993C1D' }}>
+            🏠 Útulek
           </div>
 
           {/* Vzdálenost */}
@@ -243,10 +179,10 @@ function InstitutionCard({ inst }: { inst: any }) {
 
           {/* Logo */}
           <div className="absolute bottom-2 left-2 w-10 h-10 sm:w-12 sm:h-12 rounded-lg border-2 border-white shadow flex items-center justify-center overflow-hidden"
-            style={{ background: accentBg }}>
+            style={{ background: '#FAECE7' }}>
             {inst.logo_url
               ? <Image src={inst.logo_url} alt={inst.name} width={48} height={48} className="object-cover" />
-              : <span className="text-lg">{isShelter ? '🏠' : '🚑'}</span>
+              : <span className="text-lg">🏠</span>
             }
           </div>
         </div>
@@ -265,34 +201,16 @@ function InstitutionCard({ inst }: { inst: any }) {
           </div>
 
           {/* Stats */}
-          {(hasAnimalStat || hasActiveStat || hasReleasedStat) && (
+          {inst._animalCount > 0 && (
             <div className="mt-2.5 pt-2.5 border-t flex items-center gap-3 flex-wrap" style={{ borderColor: '#F0EDE8' }}>
-              {hasAnimalStat && (
-                <div className="flex items-baseline gap-1">
-                  <span className="text-sm sm:text-base font-extrabold" style={{ color: accent }}>
-                    {inst._animalCount}
-                  </span>
-                  <span className="text-[10px] sm:text-xs" style={{ color: '#8B6550' }}>
-                    {inst._animalCount === 1 ? 'zvíře' : inst._animalCount < 5 ? 'zvířata' : 'zvířat'}
-                  </span>
-                </div>
-              )}
-              {hasActiveStat && (
-                <div className="flex items-baseline gap-1">
-                  <span className="text-sm sm:text-base font-extrabold" style={{ color: accent }}>
-                    {inst._activeCount}
-                  </span>
-                  <span className="text-[10px] sm:text-xs" style={{ color: '#8B6550' }}>v léčbě</span>
-                </div>
-              )}
-              {hasReleasedStat && (
-                <div className="flex items-baseline gap-1">
-                  <span className="text-sm sm:text-base font-extrabold" style={{ color: '#3B6D11' }}>
-                    {inst._releasedCount}
-                  </span>
-                  <span className="text-[10px] sm:text-xs" style={{ color: '#8B6550' }}>propuštěno</span>
-                </div>
-              )}
+              <div className="flex items-baseline gap-1">
+                <span className="text-sm sm:text-base font-extrabold" style={{ color: '#E8634A' }}>
+                  {inst._animalCount}
+                </span>
+                <span className="text-[10px] sm:text-xs" style={{ color: '#8B6550' }}>
+                  {inst._animalCount === 1 ? 'zvíře' : inst._animalCount < 5 ? 'zvířata' : 'zvířat'}
+                </span>
+              </div>
             </div>
           )}
         </div>
@@ -370,11 +288,11 @@ async function getInstitutions(params: any, page: number) {
       .from('institutions')
       .select('id, name, slug, type, city, lat, lng, logo_url, cover_url, approval_status', { count: 'exact' })
       .eq('approval_status', 'approved')
+      .eq('type', 'shelter')
       .gte('lat', uLat - 2.0).lte('lat', uLat + 2.0)
       .gte('lng', uLng - 3.0).lte('lng', uLng + 3.0)
       .not('lat', 'is', null).not('lng', 'is', null)
 
-    if (params.type && params.type !== 'all') query = query.eq('type', params.type)
     if (params.city) query = query.eq('city', params.city)
     if (params.q)    query = query.or(`name.ilike.%${params.q}%,city.ilike.%${params.q}%`)
 
@@ -393,9 +311,9 @@ async function getInstitutions(params: any, page: number) {
     .from('institutions')
     .select('id, name, slug, type, city, lat, lng, logo_url, cover_url, approval_status', { count: 'exact' })
     .eq('approval_status', 'approved')
+    .eq('type', 'shelter')
     .order('name', { ascending: true })
 
-  if (params.type && params.type !== 'all') query = query.eq('type', params.type)
   if (params.city) query = query.eq('city', params.city)
   if (params.q)    query = query.or(`name.ilike.%${params.q}%,city.ilike.%${params.q}%`)
 
@@ -407,18 +325,19 @@ async function getInstitutions(params: any, page: number) {
   }
 }
 
-/** Lehká data všech institucí — slouží pro cities, typeCounts i search suggestions (1 dotaz místo 3) */
+/** Lehká data všech institucí — slouží pro cities i search suggestions */
 async function getAllInstitutionsLite() {
   const supabase = createServiceClient()
   const { data } = await supabase
     .from('institutions')
     .select('name, slug, type, city')
     .eq('approval_status', 'approved')
+    .eq('type', 'shelter')
     .order('name', { ascending: true })
   return (data ?? []) as { name: string; slug: string; type: string; city: string }[]
 }
 
-/** Počty dostupných zvířat per institution_id (útulky) */
+/** Počty dostupných zvířat per institution_id */
 async function getAllAnimalCounts(): Promise<Record<string, number>> {
   const supabase = createServiceClient()
   const { data } = await supabase
@@ -428,22 +347,5 @@ async function getAllAnimalCounts(): Promise<Record<string, number>> {
     .eq('adoption_status', 'available')
   const counts: Record<string, number> = {}
   for (const a of data ?? []) counts[a.institution_id] = (counts[a.institution_id] ?? 0) + 1
-  return counts
-}
-
-/** Počty aktivních/propuštěných případů per institution_id (záchranné stanice) */
-async function getAllCaseCounts(): Promise<Record<string, { active: number; released: number }>> {
-  const supabase = createServiceClient()
-  const { data } = await supabase
-    .from('rescue_cases')
-    .select('institution_id, status')
-    .eq('published', true)
-    .not('status', 'in', '("deceased")')
-  const counts: Record<string, { active: number; released: number }> = {}
-  for (const c of data ?? []) {
-    if (!counts[c.institution_id]) counts[c.institution_id] = { active: 0, released: 0 }
-    if (c.status === 'released') counts[c.institution_id].released++
-    else counts[c.institution_id].active++
-  }
   return counts
 }

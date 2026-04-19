@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-type ButtonVariant = 'primary' | 'rescue' | 'amber' | 'ghost' | 'ghost-rescue' | 'dark' | 'sand'
+type ButtonVariant = 'primary' | 'amber' | 'ghost' | 'dark' | 'sand'
 type ButtonSize = 'sm' | 'md' | 'lg'
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -10,13 +10,11 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<ButtonVariant, string> = {
-  primary:        'bg-coral text-white shadow-[0_4px_18px_rgba(232,99,74,.32)] hover:bg-coral-dark',
-  rescue:         'bg-rescue text-white shadow-[0_4px_18px_rgba(46,158,143,.28)] hover:bg-rescue-dark',
-  amber:          'bg-amber text-espresso hover:brightness-95',
-  ghost:          'bg-transparent text-coral border-2 border-coral hover:bg-coral-light',
-  'ghost-rescue': 'bg-transparent text-rescue border-2 border-rescue hover:bg-rescue-bg',
-  dark:           'bg-espresso text-white hover:bg-brown',
-  sand:           'bg-sand text-brown hover:bg-gray-pale',
+  primary: 'bg-coral text-white shadow-[0_4px_18px_rgba(232,99,74,.32)] hover:bg-coral-dark',
+  amber:   'bg-amber text-espresso hover:brightness-95',
+  ghost:   'bg-transparent text-coral border-2 border-coral hover:bg-coral-light',
+  dark:    'bg-espresso text-white hover:bg-brown',
+  sand:    'bg-sand text-brown hover:bg-gray-pale',
 }
 
 const sizes: Record<ButtonSize, string> = {

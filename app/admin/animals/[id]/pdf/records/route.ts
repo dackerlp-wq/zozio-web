@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import {
-  ADOPTION_STATUS_LABEL, RESCUE_STATUS_LABEL,
+  ADOPTION_STATUS_LABEL,
   HEALTH_STATUS_LABEL, INTAKE_REASON_LABEL, SEX_LABEL, SIZE_LABEL,
 } from '@/lib/animal-labels'
 
@@ -47,12 +47,9 @@ export async function GET(
 
   if (!institution) return new NextResponse('Instituce nenalezena', { status: 404 })
 
-  const isShelter = institution.type === 'shelter'
   const inst = institution as any
 
-  const { data: animal } = isShelter
-    ? await service.from('animals').select('*, species:animal_species(name_cs, icon)').eq('id', id).eq('institution_id', institution.id).single()
-    : await service.from('rescue_cases').select('*, species:animal_species(name_cs, icon)').eq('id', id).eq('institution_id', institution.id).single()
+  const { data: animal } = await service.from('animals').select('*, species:animal_species(name_cs, icon)').eq('id', id).eq('institution_id', institution.id).single()
 
   if (!animal) return new NextResponse('Záznam nenalezen', { status: 404 })
 
@@ -123,9 +120,7 @@ export async function GET(
     </div>`
 
   // ── Stav / status ─────────────────────────────────────────────────────────
-  const status = isShelter
-    ? (ADOPTION_STATUS_LABEL[a.adoption_status ?? ''] ?? a.adoption_status ?? '—')
-    : (RESCUE_STATUS_LABEL[a.status ?? ''] ?? a.status ?? '—')
+  const status = ADOPTION_STATUS_LABEL[a.adoption_status ?? ''] ?? a.adoption_status ?? '—'
 
   const evidenceNum = a.evidence_number ?? `ZOZ-${today.getFullYear()}-????`
 
@@ -244,7 +239,7 @@ export async function GET(
     text-transform: uppercase;
   }
   .doc-title-bar .status-pill {
-    background: ${isShelter ? '#E8634A' : '#2E9E8F'};
+    background: '#E8634A';
     color: white;
     font-size: 8pt;
     font-weight: 700;
@@ -261,7 +256,7 @@ export async function GET(
     display: flex;
     align-items: center;
     gap: 8px;
-    background: ${isShelter ? '#E8634A' : '#2E9E8F'};
+    background: '#E8634A';
     color: white;
     padding: 4px 10px;
     border-radius: 3px 3px 0 0;
@@ -491,7 +486,7 @@ export async function GET(
 <!-- Tlačítka (skryta při tisku) -->
 <div class="no-print">
   <button class="btn btn-print" onclick="window.print()">🖨️ Tisknout / Uložit PDF</button>
-  ${isShelter ? `<a class="btn btn-adopt" href="/admin/animals/${id}/pdf/adoption" target="_blank">📋 Adopční smlouva</a>` : ''}
+  <a class="btn btn-adopt" href="/admin/animals/${id}/pdf/adoption" target="_blank">📋 Adopční smlouva</a>
   <a class="btn btn-back" href="/admin/animals/${id}">← Zpět na kartu</a>
 </div>
 
@@ -506,7 +501,7 @@ export async function GET(
       <div class="inst-addr">${v(inst.email)} · ${v(inst.phone)}</div>
     </div>
     <div class="doc-header-right">
-      <span class="doc-type-badge">${isShelter ? 'Útulok' : 'Záchranná stanice'}</span>
+      <span class="doc-type-badge">Útulek</span>
       <span class="evidence-num">${evidenceNum}</span>
       <span class="print-date">Vytisknuto: ${todayCs}</span>
     </div>
@@ -514,7 +509,7 @@ export async function GET(
 
   <!-- Název dokumentu -->
   <div class="doc-title-bar">
-    <h1>Zákonná evidence zvířete — ${isShelter ? 'Útulok' : 'Záchranná stanice'}</h1>
+    <h1>Zákonná evidence zvířete — Útulek</h1>
     <span class="status-pill">${status}</span>
   </div>
 
@@ -526,12 +521,9 @@ export async function GET(
     ${row('Druh', a.species?.name_cs ? `${a.species.icon ?? ''} ${a.species.name_cs}` : '—')}
     ${row('Plemeno / rasa', v(a.breed))}
     ${row('Pohlaví', SEX_LABEL[a.sex ?? ''] ?? '—')}
-    ${isShelter
-      ? row('Rok narození (odhad)', v(a.birth_year?.toString()))
-      : row('Odhadovaný věk', v(a.estimated_age))}
+    ${row('Rok narození (odhad)', v(a.birth_year?.toString()))}
     ${row('Barva / zbarvení', v(a.color))}
-    ${isShelter ? row('Velikost', SIZE_LABEL[a.size ?? ''] ?? '—') : ''}
-    ${!isShelter ? row('Hmotnost při příjmu', a.weight_g ? a.weight_g + ' g' : '—') : ''}
+    ${row('Velikost', SIZE_LABEL[a.size ?? ''] ?? '—')}
   `)}
 
   <!-- 2. ČIPOVÁNÍ A DOKLADY (§13 zák. 166/1999 Sb.) -->
@@ -544,7 +536,6 @@ export async function GET(
     ${row('Datum vydání průkazu', fmtDate(a.passport_issued))}
     ${row('Registrace v CRZ', bool(a.crz_registered))}
     ${row('Datum registrace CRZ', fmtDate(a.crz_reg_date))}
-    ${!isShelter ? row('Číslo kroužku / značení', v(a.ring_number)) : ''}
   `)}
 
   <!-- 3. PŘÍJEM DO ZAŘÍZENÍ -->
@@ -560,7 +551,7 @@ export async function GET(
     ${row('Telefon nálezce', v(a.intake_finder_phone ?? a.finder_phone))}
     ${row('E-mail nálezce', v(a.intake_finder_email))}
     ${row('OP č. nálezce', v(a.intake_finder_id))}
-    ${isShelter && a.previous_owner
+    ${a.previous_owner
       ? row('Předchozí majitel', `${a.previous_owner}${a.previous_owner_phone ? ' · ' + a.previous_owner_phone : ''}`)
       : ''}
     ${row('Poznámky k příjmu', v(a.intake_notes))}
@@ -584,10 +575,6 @@ export async function GET(
     ${row('Veterinář', v(a.vet_name))}
     ${row('Telefon veterináře', v(a.vet_phone))}
     ${row('Zdravotní poznámky', v(a.medical_notes))}
-    ${!isShelter ? row('Příčina zranění / nálezu', v(a.cause_of_injury)) : ''}
-    ${!isShelter ? row('Diagnóza', v(a.diagnosis)) : ''}
-    ${!isShelter ? row('Průběh léčby', v(a.treatment_notes)) : ''}
-    ${!isShelter ? row('Prognóza', v(a.prognosis)) : ''}
   `)}
 
   <!-- 6. VAKCINACE (§13 zák. 166/1999 Sb.) -->
@@ -751,7 +738,7 @@ export async function GET(
     </div>
     <div class="legal-refs">
       §25b zák. 246/1992 Sb. · Vyhl. 342/2012 Sb.<br>
-      §13 zák. 166/1999 Sb. · VZ 255/2012 Sb.${!isShelter ? ' · §54 zák. 114/1992 Sb.' : ''}
+      §13 zák. 166/1999 Sb. · VZ 255/2012 Sb.
     </div>
   </div>
 

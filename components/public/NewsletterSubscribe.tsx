@@ -4,18 +4,17 @@ import { useState } from 'react'
 interface NewsletterSubscribeProps {
   institutionId: string
   institutionName: string
-  isShelter: boolean
 }
 
-export function NewsletterSubscribe({ institutionId, institutionName, isShelter }: NewsletterSubscribeProps) {
+export function NewsletterSubscribe({ institutionId, institutionName }: NewsletterSubscribeProps) {
   const [email,   setEmail]   = useState('')
   const [name,    setName]    = useState('')
   const [state,   setState]   = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState('')
 
-  const color    = isShelter ? '#E8634A' : '#2E9E8F'
-  const colorBg  = isShelter ? '#FAECE7' : '#E1F5EE'
-  const colorDark = isShelter ? '#993C1D' : '#0F6E56'
+  const color     = '#E8634A'
+  const colorBg   = '#FAECE7'
+  const colorDark = '#993C1D'
 
   const handleSubmit = async () => {
     if (!email || !email.includes('@')) {

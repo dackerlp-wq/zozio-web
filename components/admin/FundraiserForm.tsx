@@ -8,17 +8,16 @@ import type { Fundraiser } from '@/types/database'
 
 interface FundraiserFormProps {
   institutionId: string
-  institutionType: string
+  institutionType?: string
   mode: 'create' | 'edit'
   fundraiser?: Partial<Fundraiser>
   hasDarujmeCredentials?: boolean
 }
 
 export function FundraiserForm({
-  institutionId, institutionType, mode, fundraiser, hasDarujmeCredentials,
+  institutionId, mode, fundraiser, hasDarujmeCredentials,
 }: FundraiserFormProps) {
   const router    = useRouter()
-  const isShelter = institutionType === 'shelter'
 
   const [form, setForm] = useState({
     title:               fundraiser?.title               ?? '',
@@ -31,7 +30,6 @@ export function FundraiserForm({
     darujme_url:         fundraiser?.darujme_url         ?? '',
     current_amount:      fundraiser?.current_amount      ?? 0,
     animal_id:           fundraiser?.animal_id           ?? '',
-    rescue_case_id:      fundraiser?.rescue_case_id      ?? '',
   })
 
   const [imageUrl, setImageUrl]         = useState<string>(fundraiser?.image_url ?? '')
@@ -75,8 +73,7 @@ export function FundraiserForm({
       current_amount:  parseInt(String(form.current_amount)) || 0,
       deadline:        form.deadline || null,
       active:          form.active,
-      animal_id:       form.animal_id      || null,
-      rescue_case_id:  form.rescue_case_id || null,
+      animal_id:       form.animal_id || null,
       image_url:       imageUrl || null,
     }
 

@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Chybí povinné údaje' }, { status: 400 })
     }
 
-    if (!['shelter', 'rescue_station'].includes(type)) {
+    if (type !== 'shelter') {
       return NextResponse.json({ error: 'Neplatný typ instituce' }, { status: 400 })
     }
 
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
                 <p>Čeká na schválení:</p>
                 <div style="background:#F5E6D3;border-radius:10px;padding:16px;margin:16px 0">
                   <strong>${name}</strong><br>
-                  Typ: ${type === 'shelter' ? '🏠 Útulok' : '🚑 Záchranná stanice'}<br>
+                  Typ: 🏠 Útulek<br>
                   Město: ${city}<br>
                   E-mail: ${email}
                 </div>

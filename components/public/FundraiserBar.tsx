@@ -2,24 +2,20 @@ import type { Fundraiser } from '@/types/database'
 
 interface FundraiserBarProps {
   fundraiser: Fundraiser
-  variant?: 'shelter' | 'rescue'
 }
 
-export function FundraiserBar({ fundraiser, variant = 'shelter' }: FundraiserBarProps) {
+export function FundraiserBar({ fundraiser }: FundraiserBarProps) {
   const percent = Math.min(
     Math.round((fundraiser.current_amount / fundraiser.goal_amount) * 100),
     100
   )
-
-  const barColor = variant === 'rescue' ? 'bg-rescue' : 'bg-coral'
-  const bgColor  = variant === 'rescue' ? 'bg-rescue-bg' : 'bg-coral-light'
 
   const deadline = fundraiser.deadline
     ? new Date(fundraiser.deadline).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
 
   return (
-    <div className={`${bgColor} rounded-lg p-5 border border-gray-pale/50`}>
+    <div className="bg-coral-light rounded-lg p-5 border border-gray-pale/50">
       <h3 className="font-display font-extrabold text-lg text-espresso mb-1">
         💛 {fundraiser.title}
       </h3>
@@ -42,12 +38,12 @@ export function FundraiserBar({ fundraiser, variant = 'shelter' }: FundraiserBar
         </div>
         <div className="w-full h-3 bg-white rounded-pill overflow-hidden">
           <div
-            className={`h-full ${barColor} rounded-pill transition-all duration-500`}
+            className="h-full bg-coral rounded-pill transition-all duration-500"
             style={{ width: `${percent}%` }}
           />
         </div>
         <div className="flex justify-between mt-1.5">
-          <span className={`text-xs font-bold ${variant === 'rescue' ? 'text-rescue' : 'text-coral'}`}>
+          <span className="text-xs font-bold text-coral">
             {percent}% vybráno
           </span>
           {deadline && (
@@ -58,8 +54,7 @@ export function FundraiserBar({ fundraiser, variant = 'shelter' }: FundraiserBar
 
       <a
         href="#"
-        className={`inline-flex items-center justify-center w-full py-3 rounded-pill font-display font-bold text-sm text-white transition-all hover:-translate-y-0.5
-          ${variant === 'rescue' ? 'bg-rescue hover:bg-rescue-dark' : 'bg-coral hover:bg-coral-dark'}`}
+        className="inline-flex items-center justify-center w-full py-3 rounded-pill font-display font-bold text-sm text-white transition-all hover:-translate-y-0.5 bg-coral hover:bg-coral-dark"
       >
         💛 Přispět na sbírku
       </a>

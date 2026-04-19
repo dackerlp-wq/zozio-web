@@ -33,9 +33,8 @@ export async function POST(request: NextRequest) {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
     const monthName = now.toLocaleString('cs-CZ', { month: 'long', year: 'numeric' })
 
-    const [adoptedRes, releasedRes, newInstRes, animalsRes, articlesRes, subscribersRes] = await Promise.all([
+    const [adoptedRes, newInstRes, animalsRes, articlesRes, subscribersRes] = await Promise.all([
       service.from('adoption_applications').select('id', { count: 'exact', head: true }).eq('status', 'adopted').gte('updated_at', monthStart),
-      service.from('rescue_cases').select('id', { count: 'exact', head: true }).eq('status', 'released').gte('updated_at', monthStart),
       service.from('institutions').select('id', { count: 'exact', head: true }).eq('approval_status', 'approved').gte('created_at', monthStart),
       service.from('animals').select('id', { count: 'exact', head: true }).eq('adoption_status', 'available').eq('published', true),
       service.from('articles').select('title, category, published_at').eq('published', true).order('published_at', { ascending: false }).limit(4),
@@ -48,9 +47,9 @@ export async function POST(request: NextRequest) {
     }
 
     const articles = (articlesRes.data ?? []).map((a: any) => ({
-      emoji: a.category === 'rescue' ? '🦉' : '🐾',
-      label: a.category === 'rescue' ? 'Záchrana' : 'Příběh adopce',
-      labelColor: a.category === 'rescue' ? '#2E9E8F' : '#E8634A',
+      emoji: '🐾',
+      label: 'Příběh adopce',
+      labelColor: '#E8634A',
       title: a.title,
     }))
 
@@ -59,7 +58,7 @@ export async function POST(request: NextRequest) {
         const html = await render(React.createElement(NewsletterEmail, {
           month: monthName,
           adoptionCount: adoptedRes.count ?? 0,
-          releasedCount: releasedRes.count ?? 0,
+          releasedCount: 0,
           newInstitutionsCount: newInstRes.count ?? 0,
           animalsCount: animalsRes.count ?? 0,
           articles,

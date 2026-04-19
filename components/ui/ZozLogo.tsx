@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 
 type LogoSize = 'xs' | 'sm' | 'md' | 'lg'
-type LogoVariant = 'default' | 'inverted' | 'rescue'
+type LogoVariant = 'default' | 'inverted'
 
 const sizes: Record<LogoSize, string> = {
   xs: 'text-xl',
@@ -13,7 +13,6 @@ const sizes: Record<LogoSize, string> = {
 const colorZ: Record<LogoVariant, string> = {
   default:  'text-coral',
   inverted: 'text-white',
-  rescue:   'text-rescue',
 }
 
 interface ZozLogoProps {

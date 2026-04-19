@@ -20,7 +20,7 @@ interface UsersTableProps {
 
 const ROLE_BADGE: Record<string, { label: string; classes: string }> = {
   superadmin:        { label: '⚡ Superadmin',     classes: 'bg-amber-light text-warning' },
-  institution_admin: { label: '🏢 Správce inst.',  classes: 'bg-rescue-bg text-rescue-dark' },
+  institution_admin: { label: '🏢 Správce inst.',  classes: 'bg-coral-light text-coral-dark' },
   staff:             { label: '👷 Pracovník',      classes: 'bg-sand text-brown' },
   public:            { label: '👤 Veřejný',        classes: 'bg-gray-pale text-gray' },
 }

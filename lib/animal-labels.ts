@@ -43,31 +43,6 @@ export const ADOPTION_STATUS_ICON: Record<string, string> = {
   conditional:      '🤝',
 }
 
-// Stav záchranného případu
-export const RESCUE_STATUS_LABEL: Record<string, string> = {
-  intake:      'Příjem',
-  treatment:   'Léčba',
-  released:    'Propuštěn do přírody',
-  transferred: 'Přemístěn',
-  deceased:    'Uhynul',
-}
-
-export const RESCUE_STATUS_BADGE: Record<string, string> = {
-  intake:      'bg-coral-light text-coral-dark',
-  treatment:   'bg-amber-light text-warning',
-  released:    'bg-success-bg text-success',
-  transferred: 'bg-sand text-brown-mid',
-  deceased:    'bg-gray-pale text-gray',
-}
-
-export const RESCUE_STATUS_ICON: Record<string, string> = {
-  intake:      '🚑',
-  treatment:   '🩺',
-  released:    '🌿',
-  transferred: '🚐',
-  deceased:    '💔',
-}
-
 // Zdravotní stav
 export const HEALTH_STATUS_LABEL: Record<string, string> = {
   healthy:    'Zdravý',

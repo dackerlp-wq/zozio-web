@@ -32,7 +32,6 @@ export async function sendWelcomeEmail(props: {
   to: string
   contactName: string
   institutionName: string
-  institutionType: 'shelter' | 'rescue_station'
   email: string
 }) {
   return resend.emails.send({

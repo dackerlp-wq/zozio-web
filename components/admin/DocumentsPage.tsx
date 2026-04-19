@@ -15,12 +15,9 @@ interface DocTypeConfig {
   description: string
   requiresAnimal: boolean
   requiresDates: boolean
-  shelterOnly?: boolean
-  rescueOnly?: boolean
 }
 
 const DOC_TYPES: DocTypeConfig[] = [
-  // Shelter documents
   {
     id: 'animal-card',
     icon: '📋',
@@ -28,7 +25,6 @@ const DOC_TYPES: DocTypeConfig[] = [
     description: 'Povinná evidence dle §25 zák. 246/1992 Sb. — identifikace, zdraví, karanténa',
     requiresAnimal: true,
     requiresDates: false,
-    shelterOnly: true,
   },
   {
     id: 'handover-protocol',
@@ -37,7 +33,6 @@ const DOC_TYPES: DocTypeConfig[] = [
     description: 'Protokol o předání zvířete novému majiteli (adopce)',
     requiresAnimal: true,
     requiresDates: false,
-    shelterOnly: true,
   },
   {
     id: 'intake-list',
@@ -46,7 +41,6 @@ const DOC_TYPES: DocTypeConfig[] = [
     description: 'Evidence přijatých zvířat za zvolené období',
     requiresAnimal: false,
     requiresDates: true,
-    shelterOnly: true,
   },
   {
     id: 'exit-list',
@@ -55,7 +49,6 @@ const DOC_TYPES: DocTypeConfig[] = [
     description: 'Evidence odchozích zvířat (adopce, úhyn, převod) za zvolené období',
     requiresAnimal: false,
     requiresDates: true,
-    shelterOnly: true,
   },
   {
     id: 'summary-report',
@@ -64,7 +57,6 @@ const DOC_TYPES: DocTypeConfig[] = [
     description: 'Souhrnný statistický přehled provozu útulku za dané období',
     requiresAnimal: false,
     requiresDates: true,
-    shelterOnly: true,
   },
   {
     id: 'found-animals',
@@ -73,77 +65,23 @@ const DOC_TYPES: DocTypeConfig[] = [
     description: 'Záznamy o nalezených zvířatech pro obecní úřad / KVS',
     requiresAnimal: false,
     requiresDates: true,
-    shelterOnly: true,
-  },
-  // Rescue documents
-  {
-    id: 'patient-card',
-    icon: '🏥',
-    title: 'Karta pacienta',
-    description: 'Karta ošetření volně žijícího živočicha s diagnostikou a léčbou',
-    requiresAnimal: true,
-    requiresDates: false,
-    rescueOnly: true,
-  },
-  {
-    id: 'rescue-intake-list',
-    icon: '📥',
-    title: 'Příjmový list',
-    description: 'Evidence přijatých pacientů záchranné stanice za dané období',
-    requiresAnimal: false,
-    requiresDates: true,
-    rescueOnly: true,
-  },
-  {
-    id: 'rescue-release-list',
-    icon: '📤',
-    title: 'Propouštěcí list',
-    description: 'Evidence vypuštěných a předaných pacientů za dané období',
-    requiresAnimal: false,
-    requiresDates: true,
-    rescueOnly: true,
-  },
-  {
-    id: 'death-list',
-    icon: '📋',
-    title: 'Úhynová evidence',
-    description: 'Evidence úhynů a eutanazií (povinná evidence pro KVS)',
-    requiresAnimal: false,
-    requiresDates: true,
-    rescueOnly: true,
-  },
-  {
-    id: 'rescue-summary',
-    icon: '📊',
-    title: 'Přehledová zpráva stanice',
-    description: 'Souhrnná zpráva záchranné stanice za zvolené období',
-    requiresAnimal: false,
-    requiresDates: true,
-    rescueOnly: true,
   },
 ]
 
 interface DocumentsPageProps {
   animals: AnimalOption[]
-  institutionType: 'shelter' | 'rescue_station'
   institutionName: string
   institutionId: string
 }
 
 export default function DocumentsPage({
   animals,
-  institutionType,
   institutionName,
   institutionId,
 }: DocumentsPageProps) {
-  const isShelter = institutionType === 'shelter'
-  const coral = isShelter ? '#E8634A' : '#2E9E8F'
+  const coral = '#E8634A'
 
-  const availableTypes = DOC_TYPES.filter(d =>
-    (!d.shelterOnly && !d.rescueOnly) ||
-    (d.shelterOnly && isShelter) ||
-    (d.rescueOnly && !isShelter)
-  )
+  const availableTypes = DOC_TYPES
 
   const [selectedAnimals, setSelectedAnimals] = useState<Record<string, string>>({})
   const [dateFrom, setDateFrom] = useState(() => {

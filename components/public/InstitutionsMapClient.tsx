@@ -8,7 +8,7 @@ export interface MapInstitution {
   id: string
   name: string
   slug: string
-  type: 'shelter' | 'rescue_station'
+  type: 'shelter'
   city: string | null
   lat: number | null
   lng: number | null
@@ -28,7 +28,7 @@ export function InstitutionsMapClient({ institutions }: Props) {
   const coverageRef   = useRef<any[]>([])
   const polygonCache  = useRef<Record<string, any>>({}) // place name → GeoJSON feature or null
   const [selected,   setSelected]   = useState<MapInstitution | null>(null)
-  const [filter,     setFilter]     = useState<'all' | 'shelter' | 'rescue_station'>('all')
+  const [filter,     setFilter]     = useState<'all' | 'shelter'>('all')
   const [search,     setSearch]     = useState('')
   // Geographic hierarchy resolved from Nominatim: [placeName, "Okres X", "Y kraj"]
   const [hierarchy,  setHierarchy]  = useState<string[]>([])
@@ -141,16 +141,15 @@ export function InstitutionsMapClient({ institutions }: Props) {
     filtered.forEach(inst => {
       if (!inst.lat || !inst.lng) return
 
-      const isShelter = inst.type === 'shelter'
-      const color     = isShelter ? '#E8634A' : '#2E9E8F'
-      const bg        = isShelter ? '#FAECE7' : '#E1F5EE'
+      const color = '#E8634A'
+      const bg    = '#FAECE7'
 
       const icon = L.divIcon({
         html: `<div style="
           width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
           background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.25);
           display:flex;align-items:center;justify-content:center;
-        "><span style="transform:rotate(45deg);font-size:14px">${isShelter ? '🏠' : '🚑'}</span></div>`,
+        "><span style="transform:rotate(45deg);font-size:14px">🏠</span></div>`,
         className: '',
         iconSize:  [32, 32],
         iconAnchor:[16, 32],
@@ -172,7 +171,7 @@ export function InstitutionsMapClient({ institutions }: Props) {
       const popup = L.popup({ maxWidth: 240, className: 'zoz-popup' }).setContent(`
         <div style="font-family:system-ui;padding:2px">
           <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">
-            ${isShelter ? '🏠 Útulek' : '🚑 Záchranná stanice'}
+            🏠 Útulek
           </div>
           <div style="font-weight:700;font-size:14px;color:#1A0F0A;margin-bottom:2px">${inst.name}</div>
           ${inst.city ? `<div style="font-size:12px;color:#8B6550">📍 ${inst.city}</div>` : ''}
@@ -223,7 +222,7 @@ export function InstitutionsMapClient({ institutions }: Props) {
   async function drawCoverage(L: any, map: any, inst: MapInstitution) {
     clearCoverage()
     if (!inst.coverage_cities?.length) return
-    const color = inst.type === 'shelter' ? '#E8634A' : '#2E9E8F'
+    const color = '#E8634A'
 
     await Promise.all(inst.coverage_cities.map(async cityName => {
       const geojson = await fetchPolygon(cityName)
@@ -257,8 +256,7 @@ export function InstitutionsMapClient({ institutions }: Props) {
     setSelected(inst)
   }
 
-  const isShelter  = (i: MapInstitution) => i.type === 'shelter'
-  const listItems  = filtered
+  const listItems = filtered
 
   return (
     <>
@@ -285,20 +283,8 @@ export function InstitutionsMapClient({ institutions }: Props) {
               className="w-full px-3 py-2 rounded-lg border border-[#E0DDD8] text-sm focus:outline-none focus:border-[#E8634A] mb-1"
             />
             <p className="text-[11px] mb-3" style={{ color: '#A08070' }}>
-              Napiš své město — zobrazíme útulky a stanice s dosahem do tvé oblasti
+              Napiš své město — zobrazíme útulky s dosahem do tvé oblasti
             </p>
-            <div className="flex gap-2">
-              {(['all', 'shelter', 'rescue_station'] as const).map(f => (
-                <button key={f} onClick={() => setFilter(f)}
-                  className="flex-1 py-1.5 rounded-lg text-xs font-bold border-none cursor-pointer transition-all"
-                  style={{
-                    background: filter === f ? (f === 'rescue_station' ? '#2E9E8F' : f === 'shelter' ? '#E8634A' : '#1A0F0A') : '#F5F3F0',
-                    color:      filter === f ? 'white' : '#6B4030',
-                  }}>
-                  {f === 'all' ? 'Vše' : f === 'shelter' ? '🏠 Útulky' : '🚑 Stanice'}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* List */}
@@ -309,8 +295,6 @@ export function InstitutionsMapClient({ institutions }: Props) {
               </div>
             )}
             {listItems.map(inst => {
-              const color = isShelter(inst) ? '#E8634A' : '#2E9E8F'
-              const bg    = isShelter(inst) ? '#FAECE7' : '#E1F5EE'
               const isActive = selected?.id === inst.id
               return (
                 <button key={inst.id} onClick={() => flyTo(inst)}
@@ -318,10 +302,10 @@ export function InstitutionsMapClient({ institutions }: Props) {
                   style={{ background: isActive ? '#F5F3F0' : 'white' }}>
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-sm mt-0.5"
-                      style={{ background: bg }}>
+                      style={{ background: '#FAECE7' }}>
                       {inst.logo_url
                         ? <Image src={inst.logo_url} alt={inst.name} width={32} height={32} className="rounded-lg object-cover" />
-                        : <span>{isShelter(inst) ? '🏠' : '🚑'}</span>
+                        : <span>🏠</span>
                       }
                     </div>
                     <div className="flex-1 min-w-0">
@@ -331,7 +315,7 @@ export function InstitutionsMapClient({ institutions }: Props) {
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {inst.coverage_cities.slice(0, 3).map(c => (
                             <span key={c} className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
-                              style={{ background: bg, color }}>
+                              style={{ background: '#FAECE7', color: '#E8634A' }}>
                               {c}
                             </span>
                           ))}
@@ -344,8 +328,8 @@ export function InstitutionsMapClient({ institutions }: Props) {
                       ) : null}
                     </div>
                     <span className="text-[10px] font-bold flex-shrink-0 px-1.5 py-0.5 rounded-full mt-0.5"
-                      style={{ background: bg, color }}>
-                      {isShelter(inst) ? 'Útulek' : 'Stanice'}
+                      style={{ background: '#FAECE7', color: '#E8634A' }}>
+                      Útulek
                     </span>
                   </div>
                 </button>
@@ -365,10 +349,10 @@ export function InstitutionsMapClient({ institutions }: Props) {
           {selected && (
             <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg shadow-lg border border-[#F0EDE8] p-3 flex items-center gap-3 z-[1000]">
               <div className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center text-base"
-                style={{ background: isShelter(selected) ? '#FAECE7' : '#E1F5EE' }}>
+                style={{ background: '#FAECE7' }}>
                 {selected.logo_url
                   ? <Image src={selected.logo_url} alt={selected.name} width={36} height={36} className="rounded-lg object-cover" />
-                  : <span>{isShelter(selected) ? '🏠' : '🚑'}</span>
+                  : <span>🏠</span>
                 }
               </div>
               <div className="flex-1 min-w-0">

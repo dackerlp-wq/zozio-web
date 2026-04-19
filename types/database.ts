@@ -1,8 +1,7 @@
-export type InstitutionType = 'shelter' | 'rescue_station'
+export type InstitutionType = 'shelter'
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 export type SubscriptionPlan = 'free' | 'standard' | 'pro'
 export type ShelterAnimalStatus = 'available' | 'reserved' | 'adopted' | 'foster' | 'not_for_adoption' | 'conditional' | 'intake' | 'treatment' | 'deceased'
-export type RescueCaseStatus = 'intake' | 'treatment' | 'rehabilitation' | 'released' | 'deceased' | 'transferred'
 export type ApplicationStatus = 'pending' | 'reviewing' | 'approved' | 'rejected' | 'meeting_scheduled' | 'adopted'
 
 export interface Institution {
@@ -40,7 +39,7 @@ export interface AnimalSpecies {
   id: string
   name_cs: string
   name_en: string | null
-  category: 'domestic' | 'wild' | null
+  category: 'domestic' | null
   icon: string | null
   created_at: string
 }
@@ -86,35 +85,6 @@ export interface Animal {
   species?: AnimalSpecies
 }
 
-export interface RescueCase {
-  id: string
-  institution_id: string
-  species_id: string | null
-  case_number: string | null
-  name: string | null
-  sex: 'male' | 'female' | 'unknown' | null
-  estimated_age: string | null
-  status: RescueCaseStatus
-  intake_date: string
-  release_date: string | null
-  found_location: string | null
-  found_date: string | null
-  found_by: string | null
-  cause_of_injury: string | null
-  diagnosis: string | null
-  treatment_notes: string | null
-  vet_name: string | null
-  public_description: string | null
-  photos: string[]
-  primary_photo: string | null
-  published: boolean
-  created_at: string
-  updated_at: string
-  // Relations
-  institution?: Institution
-  species?: AnimalSpecies
-}
-
 export interface AdoptionApplication {
   id: string
   animal_id: string
@@ -143,7 +113,6 @@ export interface Fundraiser {
   id: string
   institution_id: string
   animal_id: string | null
-  rescue_case_id: string | null
   title: string
   description: string | null
   goal_amount: number
@@ -180,7 +149,7 @@ export interface Article {
   perex: string | null
   content: string | null
   cover_url: string | null
-  category: 'story' | 'tips' | 'news' | 'rescue' | null
+  category: 'story' | 'tips' | 'news' | null
   tags: string[]
   published: boolean
   published_at: string | null

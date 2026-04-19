@@ -1,11 +1,10 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
-import { ZozLogo } from '@/components/ui/ZozLogo'
 
 export const metadata: Metadata = {
-  title: 'Pro útulky a záchranné stanice | Zozio',
-  description: 'Zozio je platforma pro správu útulků a záchranných stanic. Adopce, záchranné případy, sbírky a dobrovolníci na jednom místě.',
+  title: 'Pro útulky | Zozio',
+  description: 'Zozio je platforma pro správu útulků. Adopce, sbírky a dobrovolníci na jednom místě.',
 }
 
 const shelterFeatures = [
@@ -13,13 +12,6 @@ const shelterFeatures = [
   { icon: '📋', title: 'Online žádosti', desc: 'Zájemci vyplní žádost přímo z webu. Vy ji schválíte nebo zamítnete z telefonu. Automatické e-maily.' },
   { icon: '💛', title: 'Sbírky', desc: 'Cílené sbírky pro konkrétní zvíře nebo projekt. Progress bar, sdílení na sítě, přehled dárců.' },
   { icon: '🙋', title: 'Dobrovolníci', desc: 'Registrace dobrovolníků s výběrem aktivit. Koordinace venčení a akcí přehledně na jednom místě.' },
-]
-
-const rescueFeatures = [
-  { icon: '🦉', title: 'Evidence pacientů', desc: 'Příjem, léčba, rehabilitace a propuštění — kompletní workflow záchranného případu.' },
-  { icon: '🩺', title: 'Veterinární záznamy', desc: 'Diagnózy, průběh léčby, veterinář. Vše přehledně u každého případu.' },
-  { icon: '💛', title: 'Sbírky na léčbu', desc: 'Cílené sbírky pro konkrétní zvíře. Sdílejte příběh a získávejte podporu veřejnosti.' },
-  { icon: '📊', title: 'Statistiky záchran', desc: 'Přehled počtu zachráněných zvířat, úspěšnosti léčby a propuštění do přírody.' },
 ]
 
 const sharedFeatures = [
@@ -32,7 +24,7 @@ const sharedFeatures = [
 const plans = [
   {
     tier: 'Free', price: '0 Kč', period: 'navždy zdarma', hot: false,
-    features: ['Do 15 zvířat / pacientů', 'Veřejný profil instituce', 'Adopční / příjmový formulář'],
+    features: ['Do 15 zvířat', 'Veřejný profil instituce', 'Adopční formulář'],
     missing: ['E-mail notifikace', 'Sbírky', 'Dobrovolníci'],
     cta: 'Začít zdarma', href: '/auth/register',
   },
@@ -59,13 +51,13 @@ export default function ProInstitucePage() {
         <div className="absolute top-1/2 right-[-60px] -translate-y-1/2 font-display font-extrabold text-[300px] text-white/[0.03] pointer-events-none leading-none">ZOZ</div>
         <div className="max-w-[900px] mx-auto text-center relative z-10">
           <div className="inline-flex items-center gap-2 bg-coral/20 text-coral font-body text-xs font-bold px-4 py-2 rounded-pill mb-6">
-            🏢 Pro útulky a záchranné stanice
+            🏢 Pro útulky
           </div>
           <h1 className="font-display font-extrabold text-[clamp(32px,5vw,60px)] text-white leading-tight mb-5">
-            Moderní správa útulku<br />nebo záchranné stanice
+            Moderní správa útulku
           </h1>
           <p className="text-lg text-gray-light max-w-[600px] mx-auto leading-relaxed mb-8">
-            Zozio dává útulkům a záchranným stanicím nástroje pro správu adopcí, záchranných případů, sbírek a dobrovolníků. Vše na jednom místě, bez papírování.
+            Zozio dává útulkům nástroje pro správu adopcí, sbírek a dobrovolníků. Vše na jednom místě, bez papírování.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/auth/register">
@@ -78,59 +70,33 @@ export default function ProInstitucePage() {
         </div>
       </section>
 
-      {/* Typ instituce */}
+      {/* Funkce pro útulky */}
       <section className="py-14 md:py-20 px-4 md:px-12 bg-warm">
         <div className="max-w-[1100px] mx-auto">
           <div className="text-center mb-10 md:mb-12">
-            <h2 className="font-display font-extrabold text-3xl md:text-4xl text-espresso">Pro jaký typ instituce?</h2>
-            <p className="text-base text-brown-mid mt-3 max-w-[500px] mx-auto">Zozio je přizpůsobeno oběma typům — každý má vlastní workflow a funkce.</p>
+            <h2 className="font-display font-extrabold text-3xl md:text-4xl text-espresso">Funkce pro útulky</h2>
+            <p className="text-base text-brown-mid mt-3 max-w-[500px] mx-auto">Vše co potřebujete pro správu útulku a adopce zvířat.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-
-            {/* Útulky */}
-            <div className="bg-shelter-bg rounded-lg p-6 md:p-8">
-              <div className="text-4xl mb-4">🏠</div>
-              <h3 className="font-display font-extrabold text-2xl text-shelter-dark mb-2">Útulky</h3>
-              <p className="font-display font-bold text-coral mb-3 text-sm">Zachraňme opuštěná zvířata</p>
-              <p className="text-sm text-brown-mid leading-relaxed mb-6">
-                Pro obecní i soukromé útulky pečující o psy, kočky, králíky a další domácí zvířata. Hlavní cíl: najít každému zvířeti nový domov.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                {shelterFeatures.map(f => (
-                  <div key={f.title} className="bg-white rounded-md p-3">
-                    <div className="text-xl mb-1">{f.icon}</div>
-                    <div className="font-display font-bold text-sm text-espresso mb-0.5">{f.title}</div>
-                    <div className="text-xs text-gray leading-relaxed">{f.desc}</div>
-                  </div>
-                ))}
-              </div>
-              <Link href="/auth/register?type=shelter">
-                <Button variant="primary" className="w-full justify-center">Registrovat útulok</Button>
-              </Link>
+          <div className="bg-shelter-bg rounded-lg p-6 md:p-8 max-w-[700px] mx-auto">
+            <div className="text-4xl mb-4">🏠</div>
+            <h3 className="font-display font-extrabold text-2xl text-shelter-dark mb-2">Útulky</h3>
+            <p className="font-display font-bold text-coral mb-3 text-sm">Zachraňme opuštěná zvířata</p>
+            <p className="text-sm text-brown-mid leading-relaxed mb-6">
+              Pro obecní i soukromé útulky pečující o psy, kočky, králíky a další domácí zvířata. Hlavní cíl: najít každému zvířeti nový domov.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+              {shelterFeatures.map(f => (
+                <div key={f.title} className="bg-white rounded-md p-3">
+                  <div className="text-xl mb-1">{f.icon}</div>
+                  <div className="font-display font-bold text-sm text-espresso mb-0.5">{f.title}</div>
+                  <div className="text-xs text-gray leading-relaxed">{f.desc}</div>
+                </div>
+              ))}
             </div>
-
-            {/* Záchranné stanice */}
-            <div className="bg-rescue-bg rounded-lg p-6 md:p-8">
-              <div className="text-4xl mb-4">🚑</div>
-              <h3 className="font-display font-extrabold text-2xl text-rescue-dark mb-2">Záchranné stanice</h3>
-              <p className="font-display font-bold text-rescue mb-3 text-sm">Zachraňme ohrožená zvířata</p>
-              <p className="text-sm text-brown-mid leading-relaxed mb-6">
-                Pro stanice léčící volně žijící zraněná zvířata — sovy, lišky, ježky, vydry a další. Hlavní cíl: uzdravit a vrátit do přírody.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                {rescueFeatures.map(f => (
-                  <div key={f.title} className="bg-white rounded-md p-3">
-                    <div className="text-xl mb-1">{f.icon}</div>
-                    <div className="font-display font-bold text-sm text-espresso mb-0.5">{f.title}</div>
-                    <div className="text-xs text-gray leading-relaxed">{f.desc}</div>
-                  </div>
-                ))}
-              </div>
-              <Link href="/auth/register?type=rescue_station">
-                <Button variant="rescue" className="w-full justify-center">Registrovat záchrannou stanici</Button>
-              </Link>
-            </div>
+            <Link href="/auth/register">
+              <Button variant="primary" className="w-full justify-center">Registrovat útulok</Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -139,8 +105,8 @@ export default function ProInstitucePage() {
       <section className="py-14 md:py-20 px-4 md:px-12 bg-cream">
         <div className="max-w-[1100px] mx-auto">
           <div className="text-center mb-10">
-            <h2 className="font-display font-extrabold text-3xl md:text-4xl text-espresso">Sdílené funkce pro všechny</h2>
-            <p className="text-base text-brown-mid mt-3 max-w-[500px] mx-auto">Obě instituce sdílejí silný základ.</p>
+            <h2 className="font-display font-extrabold text-3xl md:text-4xl text-espresso">Vše na jednom místě</h2>
+            <p className="text-base text-brown-mid mt-3 max-w-[500px] mx-auto">Silný základ pro každý útulok.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
             {sharedFeatures.map(f => (

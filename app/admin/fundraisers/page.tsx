@@ -3,11 +3,10 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
-import type { Fundraiser, Animal, RescueCase } from '@/types/database'
+import type { Fundraiser, Animal } from '@/types/database'
 
 type FundraiserWithRelations = Fundraiser & {
   animal?: Pick<Animal, 'name'> | null
-  rescue_case?: Pick<RescueCase, 'name' | 'case_number'> | null
 }
 
 export default async function AdminFundraisersPage() {
@@ -27,7 +26,7 @@ export default async function AdminFundraisersPage() {
 
   const { data: fundraisers } = await service
     .from('fundraisers')
-    .select('*, animal:animals(name), rescue_case:rescue_cases(name, case_number)')
+    .select('*, animal:animals(name)')
     .eq('institution_id', membership.institution_id)
     .order('created_at', { ascending: false })
 
@@ -61,7 +60,7 @@ export default async function AdminFundraisersPage() {
         <div className="space-y-4">
           {items.map((f) => {
             const percent = Math.min(Math.round((f.current_amount / f.goal_amount) * 100), 100)
-            const linked = f.animal?.name ?? f.rescue_case?.name ?? f.rescue_case?.case_number ?? null
+            const linked = f.animal?.name ?? null
 
             return (
               <div key={f.id} className="bg-white rounded-lg p-5 border border-gray-pale shadow-sm hover:shadow-md transition-all">

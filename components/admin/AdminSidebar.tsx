@@ -50,26 +50,21 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSidebarProps) {
   const pathname = usePathname()
-  const isShelter = institution?.type === 'shelter'
   const [open, setOpen] = useState(false)
 
   const isAdoptionActive  = pathname.startsWith('/admin/applications') || pathname.startsWith('/admin/calendar')
   const isSettingsActive  = pathname.startsWith('/admin/settings')
 
   const navItems = [
-    { href: '/admin/dashboard',    icon: '📊', label: 'Dashboard' },
-    { href: '/admin/statistics',   icon: '📈', label: 'Statistiky' },
-    { href: '/admin/animals',      icon: isShelter ? '🐾' : '🦉', label: isShelter ? 'Zvířata' : 'Pacienti' },
-    ...(!isShelter
-      ? [{ href: '/admin/cases', icon: '🩺', label: 'Záznamy léčby' }]
-      : []
-    ),
-    { href: '/admin/fundraisers',  icon: '💛', label: 'Sbírky' },
-    { href: '/admin/volunteers',   icon: '🙋', label: 'Dobrovolníci' },
-    { href: '/admin/articles',     icon: '📝', label: 'Články' },
-    { href: '/admin/newsletter',   icon: '📬', label: 'Newsletter' },
-    { href: '/admin/documents',    icon: '📄', label: 'Dokumenty' },
-    { href: '/admin/billing',      icon: '💳', label: 'Předplatné' },
+    { href: '/admin/dashboard',   icon: '📊', label: 'Dashboard' },
+    { href: '/admin/statistics',  icon: '📈', label: 'Statistiky' },
+    { href: '/admin/animals',     icon: '🐾', label: 'Zvířata' },
+    { href: '/admin/fundraisers', icon: '💛', label: 'Sbírky' },
+    { href: '/admin/volunteers',  icon: '🙋', label: 'Dobrovolníci' },
+    { href: '/admin/articles',    icon: '📝', label: 'Články' },
+    { href: '/admin/newsletter',  icon: '📬', label: 'Newsletter' },
+    { href: '/admin/documents',   icon: '📄', label: 'Dokumenty' },
+    { href: '/admin/billing',     icon: '💳', label: 'Předplatné' },
   ]
 
   const adoptionSubItems = [
@@ -104,9 +99,9 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
 
       {/* Instituce info */}
       {institution && (
-        <div className={`mx-4 mt-4 p-3 rounded-md ${institution.type === 'shelter' ? 'bg-coral/20' : 'bg-rescue/20'}`}>
+        <div className="mx-4 mt-4 p-3 rounded-md bg-coral/20">
           <div className="font-display font-bold text-sm text-white leading-tight">
-            {institution.type === 'shelter' ? '🏠' : '🚑'} {institution.name}
+            🏠 {institution.name}
           </div>
           <div className="text-xs text-gray-light mt-0.5 font-semibold capitalize">
             {userRole} · {institution.approval_status === 'approved' ? '✓ Schváleno' : '⏳ Čeká'}
@@ -131,39 +126,23 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
             </Link>
           ))}
 
-          {/* Adopce skupina (jen pro útulky) */}
-          {isShelter && (
-            <NavGroup icon="🏠" label="Adopce" isActive={isAdoptionActive} onClose={() => setOpen(false)}>
-              {adoptionSubItems.map(({ href, label }) => (
-                <Link key={href} href={href} onClick={() => setOpen(false)}
-                  className={cn(
-                    'flex items-center gap-2 px-3 py-2 rounded-md font-body text-sm font-semibold transition-all no-underline',
-                    pathname === href || pathname.startsWith(href + '/')
-                      ? 'bg-white/15 text-white'
-                      : 'text-gray-light hover:bg-white/8 hover:text-white'
-                  )}>
-                  {label}
-                </Link>
-              ))}
-            </NavGroup>
-          )}
-
-          {/* Záznamy léčby (jen pro záchranné stanice) */}
-          {!isShelter && navItems.slice(3, 4).map(({ href, icon, label }) => (
-            <Link key={href} href={href} onClick={() => setOpen(false)}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all no-underline',
-                pathname === href || pathname.startsWith(href + '/')
-                  ? 'bg-white/15 text-white'
-                  : 'text-gray-light hover:bg-white/8 hover:text-white'
-              )}>
-              <span className="text-base w-5 text-center">{icon}</span>
-              {label}
-            </Link>
-          ))}
+          {/* Adopce skupina */}
+          <NavGroup icon="🏠" label="Adopce" isActive={isAdoptionActive} onClose={() => setOpen(false)}>
+            {adoptionSubItems.map(({ href, label }) => (
+              <Link key={href} href={href} onClick={() => setOpen(false)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2 rounded-md font-body text-sm font-semibold transition-all no-underline',
+                  pathname === href || pathname.startsWith(href + '/')
+                    ? 'bg-white/15 text-white'
+                    : 'text-gray-light hover:bg-white/8 hover:text-white'
+                )}>
+                {label}
+              </Link>
+            ))}
+          </NavGroup>
 
           {/* Zbytek (Sbírky, Dobrovolníci, Články, Newsletter, Dokumenty, Billing) */}
-          {(isShelter ? navItems.slice(3) : navItems.slice(4)).map(({ href, icon, label }) => (
+          {navItems.slice(3).map(({ href, icon, label }) => (
             <Link key={href} href={href} onClick={() => setOpen(false)}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all no-underline',
@@ -244,7 +223,7 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
         </Link>
         {institution && (
           <span className="font-display font-bold text-xs text-white truncate flex-1 mx-1">
-            {institution.type === 'shelter' ? '🏠' : '🚑'} {institution.name}
+            🏠 {institution.name}
           </span>
         )}
         <div className="flex items-center gap-0.5 shrink-0">

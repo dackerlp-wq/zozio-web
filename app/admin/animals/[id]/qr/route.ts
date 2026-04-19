@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import {
-  ADOPTION_STATUS_LABEL, RESCUE_STATUS_LABEL,
+  ADOPTION_STATUS_LABEL,
   HEALTH_STATUS_LABEL, SEX_LABEL, SIZE_LABEL,
 } from '@/lib/animal-labels'
 
@@ -28,25 +28,18 @@ export async function GET(
 
   const { data: institution } = await service
     .from('institutions')
-    .select('id, name, type, city, email, phone')
+    .select('id, name, city, email, phone')
     .eq('id', membership.institution_id)
     .single()
 
   if (!institution) return new NextResponse('Nenalezeno', { status: 404 })
 
-  const isShelter = institution.type === 'shelter'
-
-  const { data: animal } = isShelter
-    ? await service.from('animals')
-        .select('*, species:animal_species(name_cs, icon)')
-        .eq('id', id)
-        .eq('institution_id', institution.id)
-        .single()
-    : await service.from('rescue_cases')
-        .select('*, species:animal_species(name_cs, icon)')
-        .eq('id', id)
-        .eq('institution_id', institution.id)
-        .single()
+  const { data: animal } = await service
+    .from('animals')
+    .select('*, species:animal_species(name_cs, icon)')
+    .eq('id', id)
+    .eq('institution_id', institution.id)
+    .single()
 
   if (!animal) return new NextResponse('Zvíře nenalezeno', { status: 404 })
 
@@ -57,27 +50,21 @@ export async function GET(
   const editUrl = `${BASE}/admin/animals/${id}?scan=1`
 
   // Veřejná URL zvířete
-  const publicUrl = isShelter ? `${BASE}/animals/${id}` : `${BASE}/rescue/${id}`
+  const publicUrl = `${BASE}/animals/${id}`
 
   const today = new Date().toLocaleDateString('cs-CZ', {
     day: 'numeric', month: 'long', year: 'numeric'
   })
 
-  const name    = a.name ?? a.case_number ?? 'Bez jména'
+  const name    = a.name ?? 'Bez jména'
   const species = a.species?.icon ? `${a.species.icon} ${a.species.name_cs}` : a.species?.name_cs ?? '—'
-  const status  = isShelter
-    ? (ADOPTION_STATUS_LABEL[a.adoption_status ?? ''] ?? a.adoption_status)
-    : (RESCUE_STATUS_LABEL[a.status ?? ''] ?? a.status)
+  const status  = ADOPTION_STATUS_LABEL[a.adoption_status ?? ''] ?? a.adoption_status
   const health  = HEALTH_STATUS_LABEL[a.health_status ?? ''] ?? '—'
   const sex     = SEX_LABEL[a.sex ?? ''] ?? '—'
-  const size    = isShelter ? (SIZE_LABEL[a.size ?? ''] ?? '—') : null
-  const age     = isShelter
-    ? (a.birth_year ? `${new Date().getFullYear() - a.birth_year} let (nar. ${a.birth_year})` : '—')
-    : (a.estimated_age ?? '—')
-  const weight  = isShelter
-    ? (a.weight_kg ? `${a.weight_kg} kg` : '—')
-    : (a.weight_g  ? `${a.weight_g} g`  : '—')
-  const chip    = a.chip_number   ?? '—'
+  const size    = SIZE_LABEL[a.size ?? ''] ?? '—'
+  const age     = a.birth_year ? `${new Date().getFullYear() - a.birth_year} let (nar. ${a.birth_year})` : '—'
+  const weight  = a.weight_kg ? `${a.weight_kg} kg` : '—'
+  const chip    = a.chip_number ?? '—'
   const intake  = a.intake_date
     ? new Date(a.intake_date).toLocaleDateString('cs-CZ')
     : '—'
@@ -111,7 +98,7 @@ export async function GET(
   }
 
   .header {
-    background: ${isShelter ? '#E8634A' : '#2E9E8F'};
+    background: #E8634A;
     color: white;
     padding: 10px 14px 8px;
     display: flex;
@@ -259,7 +246,7 @@ export async function GET(
     gap: 6px;
   }
   .btn-print  { background: #2C1810; color: white; }
-  .btn-edit   { background: ${isShelter ? '#E8634A' : '#2E9E8F'}; color: white; }
+  .btn-edit   { background: #E8634A; color: white; }
   .btn-cancel { background: #F0E8DC; color: #6B3F1F; }
 
   @media print {
@@ -280,7 +267,7 @@ export async function GET(
 
   <!-- Karta -->
   <div class="card">
-    ${isShelter && a.urgent ? '<div class="urgent-badge">🆘 URGENTNÍ</div>' : ''}
+    ${a.urgent ? '<div class="urgent-badge">🆘 URGENTNÍ</div>' : ''}
 
     <!-- Hlavička -->
     <div class="header">
@@ -309,11 +296,10 @@ export async function GET(
             <div class="info-label">Věk</div>
             <div class="info-value">${age}</div>
           </div>
-          ${size ? `
           <div class="info-item">
             <div class="info-label">Velikost</div>
             <div class="info-value">${size}</div>
-          </div>` : ''}
+          </div>
           <div class="info-item">
             <div class="info-label">Váha</div>
             <div class="info-value">${weight}</div>
@@ -322,16 +308,10 @@ export async function GET(
             <div class="info-label">Zdraví</div>
             <div class="info-value">${health}</div>
           </div>
-          ${isShelter ? `
           <div class="info-item">
             <div class="info-label">Čip</div>
             <div class="info-value">${chip}</div>
-          </div>` : ''}
-          ${!isShelter && a.cause_of_injury ? `
-          <div class="info-item" style="grid-column:1/-1">
-            <div class="info-label">Příčina</div>
-            <div class="info-value">${a.cause_of_injury}</div>
-          </div>` : ''}
+          </div>
           <div class="info-item">
             <div class="info-label">Příjem</div>
             <div class="info-value">${intake}</div>

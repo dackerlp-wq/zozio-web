@@ -56,7 +56,6 @@ const ALLOWED_COLUMNS = new Set([
   'good_with_kids', 'good_with_dogs', 'good_with_cats', 'good_with_cats',
   'good_with_other_animals', 'good_with_adults',
   'suitable_for_flat', 'suitable_for_house', 'activity_level', 'care_difficulty',
-  'rescue_find_type', 'rescue_prognosis', 'rescue_public_description',
   // Fotky & zveřejnění
   'photos', 'primary_photo',
   // Interní
@@ -227,7 +226,6 @@ export async function PUT(
     }
 
     revalidatePath('/adopt')
-    revalidatePath('/rescue')
     revalidatePath(`/animals/${id}`)
 
     // 2. Build a ulož audit log
@@ -283,7 +281,6 @@ export async function DELETE(
     if (error) throw error
 
     revalidatePath('/adopt')
-    revalidatePath('/rescue')
 
     return NextResponse.json({ success: true })
 

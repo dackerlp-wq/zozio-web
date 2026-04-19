@@ -65,7 +65,7 @@ export function VolunteerActions({ volunteerId, currentStatus }: VolunteerAction
   if (currentStatus === 'inactive' || currentStatus === 'rejected') {
     return (
       <Button
-        variant="rescue"
+        variant="primary"
         size="sm"
         loading={loading === 'active'}
         onClick={() => updateStatus('active')}

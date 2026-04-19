@@ -20,13 +20,11 @@ export default async function AdminNewsletterPage() {
 
   const { data: institution } = await service
     .from('institutions')
-    .select('id, name, type, newsletter_week_sent_at, newsletter_month_sent_at')
+    .select('id, name, newsletter_week_sent_at, newsletter_month_sent_at')
     .eq('id', membership.institution_id)
     .single()
 
   if (!institution) redirect('/admin/dashboard')
-
-  const isShelter = institution.type === 'shelter'
 
   // Odběratelé
   const { data: subscribers } = await service
@@ -47,12 +45,8 @@ export default async function AdminNewsletterPage() {
   const monthAgoIso = monthAgo.toISOString()
 
   const [weekAnimals, monthAnimals] = await Promise.all([
-    isShelter
-      ? service.from('animals').select('id', { count: 'exact', head: true }).eq('institution_id', institution.id).gte('created_at', weekAgoIso)
-      : service.from('rescue_cases').select('id', { count: 'exact', head: true }).eq('institution_id', institution.id).gte('created_at', weekAgoIso),
-    isShelter
-      ? service.from('animals').select('id', { count: 'exact', head: true }).eq('institution_id', institution.id).gte('created_at', monthAgoIso)
-      : service.from('rescue_cases').select('id', { count: 'exact', head: true }).eq('institution_id', institution.id).gte('created_at', monthAgoIso),
+    service.from('animals').select('id', { count: 'exact', head: true }).eq('institution_id', institution.id).gte('created_at', weekAgoIso),
+    service.from('animals').select('id', { count: 'exact', head: true }).eq('institution_id', institution.id).gte('created_at', monthAgoIso),
   ])
 
   return (
@@ -70,7 +64,7 @@ export default async function AdminNewsletterPage() {
           <div className="text-3xl mb-3">📅</div>
           <h2 className="font-display font-bold text-lg text-espresso mb-1">Novinky za týden</h2>
           <p className="text-sm text-gray mb-4">
-            {weekAnimals.count ?? 0} nových {isShelter ? 'zvířat' : 'případů'} · odešle se {list.length} lidem
+            {weekAnimals.count ?? 0} nových zvířat · odešle se {list.length} lidem
           </p>
           <SendDigestButton
             institutionId={institution.id}
@@ -85,7 +79,7 @@ export default async function AdminNewsletterPage() {
           <div className="text-3xl mb-3">🗓️</div>
           <h2 className="font-display font-bold text-lg text-espresso mb-1">Novinky za měsíc</h2>
           <p className="text-sm text-gray mb-4">
-            {monthAnimals.count ?? 0} nových {isShelter ? 'zvířat' : 'případů'} · odešle se {list.length} lidem
+            {monthAnimals.count ?? 0} nových zvířat · odešle se {list.length} lidem
           </p>
           <SendDigestButton
             institutionId={institution.id}

@@ -12,8 +12,8 @@ export function Footer() {
           <div className="col-span-2 md:col-span-1">
             <ZozLogo size="md" variant="inverted" />
             <p className="text-sm text-gray leading-relaxed mt-3 max-w-[260px]">
-              Platforma pro útulky a záchranné stanice v ČR a SR.
-              Zachraňme opuštěná i ohrožená zvířata.
+              Platforma pro útulky v ČR a SR.
+              Zachraňme opuštěná zvířata.
             </p>
             <p className="text-xs text-gray/60 mt-3 font-semibold italic">
               „Lidé volají SOS — zvířata volají ZOZ."
@@ -25,7 +25,6 @@ export function Footer() {
             <ul className="list-none space-y-2">
               {[
                 { href: '/adopt',        label: 'Adoptovat zvíře' },
-                { href: '/rescue',       label: 'Ohrožená zvířata' },
                 { href: '/institutions', label: 'Adresář útulků' },
                 { href: '/fundraisers',  label: 'Sbírky' },
                 { href: '/map',          label: '🗺️ Mapa útulků' },
@@ -42,9 +41,8 @@ export function Footer() {
             <h4 className="font-display font-extrabold text-xs text-white mb-3 md:mb-4 uppercase tracking-widest">Pro instituce</h4>
             <ul className="list-none space-y-2">
               {[
-                { href: '/proc-byt-na-zozio',                 label: 'Proč být na Zozio?' },
-                { href: '/auth/register?type=shelter',        label: 'Registrovat útulek' },
-                { href: '/auth/register?type=rescue_station', label: 'Záchranná stanice' },
+                { href: '/proc-byt-na-zozio',          label: 'Proč být na Zozio?' },
+                { href: '/auth/register?type=shelter', label: 'Registrovat útulek' },
                 { href: '/pricing',    label: 'Ceník' },
                 { href: '/auth/login', label: 'Přihlásit se' },
               ].map(({ href, label }) => (
