@@ -2,6 +2,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { InstitutionActions } from '@/components/admin/InstitutionActions'
+import { PlanSelector } from '@/components/admin/PlanSelector'
+import type { SubscriptionPlan } from '@/types/database'
 
 interface PageProps {
   searchParams: Promise<{ filter?: string }>
@@ -114,10 +116,11 @@ export default async function SuperadminInstitutionsPage({ searchParams }: PageP
                     </td>
                     <td className="px-5 py-3.5 text-sm text-gray font-semibold">{inst.city}</td>
                     <td className="px-5 py-3.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-pill text-[10px] font-bold
-                        ${inst.plan === 'free' ? 'bg-gray-pale text-gray' : inst.plan === 'pro' ? 'bg-amber-light text-warning' : 'bg-coral-light text-coral-dark'}`}>
-                        {inst.plan?.toUpperCase()}
-                      </span>
+                      <PlanSelector
+                        institutionId={inst.id}
+                        currentPlan={(inst.plan ?? 'free') as SubscriptionPlan}
+                        currentExpiresAt={(inst as any).plan_expires_at ?? null}
+                      />
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-pill text-xs font-bold
