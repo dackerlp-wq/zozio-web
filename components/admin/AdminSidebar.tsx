@@ -7,6 +7,29 @@ import { cn } from '@/lib/utils'
 import { PLAN_NAMES, PLAN_EMOJI } from '@/lib/plans'
 import type { SubscriptionPlan } from '@/types/database'
 
+interface NavItemProps {
+  href: string
+  icon: string
+  label: string
+  locked: boolean
+  active: boolean
+  onClose: () => void
+}
+
+function NavItem({ href, icon, label, locked, active, onClose }: NavItemProps) {
+  return (
+    <Link href={href} onClick={onClose}
+      className={cn(
+        'flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all no-underline',
+        active ? 'bg-white/15 text-white' : 'text-gray-light hover:bg-white/8 hover:text-white'
+      )}>
+      <span className="text-base w-5 text-center shrink-0">{icon}</span>
+      <span className="flex-1">{label}</span>
+      {locked && <span className="text-[10px] opacity-40">🔒</span>}
+    </Link>
+  )
+}
+
 interface NavGroupProps {
   icon: string
   label: string
@@ -64,19 +87,29 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
 
   const isProPlan = plan === 'pro'
 
-  const navItems = [
-    { href: '/admin/dashboard',   icon: '📊', label: 'Dashboard',          locked: false },
-    { href: '/admin/statistics',  icon: '📈', label: 'Statistiky',         locked: false },
-    { href: '/admin/animals',     icon: '🐾', label: 'Zvířata',            locked: false },
-    { href: '/admin/fundraisers', icon: '💛', label: 'Sbírky',             locked: isFreePlan },
-    { href: '/admin/volunteers',  icon: '🙋', label: 'Dobrovolníci',       locked: isFreePlan },
-    { href: '/admin/articles',    icon: '📝', label: 'Články',             locked: false },
-    { href: '/admin/newsletter',  icon: '📬', label: 'Newsletter',         locked: isFreePlan },
-    { href: '/admin/reports',     icon: '📋', label: 'Pokročilé reporty',  locked: !isProPlan },
-    { href: '/admin/onboarding',  icon: '🚀', label: 'Onboarding',         locked: false },
-    { href: '/admin/support',     icon: '🎧', label: 'Podpora',            locked: false },
-    { href: '/admin/documents',   icon: '📄', label: 'Dokumenty',          locked: false },
-    { href: '/admin/billing',     icon: '💳', label: 'Předplatné',         locked: false },
+  const operationsItems = [
+    { href: '/admin/dashboard',   icon: '📊', label: 'Dashboard',     locked: false },
+    { href: '/admin/animals',     icon: '🐾', label: 'Zvířata',       locked: false },
+    // Adopce group is injected between animals and fundraisers
+    { href: '/admin/fundraisers', icon: '💛', label: 'Sbírky',        locked: isFreePlan },
+    { href: '/admin/volunteers',  icon: '🙋', label: 'Dobrovolníci',  locked: isFreePlan },
+  ]
+
+  const communityItems = [
+    { href: '/admin/articles',   icon: '📝', label: 'Články',     locked: false },
+    { href: '/admin/newsletter', icon: '📬', label: 'Newsletter', locked: isFreePlan },
+  ]
+
+  const analyticsItems = [
+    { href: '/admin/statistics', icon: '📈', label: 'Statistiky',         locked: false },
+    { href: '/admin/reports',    icon: '📋', label: 'Pokročilé reporty',  locked: !isProPlan },
+  ]
+
+  const accountItems = [
+    { href: '/admin/onboarding', icon: '🚀', label: 'Onboarding',  locked: false },
+    { href: '/admin/documents',  icon: '📄', label: 'Dokumenty',   locked: false },
+    { href: '/admin/support',    icon: '🎧', label: 'Podpora',     locked: false },
+    { href: '/admin/billing',    icon: '💳', label: 'Předplatné',  locked: false },
   ]
 
   const adoptionSubItems = [
@@ -131,66 +164,91 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
 
       {/* Navigace */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        <div className="space-y-1">
-          {/* Dashboard, Statistiky, Zvířata */}
-          {navItems.slice(0, 3).map(({ href, icon, label, locked }) => (
-            <Link key={href} href={href} onClick={() => setOpen(false)}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all no-underline',
-                pathname === href || pathname.startsWith(href + '/')
-                  ? 'bg-white/15 text-white'
-                  : 'text-gray-light hover:bg-white/8 hover:text-white'
-              )}>
-              <span className="text-base w-5 text-center">{icon}</span>
-              <span className="flex-1">{label}</span>
-              {locked && <span className="text-[10px] opacity-50">🔒</span>}
-            </Link>
-          ))}
+        <div className="space-y-5">
 
-          {/* Adopce skupina */}
-          <NavGroup icon="🏠" label="Adopce" isActive={isAdoptionActive} onClose={() => setOpen(false)}>
-            {adoptionSubItems.map(({ href, label }) => (
-              <Link key={href} href={href} onClick={() => setOpen(false)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-md font-body text-sm font-semibold transition-all no-underline',
-                  pathname === href || pathname.startsWith(href + '/')
-                    ? 'bg-white/15 text-white'
-                    : 'text-gray-light hover:bg-white/8 hover:text-white'
-                )}>
-                {label}
-              </Link>
-            ))}
-          </NavGroup>
+          {/* ── OPERACE ── */}
+          <div>
+            <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 mb-1.5">Operace</div>
+            <div className="space-y-0.5">
+              {/* Dashboard */}
+              {operationsItems.slice(0, 1).map(({ href, icon, label, locked }) => (
+                <NavItem key={href} href={href} icon={icon} label={label} locked={locked}
+                  active={pathname === href || pathname.startsWith(href + '/')} onClose={() => setOpen(false)} />
+              ))}
+              {/* Zvířata */}
+              {operationsItems.slice(1, 2).map(({ href, icon, label, locked }) => (
+                <NavItem key={href} href={href} icon={icon} label={label} locked={locked}
+                  active={pathname === href || pathname.startsWith(href + '/')} onClose={() => setOpen(false)} />
+              ))}
+              {/* Adopce skupina */}
+              <NavGroup icon="🏠" label="Adopce" isActive={isAdoptionActive} onClose={() => setOpen(false)}>
+                {adoptionSubItems.map(({ href, label }) => (
+                  <Link key={href} href={href} onClick={() => setOpen(false)}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-2 rounded-md font-body text-sm font-semibold transition-all no-underline',
+                      pathname === href || pathname.startsWith(href + '/')
+                        ? 'bg-white/15 text-white'
+                        : 'text-gray-light hover:bg-white/8 hover:text-white'
+                    )}>
+                    {label}
+                  </Link>
+                ))}
+              </NavGroup>
+              {/* Sbírky, Dobrovolníci */}
+              {operationsItems.slice(2).map(({ href, icon, label, locked }) => (
+                <NavItem key={href} href={href} icon={icon} label={label} locked={locked}
+                  active={pathname === href || pathname.startsWith(href + '/')} onClose={() => setOpen(false)} />
+              ))}
+            </div>
+          </div>
 
-          {/* Zbytek (Sbírky, Dobrovolníci, Články, Newsletter, Dokumenty, Billing) */}
-          {navItems.slice(3).map(({ href, icon, label, locked }) => (
-            <Link key={href} href={href} onClick={() => setOpen(false)}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all no-underline',
-                pathname === href || pathname.startsWith(href + '/')
-                  ? 'bg-white/15 text-white'
-                  : 'text-gray-light hover:bg-white/8 hover:text-white'
-              )}>
-              <span className="text-base w-5 text-center">{icon}</span>
-              <span className="flex-1">{label}</span>
-              {locked && <span className="text-[10px] opacity-50">🔒</span>}
-            </Link>
-          ))}
+          {/* ── KOMUNITA ── */}
+          <div>
+            <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 mb-1.5">Komunita</div>
+            <div className="space-y-0.5">
+              {communityItems.map(({ href, icon, label, locked }) => (
+                <NavItem key={href} href={href} icon={icon} label={label} locked={locked}
+                  active={pathname === href || pathname.startsWith(href + '/')} onClose={() => setOpen(false)} />
+              ))}
+            </div>
+          </div>
 
-          {/* Nastavení skupina */}
-          <NavGroup icon="⚙️" label="Nastavení" isActive={isSettingsActive} onClose={() => setOpen(false)}>
-            {settingsSubItems.map(({ href, label }) => (
-              <Link key={href} href={href} onClick={() => setOpen(false)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-md font-body text-sm font-semibold transition-all no-underline',
-                  pathname === href
-                    ? 'bg-white/15 text-white'
-                    : 'text-gray-light hover:bg-white/8 hover:text-white'
-                )}>
-                {label}
-              </Link>
-            ))}
-          </NavGroup>
+          {/* ── ANALYTIKA ── */}
+          <div>
+            <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 mb-1.5">Analytika</div>
+            <div className="space-y-0.5">
+              {analyticsItems.map(({ href, icon, label, locked }) => (
+                <NavItem key={href} href={href} icon={icon} label={label} locked={locked}
+                  active={pathname === href || pathname.startsWith(href + '/')} onClose={() => setOpen(false)} />
+              ))}
+            </div>
+          </div>
+
+          {/* ── ÚČET ── */}
+          <div>
+            <div className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 mb-1.5">Účet</div>
+            <div className="space-y-0.5">
+              {/* Nastavení skupina */}
+              <NavGroup icon="⚙️" label="Nastavení" isActive={isSettingsActive} onClose={() => setOpen(false)}>
+                {settingsSubItems.map(({ href, label }) => (
+                  <Link key={href} href={href} onClick={() => setOpen(false)}
+                    className={cn(
+                      'flex items-center gap-2 px-3 py-2 rounded-md font-body text-sm font-semibold transition-all no-underline',
+                      pathname === href
+                        ? 'bg-white/15 text-white'
+                        : 'text-gray-light hover:bg-white/8 hover:text-white'
+                    )}>
+                    {label}
+                  </Link>
+                ))}
+              </NavGroup>
+              {accountItems.map(({ href, icon, label, locked }) => (
+                <NavItem key={href} href={href} icon={icon} label={label} locked={locked}
+                  active={pathname === href || pathname.startsWith(href + '/')} onClose={() => setOpen(false)} />
+              ))}
+            </div>
+          </div>
+
         </div>
 
         {isSuperadmin && (
