@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
@@ -139,13 +140,13 @@ export default async function AdoptPage({ searchParams }: PageProps) {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
                 {animals.map((animal: any, i: number) => (
-                  <>
-                    <AnimalCard key={animal.id} animal={animal} />
-                    {/* Inline reklama každých 8 karet, jen pokud zvířat > 4 */}
-                    {animals.length > 4 && (i + 1) % 8 === 0 && i < animals.length - 1 && (
-                      <AdSlot key={`ad-${i}`} slot="inline_grid" speciesId={params.species} />
+                  <React.Fragment key={animal.id}>
+                    <AnimalCard animal={animal} />
+                    {/* Inline reklama po každé 8. kartě, jen pokud zvířat > 4 */}
+                    {animals.length > 4 && (i + 1) % 8 === 0 && (
+                      <AdSlot slot="inline_grid" speciesId={params.species} />
                     )}
-                  </>
+                  </React.Fragment>
                 ))}
               </div>
             )}

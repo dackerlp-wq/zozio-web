@@ -311,6 +311,8 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                 <NotYetBanner name={a.name} status={displayStatus} />
               )}
               {isFinished && <AdoptedBanner name={a.name} status={displayStatus} />}
+              {/* Reklama pod mobilním adopčním panelem */}
+              <AdSlot slot="banner_animal" speciesId={a.species_id ?? undefined} className="mt-4" />
             </div>
           </div>
 
@@ -390,13 +392,12 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                   <NotYetBanner name={a.name} status={displayStatus} />
                 )}
                 {isFinished && <AdoptedBanner name={a.name} status={displayStatus} />}
+                {/* Reklama pod desktop adopčním panelem */}
+                <AdSlot slot="banner_animal" speciesId={a.species_id ?? undefined} className="px-5 pb-5" />
               </div>
             </StickyPanel>
           </div>
         </div>
-
-        {/* Banner reklama pod adopčním panelem */}
-        <AdSlot slot="banner_animal" speciesId={a.species_id ?? undefined} className="mt-8" />
       </div>
     </main>
   )
