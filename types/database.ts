@@ -109,6 +109,32 @@ export interface AdoptionApplication {
   animal?: Animal
 }
 
+export type AdSlotType = 'inline_grid' | 'sidebar' | 'banner_adopt' | 'banner_home' | 'banner_animal' | 'newsletter'
+export type AdTier = 'friend' | 'supporter' | 'partner' | 'main'
+
+export interface Ad {
+  id:             string
+  company_name:   string
+  contact_email:  string | null
+  logo_url:       string | null
+  image_url:      string | null
+  headline:       string
+  description:    string | null
+  cta_label:      string
+  cta_url:        string
+  slots:          AdSlotType[]
+  target_species: string | null
+  active_from:    string
+  active_to:      string
+  tier:           AdTier
+  active:         boolean
+  notes:          string | null
+  impressions:    number
+  clicks:         number
+  created_at:     string
+  updated_at:     string
+}
+
 export interface Fundraiser {
   id: string
   institution_id: string

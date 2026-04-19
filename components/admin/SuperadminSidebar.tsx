@@ -12,6 +12,7 @@ const navItems = [
   { href: '/superadmin/breeds',       icon: '🐾', label: 'Rasy zvířat' },
   { href: '/superadmin/articles',     icon: '📝', label: 'Články' },
   { href: '/superadmin/newsletter',   icon: '📬', label: 'Newsletter' },
+  { href: '/superadmin/ads',          icon: '📣', label: 'Reklamy' },
 ]
 
 export function SuperadminSidebar() {

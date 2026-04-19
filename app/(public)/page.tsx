@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Tag } from '@/components/ui/Tag'
 import { FavoriteButtonWrapper } from '@/components/public/FavoriteButtonWrapper'
+import { AdSlot } from '@/components/public/AdSlot'
 
 export const revalidate = 300
 
@@ -29,6 +30,9 @@ export default async function HomePage() {
       <HeroSection animals={animals} species={species} />
       <StatsStrip stats={stats} />
       <AnimalsSection animals={animals} />
+      <div className="max-w-[1200px] mx-auto px-4 md:px-12 py-6">
+        <AdSlot slot="banner_home" />
+      </div>
       <FundraisersSection fundraisers={fundraisers} />
       <StoriesSection articles={articles} pinnedArticle={pinnedArticle} />
       <InstitutionsCta />

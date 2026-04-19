@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PhotoGallery } from '@/components/public/PhotoGallery'
 import { AdoptionForm } from '@/components/public/AdoptionForm'
 import { ShareButtons } from '@/components/public/ShareButtons'
+import { AdSlot } from '@/components/public/AdSlot'
 import { StickyPanel } from '@/components/public/StickyPanel'
 import { FavoriteButton } from '@/components/public/FavoriteButton'
 import { formatBreed } from '@/lib/breed-label'
@@ -393,6 +394,9 @@ export default async function AnimalDetailPage({ params }: PageProps) {
             </StickyPanel>
           </div>
         </div>
+
+        {/* Banner reklama pod adopčním panelem */}
+        <AdSlot slot="banner_animal" speciesId={a.species_id ?? undefined} className="mt-8" />
       </div>
     </main>
   )

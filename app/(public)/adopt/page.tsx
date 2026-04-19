@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { AnimalFilter } from '@/components/public/AnimalFilter'
 import { FavoriteButtonWrapper } from '@/components/public/FavoriteButtonWrapper'
+import { AdSlot } from '@/components/public/AdSlot'
 
 export const metadata: Metadata = {
   title: 'Zvířata k adopci | Zozio',
@@ -72,6 +73,9 @@ export default async function AdoptPage({ searchParams }: PageProps) {
           </Link>
         </div>
 
+        {/* Banner reklama pod h1 */}
+        <AdSlot slot="banner_adopt" className="mb-6" />
+
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
           {/* Filtry */}
@@ -134,8 +138,14 @@ export default async function AdoptPage({ searchParams }: PageProps) {
               <EmptyState hasFilters={hasActiveFilters(params)} />
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
-                {animals.map((animal: any) => (
-                  <AnimalCard key={animal.id} animal={animal} />
+                {animals.map((animal: any, i: number) => (
+                  <>
+                    <AnimalCard key={animal.id} animal={animal} />
+                    {/* Inline reklama každých 8 karet, jen pokud zvířat > 4 */}
+                    {animals.length > 4 && (i + 1) % 8 === 0 && i < animals.length - 1 && (
+                      <AdSlot key={`ad-${i}`} slot="inline_grid" speciesId={params.species} />
+                    )}
+                  </>
                 ))}
               </div>
             )}

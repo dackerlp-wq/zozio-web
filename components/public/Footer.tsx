@@ -58,6 +58,7 @@ export function Footer() {
             <ul className="list-none space-y-2">
               {[
                 { href: '/pricing',               label: 'Ceník' },
+                { href: '/inzerujte',             label: '📣 Inzerujte' },
                 { href: 'mailto:info@zozio.cz',   label: 'Kontakt' },
                 { href: '#', label: 'Ochrana osobních údajů' },
                 { href: '#', label: 'Podmínky použití' },
