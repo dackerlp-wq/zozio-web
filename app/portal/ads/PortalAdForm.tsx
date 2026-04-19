@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Ad, AdSlotType, AdStatus } from '@/types/database'
+import { ALL_CZECH_REGIONS, shortRegionName, type CzechRegion } from '@/lib/region-from-coords'
 
 const SLOT_OPTIONS: { value: AdSlotType; label: string; desc: string }[] = [
   { value: 'inline_grid',   label: 'Inline grid',      desc: 'Karta v gridu zvířat' },
@@ -51,16 +52,28 @@ export function PortalAdForm({ initial, mode }: PortalAdFormProps) {
   const [error, setError] = useState<string | null>(null)
 
   const [form, setForm] = useState({
-    headline:       initial?.headline       ?? '',
-    description:    initial?.description    ?? '',
-    cta_label:      initial?.cta_label      ?? 'Více info',
-    cta_url:        initial?.cta_url        ?? '',
-    logo_url:       initial?.logo_url       ?? '',
-    image_url:      initial?.image_url      ?? '',
-    slots:          initial?.slots          ?? [] as AdSlotType[],
-    active_from:    initial?.active_from    ?? '',
-    active_to:      initial?.active_to      ?? '',
+    headline:        initial?.headline        ?? '',
+    description:     initial?.description     ?? '',
+    cta_label:       initial?.cta_label       ?? 'Více info',
+    cta_url:         initial?.cta_url         ?? '',
+    logo_url:        initial?.logo_url        ?? '',
+    image_url:       initial?.image_url       ?? '',
+    slots:           initial?.slots           ?? [] as AdSlotType[],
+    active_from:     initial?.active_from     ?? '',
+    active_to:       initial?.active_to       ?? '',
+    target_regions:  (initial?.target_regions ?? []) as CzechRegion[],
   })
+
+  const isNational = form.target_regions.length === 0
+
+  const toggleRegion = (region: CzechRegion) => {
+    setForm(f => ({
+      ...f,
+      target_regions: f.target_regions.includes(region)
+        ? f.target_regions.filter(r => r !== region)
+        : [...f.target_regions, region],
+    }))
+  }
 
   const toggle = (slot: AdSlotType) => {
     setForm(f => ({
@@ -95,23 +108,39 @@ export function PortalAdForm({ initial, mode }: PortalAdFormProps) {
     })
 
     const subtotal = lines.reduce((s, l) => s + l.price, 0)
-    const discountPct = durationDays >= 90 ? 20 : durationDays >= 60 ? 10 : 0
-    const discountAmount = Math.round(subtotal * discountPct / 100)
+
+    // Sleva za délku kampaně
+    const durationDiscountPct = durationDays >= 90 ? 20 : durationDays >= 60 ? 10 : 0
+
+    // Sleva za regionální cílení (menší dosah = nižší cena)
+    const regionCount = form.target_regions.length
+    const regionDiscountPct = !isNational && regionCount <= 5 ? 25
+      : !isNational && regionCount <= 13 ? 10
+      : 0
+
+    // Celková sleva (součet, max 35 %)
+    const totalDiscountPct = Math.min(durationDiscountPct + regionDiscountPct, 35)
+    const discountAmount = Math.round(subtotal * totalDiscountPct / 100)
     const afterDiscount = subtotal - discountAmount
     const vat = Math.round(afterDiscount * 0.21)
     const total = afterDiscount + vat
 
-    return { durationDays, lines, subtotal, discountPct, discountAmount, afterDiscount, vat, total }
-  }, [form.slots, form.active_from, form.active_to])
+    return {
+      durationDays, lines, subtotal,
+      durationDiscountPct, regionDiscountPct, totalDiscountPct,
+      discountAmount, afterDiscount, vat, total,
+    }
+  }, [form.slots, form.active_from, form.active_to, form.target_regions, isNational])
 
   const showPricing = pricing.lines.length > 0 && pricing.durationDays > 0
 
   // ── Payload & akce ────────────────────────────────────────────────────────
   const getPayload = () => ({
     ...form,
-    description: form.description || null,
-    logo_url:    form.logo_url    || null,
-    image_url:   form.image_url   || null,
+    description:    form.description    || null,
+    logo_url:       form.logo_url       || null,
+    image_url:      form.image_url      || null,
+    target_regions: form.target_regions, // [] = celá ČR
   })
 
   const handleSave = async (e?: React.FormEvent) => {
@@ -335,19 +364,98 @@ export function PortalAdForm({ initial, mode }: PortalAdFormProps) {
               style={{ background: '#F0EDE8', color: '#6B4030' }}>
               {pricing.durationDays} dní
             </span>
-            {pricing.discountPct > 0 && (
+            {pricing.totalDiscountPct > 0 && (
               <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
                 style={{ background: '#EAF3DE', color: '#3B6D11' }}>
-                🎉 Sleva {pricing.discountPct}% za dlouhodobou kampaň
+                🎉 Sleva {pricing.totalDiscountPct} %
               </span>
             )}
             {pricing.durationDays >= 30 && pricing.durationDays < 60 && (
               <span className="text-xs" style={{ color: '#854F0B' }}>
-                💡 60+ dní = −10%, 90+ dní = −20%
+                💡 60+ dní = −10 %, 90+ dní = −20 %
               </span>
             )}
           </div>
         )}
+      </div>
+
+      {/* ── Lokální cílení ── */}
+      <div className="bg-white rounded-xl p-6 border" style={{ borderColor: '#F0EDE8' }}>
+        <div className="flex items-start justify-between mb-2">
+          <div>
+            <h2 className="font-display font-bold text-base" style={{ color: '#1A0F0A' }}>Lokalita</h2>
+            <p className="text-xs mt-1" style={{ color: '#8B6550' }}>
+              Kde se reklama zobrazí — například zákazníkům v Praze, Brně nebo celé ČR
+            </p>
+          </div>
+          {!isNational && (
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0"
+              style={{ background: '#EAF3DE', color: '#3B6D11' }}>
+              {form.target_regions.length} {form.target_regions.length === 1 ? 'kraj' : form.target_regions.length <= 4 ? 'kraje' : 'krajů'}
+            </span>
+          )}
+        </div>
+
+        {/* Toggle: Celá ČR */}
+        <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border mb-4 transition-all"
+          style={isNational
+            ? { borderColor: '#E8634A', background: '#FAECE7' }
+            : { borderColor: '#E0DDD8', background: 'white' }}>
+          <input
+            type="checkbox"
+            className="w-4 h-4 accent-[#E8634A]"
+            checked={isNational}
+            onChange={() => setForm(f => ({ ...f, target_regions: [] }))}
+          />
+          <div className="flex-1">
+            <span className="text-sm font-bold" style={{ color: '#2C1810' }}>🇨🇿 Celá ČR</span>
+            <p className="text-xs mt-0.5" style={{ color: '#8B6550' }}>Reklama se zobrazí všem návštěvníkům bez ohledu na lokalitu</p>
+          </div>
+          {isNational && (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: '#E8634A', color: 'white' }}>
+              Doporučeno
+            </span>
+          )}
+        </label>
+
+        {/* Mřížka krajů */}
+        <div className={`transition-all duration-200 ${isNational ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+          <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: '#8B6550' }}>
+            Nebo vyberte konkrétní kraje:
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {ALL_CZECH_REGIONS.map(region => {
+              const selected = form.target_regions.includes(region)
+              return (
+                <label key={region}
+                  className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border text-xs transition-all"
+                  style={selected
+                    ? { borderColor: '#E8634A', background: '#FAECE7', color: '#993C1D' }
+                    : { borderColor: '#E0DDD8', background: 'white', color: '#6B4030' }}>
+                  <input
+                    type="checkbox"
+                    className="w-3.5 h-3.5 flex-shrink-0 accent-[#E8634A]"
+                    checked={selected}
+                    onChange={() => toggleRegion(region)}
+                  />
+                  <span className="font-medium leading-tight">{shortRegionName(region)}</span>
+                </label>
+              )
+            })}
+          </div>
+
+          {/* Dosah info */}
+          {!isNational && form.target_regions.length > 0 && (
+            <div className="mt-3 px-3 py-2 rounded-lg text-xs" style={{ background: '#F0EDE8', color: '#6B4030' }}>
+              📍 Vybrané kraje: {form.target_regions.map(r => shortRegionName(r)).join(', ')}
+              {pricing.regionDiscountPct > 0 && (
+                <span className="ml-2 font-bold" style={{ color: '#3B6D11' }}>
+                  → sleva {pricing.regionDiscountPct} % za regionální cílení
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Cenová kalkulace ── */}
@@ -384,9 +492,25 @@ export function PortalAdForm({ initial, mode }: PortalAdFormProps) {
                   {pricing.subtotal.toLocaleString('cs-CZ')} Kč
                 </span>
               </div>
-              {pricing.discountPct > 0 && (
+              {pricing.durationDiscountPct > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span style={{ color: '#3B6D11' }}>Sleva za délku ({pricing.durationDays}+ dní)</span>
+                  <span className="tabular-nums font-semibold" style={{ color: '#3B6D11' }}>
+                    −{pricing.durationDiscountPct} %
+                  </span>
+                </div>
+              )}
+              {pricing.regionDiscountPct > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span style={{ color: '#3B6D11' }}>Sleva za regionální cílení ({form.target_regions.length} krajů)</span>
+                  <span className="tabular-nums font-semibold" style={{ color: '#3B6D11' }}>
+                    −{pricing.regionDiscountPct} %
+                  </span>
+                </div>
+              )}
+              {pricing.totalDiscountPct > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span style={{ color: '#3B6D11' }}>Sleva {pricing.discountPct}% (kampaň {pricing.durationDays}+ dní)</span>
+                  <span style={{ color: '#3B6D11' }}>Celková sleva {pricing.totalDiscountPct} %</span>
                   <span className="tabular-nums font-semibold" style={{ color: '#3B6D11' }}>
                     −{pricing.discountAmount.toLocaleString('cs-CZ')} Kč
                   </span>

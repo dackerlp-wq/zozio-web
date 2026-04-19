@@ -4,8 +4,11 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import type { Ad, AdSlotType } from '@/types/database'
 
 interface AdSlotProps {
-  slot: AdSlotType
+  slot:      AdSlotType
   speciesId?: string
+  /** GPS souřadnice pro lokální cílení reklam */
+  lat?:      string | number
+  lng?:      string | number
   className?: string
 }
 
@@ -17,7 +20,7 @@ function trackEvent(adId: string, event: 'impression' | 'click', slot: string) {
   }).catch(() => {})
 }
 
-/* ── Vizuál karty pro inline_grid ── */
+/* ── Vizuál karty (inline_grid, sidebar) ── */
 function AdCard({ ad, slot }: { ad: Ad; slot: AdSlotType }) {
   return (
     <a
@@ -25,8 +28,17 @@ function AdCard({ ad, slot }: { ad: Ad; slot: AdSlotType }) {
       target="_blank"
       rel="noopener noreferrer sponsored"
       onClick={() => trackEvent(ad.id, 'click', slot)}
-      className="block rounded-lg border no-underline transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group"
+      className="block rounded-xl border no-underline transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group overflow-hidden"
       style={{ borderColor: '#F0EDE8', background: 'white' }}>
+
+      {/* Obrázek banneru */}
+      {ad.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={ad.image_url} alt={ad.headline}
+          className="w-full object-cover"
+          style={{ maxHeight: slot === 'sidebar' ? '140px' : '96px' }} />
+      )}
+
       <div className="p-4">
         {/* Header: logo + sponsor label */}
         <div className="flex items-start justify-between gap-2 mb-3">
@@ -50,13 +62,6 @@ function AdCard({ ad, slot }: { ad: Ad; slot: AdSlotType }) {
           </span>
         </div>
 
-        {/* Obrázek (pokud existuje) */}
-        {ad.image_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={ad.image_url} alt={ad.headline}
-            className="w-full h-24 object-cover rounded-lg mb-3" />
-        )}
-
         {/* Headline + popis */}
         <p className="text-sm font-bold leading-snug mb-1" style={{ color: '#2C1810' }}>
           {ad.headline}
@@ -79,7 +84,7 @@ function AdCard({ ad, slot }: { ad: Ad; slot: AdSlotType }) {
   )
 }
 
-/* ── Vizuál horizontálního banneru ── */
+/* ── Vizuál horizontálního banneru (banner_*) ── */
 function AdBanner({ ad, slot }: { ad: Ad; slot: AdSlotType }) {
   return (
     <a
@@ -87,21 +92,16 @@ function AdBanner({ ad, slot }: { ad: Ad; slot: AdSlotType }) {
       target="_blank"
       rel="noopener noreferrer sponsored"
       onClick={() => trackEvent(ad.id, 'click', slot)}
-      className="flex items-center gap-4 px-5 py-3 rounded-lg border no-underline transition-all duration-200 hover:shadow-sm group"
+      className="flex items-center gap-4 px-5 py-3 rounded-xl border no-underline transition-all duration-200 hover:shadow-sm group"
       style={{ borderColor: '#F0EDE8', background: 'white' }}>
-      {/* Sponzor label */}
       <span className="text-[10px] font-semibold whitespace-nowrap flex-shrink-0 px-1.5 py-1 rounded"
         style={{ color: '#A89080', background: '#F0EDE8' }}>
         Sponzor
       </span>
-
-      {/* Logo */}
       {ad.logo_url && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={ad.logo_url} alt={ad.company_name} className="h-8 w-auto object-contain flex-shrink-0" />
       )}
-
-      {/* Text */}
       <div className="flex-1 min-w-0">
         <span className="text-sm font-bold" style={{ color: '#2C1810' }}>{ad.headline}</span>
         {ad.description && (
@@ -110,8 +110,6 @@ function AdBanner({ ad, slot }: { ad: Ad; slot: AdSlotType }) {
           </span>
         )}
       </div>
-
-      {/* CTA */}
       <span className="inline-flex items-center px-4 py-1.5 rounded-lg text-xs font-bold text-white flex-shrink-0 transition-all group-hover:opacity-90"
         style={{ background: '#E8634A' }}>
         {ad.cta_label}
@@ -124,11 +122,11 @@ function AdBanner({ ad, slot }: { ad: Ad; slot: AdSlotType }) {
 function AdSensePlaceholder({ slot }: { slot: AdSlotType }) {
   const isCard = slot === 'inline_grid' || slot === 'sidebar'
   return (
-    <div className="flex items-center justify-center rounded-lg border-2 border-dashed text-xs font-medium"
+    <div className="flex items-center justify-center rounded-xl border-2 border-dashed text-xs font-medium"
       style={{
         borderColor: '#E0DDD8',
         color: '#B8AEA8',
-        minHeight: isCard ? '140px' : '52px',
+        minHeight: isCard ? '160px' : '52px',
         background: '#FAFAF9',
       }}>
       Google Ads
@@ -137,11 +135,11 @@ function AdSensePlaceholder({ slot }: { slot: AdSlotType }) {
 }
 
 /* ── Hlavní komponenta ── */
-export function AdSlot({ slot, speciesId, className }: AdSlotProps) {
-  const [ads, setAds] = useState<Ad[] | null>(null)
+export function AdSlot({ slot, speciesId, lat, lng, className }: AdSlotProps) {
+  const [ads, setAds]           = useState<Ad[] | null>(null)
   const [displayed, setDisplayed] = useState<Ad | null>(null)
-  const [visible, setVisible] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible]   = useState(false)
+  const ref        = useRef<HTMLDivElement>(null)
   const trackedRef = useRef(false)
 
   // Fetch reklamy
@@ -149,21 +147,23 @@ export function AdSlot({ slot, speciesId, className }: AdSlotProps) {
     const url = new URL('/api/ads', window.location.origin)
     url.searchParams.set('slot', slot)
     if (speciesId) url.searchParams.set('species', speciesId)
+    if (lat)       url.searchParams.set('lat', String(lat))
+    if (lng)       url.searchParams.set('lng', String(lng))
 
     fetch(url.toString())
       .then(r => r.json())
       .then((data: Ad[]) => {
         setAds(data)
         if (data.length > 0) {
-          // Zobrazit náhodnou (při více stejného tieru)
+          // Zobrazit náhodnou z top 3 (při více stejného tieru)
           const pick = data[Math.floor(Math.random() * Math.min(data.length, 3))]
           setDisplayed(pick)
         }
       })
       .catch(() => setAds([]))
-  }, [slot, speciesId])
+  }, [slot, speciesId, lat, lng])
 
-  // IntersectionObserver pro impression tracking
+  // IntersectionObserver — impression tracking (50% viditelnosti)
   const handleIntersect = useCallback((entries: IntersectionObserverEntry[]) => {
     if (entries[0]?.isIntersecting && displayed && !trackedRef.current) {
       trackedRef.current = true
@@ -179,7 +179,7 @@ export function AdSlot({ slot, speciesId, className }: AdSlotProps) {
     return () => observer.disconnect()
   }, [displayed, handleIntersect])
 
-  // Fade-in
+  // Fade-in po načtení
   useEffect(() => {
     if (ads !== null) {
       const t = setTimeout(() => setVisible(true), 50)
@@ -194,23 +194,21 @@ export function AdSlot({ slot, speciesId, className }: AdSlotProps) {
     <div
       ref={ref}
       className={className}
-      style={{
-        opacity:    visible ? 1 : 0,
-        transition: 'opacity 0.4s ease',
-      }}>
+      style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.4s ease' }}>
+
       {/* Loading skeleton */}
       {ads === null && (
-        <div className="rounded-lg animate-pulse" style={{
+        <div className="rounded-xl animate-pulse" style={{
           background: '#F0EDE8',
-          minHeight: isCard ? '140px' : '52px',
+          minHeight: isCard ? '160px' : '52px',
         }} />
       )}
 
       {/* Reklama */}
-      {ads !== null && displayed && isCard  && <AdCard   ad={displayed} slot={slot} />}
+      {ads !== null && displayed && isCard   && <AdCard   ad={displayed} slot={slot} />}
       {ads !== null && displayed && isBanner && <AdBanner ad={displayed} slot={slot} />}
 
-      {/* Fallback: Google AdSense placeholder */}
+      {/* Fallback: Google AdSense */}
       {ads !== null && !displayed && <AdSensePlaceholder slot={slot} />}
     </div>
   )

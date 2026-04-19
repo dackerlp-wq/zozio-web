@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import sanitizeHtml from 'sanitize-html'
 import { createClient } from '@/lib/supabase/server'
+import { AdSlot } from '@/components/public/AdSlot'
 import type { Article, Institution, InstitutionType, ShelterAnimalStatus } from '@/types/database'
 
 /* ── Query-specific types ── */
@@ -43,6 +44,8 @@ interface InstitutionPanelData {
   slug: string
   type: InstitutionType
   city: string
+  lat:  number | null
+  lng:  number | null
   logo_url: string | null
   short_description: string | null
   otherArticles?: OtherArticleItem[]
@@ -108,6 +111,12 @@ export default async function ArticleDetailPage({ params }: PageProps) {
       {inst && inst.otherArticles && inst.otherArticles.length > 0 && (
         <OtherArticles articles={inst.otherArticles} institutionName={inst.name} />
       )}
+      {/* Sidebar reklama — cílena na region instituce pokud je znám */}
+      <AdSlot
+        slot="sidebar"
+        lat={inst?.lat ?? undefined}
+        lng={inst?.lng ?? undefined}
+      />
     </div>
   )
 
@@ -124,8 +133,8 @@ export default async function ArticleDetailPage({ params }: PageProps) {
           <span className="font-semibold truncate max-w-[240px] text-text-primary">{article.title}</span>
         </nav>
 
-        {/* Grid — text + sticky panel */}
-        <div className={`grid gap-8 lg:gap-12 items-start ${hasPanel ? 'lg:grid-cols-[1fr_296px]' : ''}`}>
+        {/* Grid — text + sticky panel (vždy 2 sloupce na desktopu) */}
+        <div className="grid gap-8 lg:gap-12 items-start lg:grid-cols-[1fr_280px]">
 
           {/* ── Levý sloupec ── */}
           <article>
@@ -196,7 +205,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
             )}
 
             {/* Mobil — panel pod textem */}
-            {hasPanel && (
+            {true && (
               <div className="lg:hidden mt-10 pt-8 border-t border-border">
                 {rightPanel}
               </div>
@@ -210,14 +219,12 @@ export default async function ArticleDetailPage({ params }: PageProps) {
             </div>
           </article>
 
-          {/* ── Pravý sloupec — sticky ── */}
-          {hasPanel && (
-            <aside className="hidden lg:block">
-              <div className="sticky top-24">
-                {rightPanel}
-              </div>
-            </aside>
-          )}
+          {/* ── Pravý sloupec — sticky (vždy viditelný) ── */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-24">
+              {rightPanel}
+            </div>
+          </aside>
         </div>
       </div>
     </main>
@@ -342,7 +349,7 @@ async function getArticle(slug: string): Promise<ArticleDetail | null> {
     .from('articles')
     .select(`
       *,
-      institution:institutions(id, name, slug, type, city, logo_url, short_description, approval_status),
+      institution:institutions(id, name, slug, type, city, lat, lng, logo_url, short_description, approval_status),
       animal:animals(id, name, breed, primary_photo, adoption_status, species:animal_species(name_cs, icon))
     `)
     .eq('slug', slug)

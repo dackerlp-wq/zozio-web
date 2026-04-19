@@ -125,6 +125,7 @@ export interface Ad {
   cta_url:          string
   slots:            AdSlotType[]
   target_species:   string | null
+  target_regions:   string[]       // [] = celá ČR, jinak seznam krajů
   active_from:      string
   active_to:        string
   tier:             AdTier

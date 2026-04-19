@@ -79,7 +79,7 @@ export default async function AdoptPage({ searchParams }: PageProps) {
 
         <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
 
-          {/* Filtry */}
+          {/* Filtry + sidebar reklama */}
           <aside className="lg:w-64 flex-shrink-0">
             <AnimalFilter
               species={species}
@@ -87,6 +87,13 @@ export default async function AdoptPage({ searchParams }: PageProps) {
               cityList={[]}
               params={params}
               total={total}
+            />
+            {/* Sidebar reklama — lokálně cílená pokud má uživatel zvolenou lokalitu */}
+            <AdSlot
+              slot="sidebar"
+              lat={params.lat}
+              lng={params.lng}
+              className="mt-4 hidden lg:block"
             />
           </aside>
 
