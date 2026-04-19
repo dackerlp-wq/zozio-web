@@ -318,7 +318,7 @@ const faq = [
     a: 'Pomůžeme vám s importem dat z Excelu nebo jiných systémů. Na placeném plánu nabízíme asistenci při onboardingu. Kontaktujte nás na info@zozio.cz.',
   },
   {
-    q: 'Co když jsem nezisková organizace nebo obecní útulok?',
+    q: 'Co když jsem nezisková organizace nebo obecní útulek?',
     a: 'Neziskové organizace a obecní útulky získávají 30% slevu na Standard a Pro plán. Stačí po registraci doložit potvrzení o neziskové činnosti — zbytek zařídíme za vás.',
   },
   {
@@ -428,7 +428,7 @@ export default function ProcBytNaZozioPage() {
               Funkce, které skutečně pomáhají
             </h2>
             <p className="text-base text-brown-mid max-w-[480px] mx-auto">
-              Žádné funkce pro funkce. Každá věc tu je proto, aby váš útulok fungoval lépe.
+              Žádné funkce pro funkce. Každá věc tu je proto, aby váš útulek fungoval lépe.
             </p>
           </div>
 

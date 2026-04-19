@@ -172,7 +172,7 @@ export function SettingsForm({ institution, userRole }: SettingsFormProps) {
               <input
                 value={form.short_description}
                 onChange={e => update('short_description', e.target.value)}
-                placeholder="Obecní útulok s tradicí přes 20 let..."
+                placeholder="Obecní útulek s tradicí přes 20 let..."
                 maxLength={120}
                 className={inputCls}
               />
@@ -182,7 +182,7 @@ export function SettingsForm({ institution, userRole }: SettingsFormProps) {
               <textarea
                 value={form.description}
                 onChange={e => update('description', e.target.value)}
-                placeholder="Jsme útulok v Praze, který pečuje o opuštěná zvířata..."
+                placeholder="Jsme útulek v Praze, který pečuje o opuštěná zvířata..."
                 rows={5}
                 className={`${inputCls} resize-none`}
               />

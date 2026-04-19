@@ -438,7 +438,7 @@ export async function GET(
     <div class="section-body">
       <div class="grid-2">
         <div>
-          <div style="font-size:8.5pt;font-weight:700;color:#E8634A;text-transform:uppercase;margin-bottom:6px">Předávající (útulok)</div>
+          <div style="font-size:8.5pt;font-weight:700;color:#E8634A;text-transform:uppercase;margin-bottom:6px">Předávající (útulek)</div>
           <div class="field"><div class="field-label">Název instituce</div><div class="field-value">${inst.name ?? '—'}</div></div>
           <div class="field"><div class="field-label">Adresa</div><div class="field-value">${[inst.street, inst.zip, inst.city].filter(Boolean).join(', ') || '—'}</div></div>
           <div class="field"><div class="field-label">IČO</div><div class="field-value">${inst.ico ?? '—'}</div></div>

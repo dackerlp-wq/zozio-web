@@ -280,7 +280,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                   <ConditionalAdoptionBanner name={a.name} />
                   <div className="bg-white rounded-2xl border border-border p-5">
                     <h2 className="font-bold text-xl text-text-primary mb-1">Mám zájem o {a.name}</h2>
-                    <p className="text-sm mb-5 text-text-muted">Vyplň žádost a útulok tě kontaktuje.</p>
+                    <p className="text-sm mb-5 text-text-muted">Vyplň žádost a útulek tě kontaktuje.</p>
                     <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
                   </div>
                 </>
@@ -293,7 +293,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
               {!isConditional && isAvailable && (
                 <div className="bg-white rounded-2xl border border-border p-5">
                   <h2 className="font-bold text-xl text-text-primary mb-1">Chci adoptovat {a.name}</h2>
-                  <p className="text-sm mb-5 text-text-muted">Vyplň žádost a útulok tě kontaktuje.</p>
+                  <p className="text-sm mb-5 text-text-muted">Vyplň žádost a útulek tě kontaktuje.</p>
                   <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
                 </div>
               )}
@@ -302,7 +302,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                 <div className="bg-white rounded-2xl border border-border p-5">
                   <FosterBanner name={a.name} />
                   <h2 className="font-bold text-xl text-text-primary mb-1">Mám zájem o {a.name}</h2>
-                  <p className="text-sm mb-5 text-text-muted">Vyplň žádost a útulok tě kontaktuje.</p>
+                  <p className="text-sm mb-5 text-text-muted">Vyplň žádost a útulek tě kontaktuje.</p>
                   <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
                 </div>
               )}
@@ -355,7 +355,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                     <ConditionalAdoptionBanner name={a.name} />
                     <h3 className="font-bold text-base text-text-primary mb-1">Mám zájem o {a.name}</h3>
                     <p className="text-xs mb-4 text-text-muted">
-                      Vyplň žádost — útulok tě kontaktuje do 3 pracovních dní.
+                      Vyplň žádost — útulek tě kontaktuje do 3 pracovních dní.
                     </p>
                     <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
                   </>
@@ -369,7 +369,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                   <>
                     <h3 className="font-bold text-base text-text-primary mb-1">Adoptovat {a.name}</h3>
                     <p className="text-xs mb-4 text-text-muted">
-                      Vyplň žádost — útulok tě kontaktuje do 3 pracovních dní.
+                      Vyplň žádost — útulek tě kontaktuje do 3 pracovních dní.
                     </p>
                     <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
                   </>
@@ -380,7 +380,7 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                     <FosterBanner name={a.name} />
                     <h3 className="font-bold text-base text-text-primary mb-1">Mám zájem o {a.name}</h3>
                     <p className="text-xs mb-4 text-text-muted">
-                      Vyplň žádost — útulok tě kontaktuje do 3 pracovních dní.
+                      Vyplň žádost — útulek tě kontaktuje do 3 pracovních dní.
                     </p>
                     <AdoptionForm animalId={a.id} animalName={a.name} institutionId={a.institution_id} />
                   </>
@@ -533,7 +533,7 @@ function FosterBanner({ name }: { name: string }) {
       <div>
         <p className="font-bold text-sm mb-0.5" style={{ color: '#4C1D95' }}>{name} je v dočasné péči</p>
         <p className="text-xs leading-relaxed" style={{ color: '#6D3BE8' }}>
-          Zvíře bydlí u pěstouna, ale stále hledá stálý domov. Můžeš podat žádost o adopci — útulok tě kontaktuje.
+          Zvíře bydlí u pěstouna, ale stále hledá stálý domov. Můžeš podat žádost o adopci — útulek tě kontaktuje.
         </p>
       </div>
     </div>

@@ -23,7 +23,7 @@ export function SearchInput({ defaultValue = '' }: { defaultValue?: string }) {
         type="search"
         value={value}
         onChange={e => setValue(e.target.value)}
-        placeholder="Hledej zvíře, útulok, město..."
+        placeholder="Hledej zvíře, útulek, město..."
         autoFocus
         className="flex-1 px-5 py-4 border-2 border-gray-pale rounded-sm font-body text-base text-espresso outline-none focus:border-coral transition-colors bg-white"
       />

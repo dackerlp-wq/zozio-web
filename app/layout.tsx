@@ -27,8 +27,8 @@ export const metadata: Metadata = {
     default:  'Zozio — Najdi svého nového přítele',
     template: '%s | Zozio',
   },
-  description: 'Adoptuj zvíře z útulku nebo podpoř záchrannou stanici. Stovky zvířat čekají na nový domov po celé ČR a SR.',
-  keywords:    ['útulok', 'adopce psa', 'adopce kočky', 'záchranná stanice', 'zvířata k adopci', 'Czech'],
+  description: 'Adoptuj zvíře z útulku. Stovky zvířat čekají na nový domov po celé ČR a SR.',
+  keywords:    ['útulek', 'adopce psa', 'adopce kočky', 'zvířata k adopci', 'útulek pro psy', 'Czech'],
   authors:     [{ name: 'Zozio' }],
   creator:     'Zozio',
   openGraph: {

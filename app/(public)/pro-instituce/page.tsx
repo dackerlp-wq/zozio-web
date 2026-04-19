@@ -95,7 +95,7 @@ export default function ProInstitucePage() {
               ))}
             </div>
             <Link href="/auth/register">
-              <Button variant="primary" className="w-full justify-center">Registrovat útulok</Button>
+              <Button variant="primary" className="w-full justify-center">Registrovat útulek</Button>
             </Link>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default function ProInstitucePage() {
         <div className="max-w-[1100px] mx-auto">
           <div className="text-center mb-10">
             <h2 className="font-display font-extrabold text-3xl md:text-4xl text-espresso">Vše na jednom místě</h2>
-            <p className="text-base text-brown-mid mt-3 max-w-[500px] mx-auto">Silný základ pro každý útulok.</p>
+            <p className="text-base text-brown-mid mt-3 max-w-[500px] mx-auto">Silný základ pro každý útulek.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
             {sharedFeatures.map(f => (
