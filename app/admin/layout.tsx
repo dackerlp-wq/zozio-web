@@ -32,7 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (membership?.institution_id) {
     const { data: inst } = await service
       .from('institutions')
-      .select('id, name, type, slug, approval_status')
+      .select('id, name, type, slug, approval_status, plan, plan_expires_at')
       .eq('id', membership.institution_id)
       .single()
     institution = inst

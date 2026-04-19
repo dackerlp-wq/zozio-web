@@ -3,7 +3,9 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
-import type { Fundraiser, Animal } from '@/types/database'
+import { UpgradePrompt } from '@/components/admin/UpgradePrompt'
+import { hasFeature } from '@/lib/plans'
+import type { Fundraiser, Animal, SubscriptionPlan } from '@/types/database'
 
 type FundraiserWithRelations = Fundraiser & {
   animal?: Pick<Animal, 'name'> | null
@@ -23,6 +25,21 @@ export default async function AdminFundraisersPage() {
     .single()
 
   if (!membership) redirect('/auth/register')
+
+  // ── Plan gate ──
+  const { data: inst } = await service
+    .from('institutions')
+    .select('plan, plan_expires_at')
+    .eq('id', membership.institution_id)
+    .single()
+
+  if (!hasFeature(
+    (inst as any)?.plan as SubscriptionPlan ?? 'free',
+    (inst as any)?.plan_expires_at ?? null,
+    'fundraisers'
+  )) {
+    return <UpgradePrompt feature="fundraisers" />
+  }
 
   const { data: fundraisers } = await service
     .from('fundraisers')

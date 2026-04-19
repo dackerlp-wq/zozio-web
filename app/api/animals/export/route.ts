@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { NextRequest, NextResponse } from 'next/server'
+import { hasFeature } from '@/lib/plans'
+import type { SubscriptionPlan } from '@/types/database'
 
 const STATUS_LABELS: Record<string, string> = {
   available:      'K adopci',
@@ -54,10 +56,19 @@ export async function GET(req: NextRequest) {
 
   const { data: institution } = await service
     .from('institutions')
-    .select('id, name')
+    .select('id, name, plan, plan_expires_at')
     .eq('id', membership.institution_id)
     .single()
   if (!institution) return new NextResponse('Not found', { status: 404 })
+
+  // Plan gate — export CSV je Standard+
+  if (!hasFeature(
+    (institution as any).plan as SubscriptionPlan ?? 'free',
+    (institution as any).plan_expires_at ?? null,
+    'export_csv'
+  )) {
+    return new NextResponse('Export CSV vyžaduje plán Standard nebo Pro.', { status: 403 })
+  }
 
   const selectFields = 'id, name, breed, sex, birth_year, birth_month, chip_number, adoption_status, intake_date, created_at, color, weight_kg, species:animal_species(name_cs)'
 

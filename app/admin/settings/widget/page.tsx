@@ -2,6 +2,9 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { WidgetGenerator } from '@/app/admin/widget/WidgetGenerator'
+import { UpgradePrompt } from '@/components/admin/UpgradePrompt'
+import { hasFeature } from '@/lib/plans'
+import type { SubscriptionPlan } from '@/types/database'
 
 export const metadata = { title: 'Widget — Nastavení — Zozio Admin' }
 
@@ -22,11 +25,20 @@ export default async function SettingsWidgetPage() {
 
   const { data: institution } = await service
     .from('institutions')
-    .select('id, name, type, slug')
+    .select('id, name, type, slug, plan, plan_expires_at')
     .eq('id', membership.institution_id)
     .single()
 
   if (!institution) redirect('/admin/dashboard')
+
+  // ── Plan gate ──
+  if (!hasFeature(
+    (institution as any).plan as SubscriptionPlan ?? 'free',
+    (institution as any).plan_expires_at ?? null,
+    'widget'
+  )) {
+    return <UpgradePrompt feature="widget" />
+  }
 
   const isShelter = institution.type === 'shelter'
   const slug = institution.slug ?? 'vas-utulek'

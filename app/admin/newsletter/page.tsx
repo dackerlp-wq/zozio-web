@@ -2,6 +2,9 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { SendDigestButton } from './SendDigestButton'
+import { UpgradePrompt } from '@/components/admin/UpgradePrompt'
+import { hasFeature } from '@/lib/plans'
+import type { SubscriptionPlan } from '@/types/database'
 
 export default async function AdminNewsletterPage() {
   const supabase = await createClient()
@@ -17,6 +20,21 @@ export default async function AdminNewsletterPage() {
     .single()
 
   if (!membership) redirect('/admin/dashboard')
+
+  // ── Plan gate ──
+  const { data: instPlan } = await service
+    .from('institutions')
+    .select('plan, plan_expires_at')
+    .eq('id', membership.institution_id)
+    .single()
+
+  if (!hasFeature(
+    (instPlan as any)?.plan as SubscriptionPlan ?? 'free',
+    (instPlan as any)?.plan_expires_at ?? null,
+    'newsletter'
+  )) {
+    return <UpgradePrompt feature="newsletter" />
+  }
 
   const { data: institution } = await service
     .from('institutions')

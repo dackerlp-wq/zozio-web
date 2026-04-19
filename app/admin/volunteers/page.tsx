@@ -2,7 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import { VolunteerActions } from '@/components/admin/VolunteerActions'
-import type { Volunteer } from '@/types/database'
+import { UpgradePrompt } from '@/components/admin/UpgradePrompt'
+import { hasFeature } from '@/lib/plans'
+import type { Volunteer, SubscriptionPlan } from '@/types/database'
 
 type VolunteerRow = Volunteer & { activities?: string[]; message?: string | null }
 
@@ -43,6 +45,21 @@ export default async function AdminVolunteersPage() {
     .single()
 
   if (!membership) redirect('/auth/register')
+
+  // ── Plan gate ──
+  const { data: inst } = await service
+    .from('institutions')
+    .select('plan, plan_expires_at')
+    .eq('id', membership.institution_id)
+    .single()
+
+  if (!hasFeature(
+    (inst as any)?.plan as SubscriptionPlan ?? 'free',
+    (inst as any)?.plan_expires_at ?? null,
+    'volunteers'
+  )) {
+    return <UpgradePrompt feature="volunteers" />
+  }
 
   const { data: volunteers } = await service
     .from('volunteers')

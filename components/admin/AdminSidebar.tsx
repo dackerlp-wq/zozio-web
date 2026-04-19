@@ -4,6 +4,8 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { ZozLogo } from '@/components/ui/ZozLogo'
 import { cn } from '@/lib/utils'
+import { PLAN_NAMES, PLAN_EMOJI } from '@/lib/plans'
+import type { SubscriptionPlan } from '@/types/database'
 
 interface NavGroupProps {
   icon: string
@@ -43,6 +45,7 @@ interface AdminSidebarProps {
     type: string
     slug: string
     approval_status: string
+    plan?: SubscriptionPlan
   } | null
   userRole: string
   isSuperadmin: boolean
@@ -55,16 +58,20 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
   const isAdoptionActive  = pathname.startsWith('/admin/applications') || pathname.startsWith('/admin/calendar')
   const isSettingsActive  = pathname.startsWith('/admin/settings')
 
+  // Funkce zamčené na Free plánu
+  const plan = institution?.plan ?? 'free'
+  const isFreePlan = plan === 'free'
+
   const navItems = [
-    { href: '/admin/dashboard',   icon: '📊', label: 'Dashboard' },
-    { href: '/admin/statistics',  icon: '📈', label: 'Statistiky' },
-    { href: '/admin/animals',     icon: '🐾', label: 'Zvířata' },
-    { href: '/admin/fundraisers', icon: '💛', label: 'Sbírky' },
-    { href: '/admin/volunteers',  icon: '🙋', label: 'Dobrovolníci' },
-    { href: '/admin/articles',    icon: '📝', label: 'Články' },
-    { href: '/admin/newsletter',  icon: '📬', label: 'Newsletter' },
-    { href: '/admin/documents',   icon: '📄', label: 'Dokumenty' },
-    { href: '/admin/billing',     icon: '💳', label: 'Předplatné' },
+    { href: '/admin/dashboard',   icon: '📊', label: 'Dashboard',     locked: false },
+    { href: '/admin/statistics',  icon: '📈', label: 'Statistiky',    locked: false },
+    { href: '/admin/animals',     icon: '🐾', label: 'Zvířata',       locked: false },
+    { href: '/admin/fundraisers', icon: '💛', label: 'Sbírky',        locked: isFreePlan },
+    { href: '/admin/volunteers',  icon: '🙋', label: 'Dobrovolníci',  locked: isFreePlan },
+    { href: '/admin/articles',    icon: '📝', label: 'Články',        locked: false },
+    { href: '/admin/newsletter',  icon: '📬', label: 'Newsletter',    locked: isFreePlan },
+    { href: '/admin/documents',   icon: '📄', label: 'Dokumenty',     locked: false },
+    { href: '/admin/billing',     icon: '💳', label: 'Předplatné',    locked: false },
   ]
 
   const adoptionSubItems = [
@@ -106,6 +113,14 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
           <div className="text-xs text-gray-light mt-0.5 font-semibold capitalize">
             {userRole} · {institution.approval_status === 'approved' ? '✓ Schváleno' : '⏳ Čeká'}
           </div>
+          {institution.plan && (
+            <Link href="/admin/billing"
+              className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-pill text-[10px] font-bold no-underline transition-opacity hover:opacity-80"
+              style={{ background: institution.plan === 'free' ? 'rgba(255,255,255,0.12)' : 'rgba(232,99,74,0.35)', color: '#fff' }}>
+              {PLAN_EMOJI[institution.plan]} {PLAN_NAMES[institution.plan]}
+              {institution.plan === 'free' && <span className="opacity-70">→ Upgrade</span>}
+            </Link>
+          )}
         </div>
       )}
 
@@ -113,7 +128,7 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <div className="space-y-1">
           {/* Dashboard, Statistiky, Zvířata */}
-          {navItems.slice(0, 3).map(({ href, icon, label }) => (
+          {navItems.slice(0, 3).map(({ href, icon, label, locked }) => (
             <Link key={href} href={href} onClick={() => setOpen(false)}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all no-underline',
@@ -122,7 +137,8 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
                   : 'text-gray-light hover:bg-white/8 hover:text-white'
               )}>
               <span className="text-base w-5 text-center">{icon}</span>
-              {label}
+              <span className="flex-1">{label}</span>
+              {locked && <span className="text-[10px] opacity-50">🔒</span>}
             </Link>
           ))}
 
@@ -142,7 +158,7 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
           </NavGroup>
 
           {/* Zbytek (Sbírky, Dobrovolníci, Články, Newsletter, Dokumenty, Billing) */}
-          {navItems.slice(3).map(({ href, icon, label }) => (
+          {navItems.slice(3).map(({ href, icon, label, locked }) => (
             <Link key={href} href={href} onClick={() => setOpen(false)}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-all no-underline',
@@ -151,7 +167,8 @@ export function AdminSidebar({ institution, userRole, isSuperadmin }: AdminSideb
                   : 'text-gray-light hover:bg-white/8 hover:text-white'
               )}>
               <span className="text-base w-5 text-center">{icon}</span>
-              {label}
+              <span className="flex-1">{label}</span>
+              {locked && <span className="text-[10px] opacity-50">🔒</span>}
             </Link>
           ))}
 

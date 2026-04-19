@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { hasFeature } from '@/lib/plans'
+import type { SubscriptionPlan } from '@/types/database'
 
 export const metadata = { title: 'Statistiky — Zozio Admin' }
 
@@ -148,13 +151,19 @@ export default async function StatisticsPage() {
 
   const { data: institution } = await service
     .from('institutions')
-    .select('id, name, type')
+    .select('id, name, type, plan, plan_expires_at')
     .eq('id', membership.institution_id)
     .single()
   if (!institution) redirect('/admin/dashboard')
 
   const iid = membership.institution_id
   const isShelter = institution.type === 'shelter'
+
+  const hasAdvancedStats = hasFeature(
+    (institution as any).plan as SubscriptionPlan ?? 'free',
+    (institution as any).plan_expires_at ?? null,
+    'advanced_stats'
+  )
 
   /* ── data ── */
   const [
@@ -409,8 +418,34 @@ export default async function StatisticsPage() {
         )}
       </Section>
 
+      {/* ─── POKROČILÉ STATISTIKY — upgrade banner ─── */}
+      {!hasAdvancedStats && (
+        <div
+          className="rounded-2xl border-2 p-6 md:p-8 flex flex-col sm:flex-row items-center gap-6"
+          style={{ borderColor: '#E8634A', background: '#FFFCF8' }}
+        >
+          <div className="text-5xl flex-shrink-0">📈</div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-display font-extrabold text-lg text-espresso mb-1">
+              Pokročilé statistiky
+            </h3>
+            <p className="text-sm text-[#8B6550] mb-0">
+              Měsíční trendy, srovnání rok/rok, detailní přehledy adopcí, dobrovolníků a sbírek —
+              dostupné v plánu <strong className="text-espresso">Standard</strong> (490 Kč / měs).
+            </p>
+          </div>
+          <Link
+            href="/admin/billing"
+            className="inline-flex items-center px-5 py-2.5 rounded-full font-bold text-sm text-white no-underline flex-shrink-0 transition-opacity hover:opacity-90"
+            style={{ background: '#E8634A' }}
+          >
+            Upgradovat
+          </Link>
+        </div>
+      )}
+
       {/* ─── ADOPCE PO MĚSÍCÍCH (pouze útulek) ─── */}
-      {isShelter && (
+      {hasAdvancedStats && isShelter && (
         <Section title={`Adopce po měsících`}>
           <div className="bg-white rounded-lg border border-[#F0EDE8] shadow-sm overflow-x-auto">
             <table className="w-full text-sm min-w-[500px]">
@@ -455,6 +490,9 @@ export default async function StatisticsPage() {
           </div>
         </Section>
       )}
+
+      {/* ─── POKROČILÉ SEKCE (Standard+) ─── */}
+      {hasAdvancedStats && <>
 
       {/* ─── ŽÁDOSTI O ADOPCI ─── */}
       <Section title="Žádosti o adopci">
@@ -552,6 +590,8 @@ export default async function StatisticsPage() {
           </div>
         )}
       </Section>
+
+      </>}
     </div>
   )
 }
