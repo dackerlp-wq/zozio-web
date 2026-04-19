@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { PortalAdForm } from '../PortalAdForm'
 import { SubmitAdButton } from '../SubmitAdButton'
+import { CsvExportButton } from './CsvExportButton'
 import type { Ad, AdStatus } from '@/types/database'
 
 interface PageProps {
@@ -28,13 +29,26 @@ const STATUS_STYLE: Record<AdStatus, { bg: string; color: string }> = {
 }
 
 const SLOT_LABEL: Record<string, string> = {
-  inline_grid:   'V gridu zvířat',
-  sidebar:       'Postranní panel',
-  banner_adopt:  'Banner — Adopce',
-  banner_home:   'Banner — Domů',
-  banner_animal: 'Banner — Zvíře',
+  inline_grid:   'Inline grid',
+  sidebar:       'Sidebar',
+  banner_adopt:  'Banner adopce',
+  banner_home:   'Banner homepage',
+  banner_animal: 'Banner zvíře',
   newsletter:    'Newsletter',
 }
+
+// Orientační ceny bez DPH v Kč/měsíc
+const SLOT_PRICES: Record<string, number> = {
+  inline_grid:   1490,
+  sidebar:       1990,
+  banner_adopt:  2990,
+  banner_home:   3490,
+  banner_animal: 1990,
+  newsletter:    1490,
+}
+
+// CTR benchmark pro display reklamy (%)
+const CTR_BENCHMARK = 0.35
 
 export default async function AdDetailPage({ params }: PageProps) {
   const { id } = await params
@@ -62,7 +76,23 @@ export default async function AdDetailPage({ params }: PageProps) {
     ? ((ad.clicks / ad.impressions) * 100).toFixed(2)
     : '0.00'
 
-  // Denní statistiky posledních 30 dní pro tuto reklamu
+  // Zbývající dny kampaně
+  const daysRemaining = ad.status === 'approved' && !isExpired
+    ? Math.max(0, Math.round((new Date(ad.active_to).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24)))
+    : null
+
+  // Orientační cena kampaně
+  const durationDays = Math.max(0, Math.round(
+    (new Date(ad.active_to).getTime() - new Date(ad.active_from).getTime()) / (1000 * 60 * 60 * 24)
+  ))
+  const discountPct = durationDays >= 90 ? 20 : durationDays >= 60 ? 10 : 0
+  const estSubtotal = ad.slots.reduce((s, slot) => {
+    const mp = SLOT_PRICES[slot] ?? 0
+    return s + (slot === 'newsletter' ? mp : Math.round((mp / 30) * durationDays))
+  }, 0)
+  const estTotal = Math.round(estSubtotal * (1 - discountPct / 100) * 1.21)
+
+  // Denní statistiky posledních 30 dní
   interface DailyStat { ad_id: string; day: string; impressions: number; clicks: number }
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
@@ -76,6 +106,51 @@ export default async function AdDetailPage({ params }: PageProps) {
 
   const dailyStats = (rawDaily ?? []) as DailyStat[]
   const maxImpressions = Math.max(...dailyStats.map(d => d.impressions), 1)
+
+  // Srovnání s předchozím obdobím (dny 31–60)
+  const sixtyDaysAgo = new Date()
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
+
+  const { data: rawPrev } = await service
+    .from('ad_daily_stats')
+    .select('impressions, clicks')
+    .eq('ad_id', id)
+    .gte('day', sixtyDaysAgo.toISOString().split('T')[0])
+    .lt('day', thirtyDaysAgo.toISOString().split('T')[0])
+
+  const prevImpressions = (rawPrev ?? []).reduce((s: number, r: any) => s + (r.impressions ?? 0), 0)
+  const prevClicks      = (rawPrev ?? []).reduce((s: number, r: any) => s + (r.clicks ?? 0), 0)
+  const curImpressions  = dailyStats.reduce((s, d) => s + d.impressions, 0)
+  const curClicks       = dailyStats.reduce((s, d) => s + d.clicks, 0)
+
+  const impTrend = prevImpressions > 0
+    ? Math.round(((curImpressions - prevImpressions) / prevImpressions) * 100)
+    : null
+  const clickTrend = prevClicks > 0
+    ? Math.round(((curClicks - prevClicks) / prevClicks) * 100)
+    : null
+
+  // Statistiky podle slotu
+  interface SlotStat { slot: string; impressions: number; clicks: number }
+  const { data: rawSlotStats } = await service
+    .from('ad_slot_stats' as any)
+    .select('slot, impressions, clicks')
+    .eq('ad_id', id)
+
+  const slotStats = ((rawSlotStats ?? []) as SlotStat[])
+    .sort((a, b) => b.impressions - a.impressions)
+
+  // Insight (výkonnostní hodnocení)
+  const ctrNum = parseFloat(ctr)
+  const insight = ad.impressions < 100
+    ? null
+    : ctrNum >= CTR_BENCHMARK * 2.5
+    ? { level: 'excellent', text: 'Výborný výkon! CTR výrazně překračuje průměr display reklam.', color: '#3B6D11', bg: '#EAF3DE', icon: '🚀' }
+    : ctrNum >= CTR_BENCHMARK
+    ? { level: 'good',      text: 'Dobrý výkon — CTR je nad průměrem display reklam (0.35 %).', color: '#3B6D11', bg: '#EAF3DE', icon: '✅' }
+    : ctrNum >= CTR_BENCHMARK * 0.5
+    ? { level: 'average',   text: 'Průměrný CTR. Zkuste vylepšit headline nebo obrázek kreativy.', color: '#854F0B', bg: '#FEF9E7', icon: '📊' }
+    : { level: 'low',       text: 'Nízký CTR. Doporučujeme upravit kreativu nebo zacílit jiné sloty.', color: '#993C1D', bg: '#FAECE7', icon: '⚠️' }
 
   return (
     <div className="max-w-3xl">
@@ -99,6 +174,12 @@ export default async function AdDetailPage({ params }: PageProps) {
                 : { background: STATUS_STYLE[ad.status].bg, color: STATUS_STYLE[ad.status].color }}>
               {isExpired ? 'Expirovaná' : STATUS_LABEL[ad.status]}
             </span>
+            {daysRemaining !== null && (
+              <span className="text-xs px-2 py-0.5 rounded font-medium"
+                style={{ background: daysRemaining <= 7 ? '#FEF9E7' : '#F0EDE8', color: daysRemaining <= 7 ? '#854F0B' : '#6B4030' }}>
+                {daysRemaining === 0 ? 'Poslední den' : `Zbývá ${daysRemaining} dní`}
+              </span>
+            )}
             {ad.slots.map(s => (
               <span key={s} className="text-xs px-2 py-0.5 rounded font-medium"
                 style={{ background: '#F0EDE8', color: '#6B4030' }}>
@@ -127,22 +208,83 @@ export default async function AdDetailPage({ params }: PageProps) {
           </p>
         </div>
 
-        {/* Velká čísla */}
+        {/* Velká čísla + trendy */}
         <div className="grid grid-cols-3 divide-x" style={{ borderColor: '#F0EDE8' }}>
-          <StatBox label="Zobrazení" value={ad.impressions.toLocaleString('cs-CZ')} sub="celkem" icon="👁️" />
-          <StatBox label="Kliky" value={ad.clicks.toLocaleString('cs-CZ')} sub="celkem" icon="🖱️" />
+          <StatBox label="Zobrazení" value={ad.impressions.toLocaleString('cs-CZ')} sub="celkem" icon="👁️"
+            trend={impTrend} />
+          <StatBox label="Kliky" value={ad.clicks.toLocaleString('cs-CZ')} sub="celkem" icon="🖱️"
+            trend={clickTrend} />
           <StatBox label="CTR" value={`${ctr}%`} sub="průměr" icon="📊"
-            highlight={parseFloat(ctr) >= 1} />
+            highlight={parseFloat(ctr) >= CTR_BENCHMARK} />
         </div>
 
-        {/* Graf zobrazení — posledních 30 dní */}
-        {dailyStats.length > 0 ? (
-          <div className="px-5 py-5">
-            <p className="text-xs font-bold uppercase tracking-wider mb-4" style={{ color: '#8B6550' }}>
-              Zobrazení za posledních 30 dní
-            </p>
+        {/* Performance insight */}
+        {insight && (
+          <div className="mx-5 my-4 px-4 py-3 rounded-xl text-sm flex items-start gap-2"
+            style={{ background: insight.bg, color: insight.color }}>
+            <span className="text-base flex-shrink-0">{insight.icon}</span>
+            <p className="text-sm font-medium">{insight.text}</p>
+          </div>
+        )}
 
-            {/* Bar chart — CSS only */}
+        {/* Statistiky podle slotu */}
+        {slotStats.length > 1 && (
+          <div className="px-5 pb-4">
+            <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: '#8B6550' }}>
+              Výkon podle plochy
+            </p>
+            <div className="overflow-x-auto rounded-xl border" style={{ borderColor: '#F0EDE8' }}>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ background: '#FFFCF8' }}>
+                    <th className="px-4 py-2 text-left text-xs font-bold" style={{ color: '#8B6550' }}>Plocha</th>
+                    <th className="px-3 py-2 text-right text-xs font-bold" style={{ color: '#8B6550' }}>Zobrazení</th>
+                    <th className="px-3 py-2 text-right text-xs font-bold" style={{ color: '#8B6550' }}>Kliky</th>
+                    <th className="px-3 py-2 text-right text-xs font-bold" style={{ color: '#8B6550' }}>CTR%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {slotStats.map(s => {
+                    const slotCtr = s.impressions > 0
+                      ? ((s.clicks / s.impressions) * 100).toFixed(2)
+                      : '0.00'
+                    const topSlot = slotStats[0].slot === s.slot
+                    return (
+                      <tr key={s.slot} className="border-t" style={{ borderColor: '#F0EDE8' }}>
+                        <td className="px-4 py-2 font-medium text-xs flex items-center gap-1.5" style={{ color: '#1A0F0A' }}>
+                          {topSlot && <span className="text-[10px]">⭐</span>}
+                          {SLOT_LABEL[s.slot] ?? s.slot}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-xs font-semibold" style={{ color: '#1A0F0A' }}>
+                          {s.impressions.toLocaleString('cs-CZ')}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-xs font-semibold" style={{ color: '#1A0F0A' }}>
+                          {s.clicks.toLocaleString('cs-CZ')}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono text-xs"
+                          style={{ color: parseFloat(slotCtr) >= CTR_BENCHMARK ? '#3B6D11' : '#8B6550' }}>
+                          {slotCtr}%
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Graf + tabulka */}
+        {dailyStats.length > 0 ? (
+          <div className="px-5 py-5 border-t" style={{ borderColor: '#F0EDE8' }}>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#8B6550' }}>
+                Zobrazení — posledních 30 dní
+              </p>
+              <CsvExportButton stats={dailyStats} adName={ad.headline} />
+            </div>
+
+            {/* Bar chart */}
             <div className="flex items-end gap-0.5 h-24 mb-1">
               {dailyStats.map(d => {
                 const height = Math.max((d.impressions / maxImpressions) * 100, 2)
@@ -158,7 +300,6 @@ export default async function AdDetailPage({ params }: PageProps) {
                         minHeight: '2px',
                       }}
                     />
-                    {/* Tooltip při hover */}
                     <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
                       <div className="bg-[#2C1810] text-white text-[10px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
                         {new Date(d.day).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })}
@@ -172,7 +313,7 @@ export default async function AdDetailPage({ params }: PageProps) {
               })}
             </div>
 
-            {/* Legenda os X — jen první, střed a poslední datum */}
+            {/* Legenda osy X */}
             <div className="flex justify-between text-[10px]" style={{ color: '#A89080' }}>
               <span>{new Date(dailyStats[0].day).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })}</span>
               <span className="flex items-center gap-3">
@@ -215,7 +356,8 @@ export default async function AdDetailPage({ params }: PageProps) {
                         <td className="py-2 text-right font-mono text-xs font-semibold" style={{ color: '#1A0F0A' }}>
                           {row.clicks.toLocaleString('cs-CZ')}
                         </td>
-                        <td className="py-2 text-right font-mono text-xs" style={{ color: '#8B6550' }}>
+                        <td className="py-2 text-right font-mono text-xs"
+                          style={{ color: row.impressions > 0 && (row.clicks / row.impressions) >= CTR_BENCHMARK / 100 ? '#3B6D11' : '#8B6550' }}>
                           {row.impressions > 0
                             ? ((row.clicks / row.impressions) * 100).toFixed(2)
                             : '0.00'}%
@@ -228,7 +370,7 @@ export default async function AdDetailPage({ params }: PageProps) {
             </div>
           </div>
         ) : (
-          <div className="px-5 py-8 text-center">
+          <div className="px-5 py-8 text-center border-t" style={{ borderColor: '#F0EDE8' }}>
             <div className="text-3xl mb-2">📈</div>
             <p className="text-sm font-semibold mb-1" style={{ color: '#1A0F0A' }}>
               {ad.status === 'draft' || ad.status === 'pending_review'
@@ -246,7 +388,7 @@ export default async function AdDetailPage({ params }: PageProps) {
         )}
       </div>
 
-      {/* ── Info o kampani ── */}
+      {/* ── Souhrn kampaně + cena ── */}
       <div className="bg-white rounded-xl border mb-6" style={{ borderColor: '#F0EDE8' }}>
         <div className="px-5 py-4 border-b" style={{ borderColor: '#F0EDE8' }}>
           <h2 className="font-display font-bold text-base" style={{ color: '#1A0F0A' }}>Detail kampaně</h2>
@@ -256,9 +398,28 @@ export default async function AdDetailPage({ params }: PageProps) {
           <InfoRow label="Popis" value={ad.description ?? '—'} />
           <InfoRow label="CTA tlačítko" value={ad.cta_label} />
           <InfoRow label="Cílová URL" value={ad.cta_url} link />
-          <InfoRow label="Období" value={`${ad.active_from} — ${ad.active_to}`} />
+          <InfoRow label="Období" value={`${ad.active_from} — ${ad.active_to} (${durationDays} dní)`} />
           <InfoRow label="Plochy" value={ad.slots.map(s => SLOT_LABEL[s] ?? s).join(', ')} />
         </div>
+
+        {/* Orientační cena */}
+        {estTotal > 0 && (
+          <div className="mx-5 mb-5 px-4 py-3 rounded-xl flex items-center justify-between"
+            style={{ background: '#FFFCF8', border: '1px solid #F0EDE8' }}>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider mb-0.5" style={{ color: '#8B6550' }}>
+                Orientační cena kampaně
+              </p>
+              <p className="text-xs" style={{ color: '#A89080' }}>
+                {durationDays} dní · {ad.slots.length} {ad.slots.length === 1 ? 'plocha' : ad.slots.length <= 4 ? 'plochy' : 'ploch'}
+                {discountPct > 0 && ` · sleva ${discountPct} %`} · vč. DPH
+              </p>
+            </div>
+            <span className="font-display font-extrabold text-xl" style={{ color: '#E8634A' }}>
+              {estTotal.toLocaleString('cs-CZ')} Kč
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ── Formulář (jen draft/rejected) ── */}
@@ -276,8 +437,8 @@ export default async function AdDetailPage({ params }: PageProps) {
   )
 }
 
-function StatBox({ label, value, sub, icon, highlight }: {
-  label: string; value: string; sub: string; icon: string; highlight?: boolean
+function StatBox({ label, value, sub, icon, highlight, trend }: {
+  label: string; value: string; sub: string; icon: string; highlight?: boolean; trend?: number | null
 }) {
   return (
     <div className="px-5 py-4 text-center">
@@ -288,6 +449,12 @@ function StatBox({ label, value, sub, icon, highlight }: {
       </div>
       <div className="text-xs font-bold" style={{ color: '#1A0F0A' }}>{label}</div>
       <div className="text-[10px]" style={{ color: '#A89080' }}>{sub}</div>
+      {trend !== null && trend !== undefined && (
+        <div className="mt-1 text-[10px] font-semibold"
+          style={{ color: trend >= 0 ? '#3B6D11' : '#993C1D' }}>
+          {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)} % vs. předchozí období
+        </div>
+      )}
     </div>
   )
 }

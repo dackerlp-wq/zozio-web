@@ -21,6 +21,37 @@ const STATUS_STYLE: Record<AdStatus, { bg: string; color: string }> = {
   paused:         { bg: '#F0EDE8', color: '#8B6550' },
 }
 
+const SLOT_LABEL: Record<string, string> = {
+  inline_grid:   'Inline grid',
+  sidebar:       'Sidebar',
+  banner_adopt:  'Banner adopce',
+  banner_home:   'Banner homepage',
+  banner_animal: 'Banner zvíře',
+  newsletter:    'Newsletter',
+}
+
+// Ceny bez DPH Kč/měsíc (newsletter = za vydání)
+const SLOT_PRICES: Record<string, number> = {
+  inline_grid:   1490,
+  sidebar:       1990,
+  banner_adopt:  2990,
+  banner_home:   3490,
+  banner_animal: 1990,
+  newsletter:    1490,
+}
+
+function calcAdPrice(ad: Ad): number {
+  const days = Math.max(0, Math.round(
+    (new Date(ad.active_to).getTime() - new Date(ad.active_from).getTime()) / (1000 * 60 * 60 * 24)
+  ))
+  const discountPct = days >= 90 ? 20 : days >= 60 ? 10 : 0
+  const subtotal = ad.slots.reduce((s, slot) => {
+    const mp = SLOT_PRICES[slot] ?? 0
+    return s + (slot === 'newsletter' ? mp : Math.round((mp / 30) * days))
+  }, 0)
+  return Math.round(subtotal * (1 - discountPct / 100) * 1.21)
+}
+
 function StatusBadge({ status }: { status: AdStatus }) {
   const s = STATUS_STYLE[status]
   return (
@@ -42,7 +73,6 @@ export default async function PortalDashboardPage() {
     .eq('user_id', user.id)
     .single()
 
-  // Nový uživatel bez profilu
   if (!company) {
     return (
       <div>
@@ -67,20 +97,15 @@ export default async function PortalDashboardPage() {
     )
   }
 
-  // Firma čeká na schválení
   if (!company.approved) {
     return (
       <div>
-        <h1 className="font-display font-extrabold text-3xl mb-6" style={{ color: '#1A0F0A' }}>
-          Dashboard
-        </h1>
+        <h1 className="font-display font-extrabold text-3xl mb-6" style={{ color: '#1A0F0A' }}>Dashboard</h1>
         <div className="rounded-xl border p-6 mb-6" style={{ borderColor: '#FDE68A', background: '#FEF9E7' }}>
           <div className="flex items-start gap-3">
             <span className="text-xl">⏳</span>
             <div>
-              <p className="font-bold text-sm mb-1" style={{ color: '#854F0B' }}>
-                Váš účet čeká na schválení
-              </p>
+              <p className="font-bold text-sm mb-1" style={{ color: '#854F0B' }}>Váš účet čeká na schválení</p>
               <p className="text-sm" style={{ color: '#854F0B' }}>
                 Tým Zozio zkontroluje vaši firmu a budeme vás kontaktovat na{' '}
                 <strong>{company.contact_email}</strong>.
@@ -95,7 +120,7 @@ export default async function PortalDashboardPage() {
     )
   }
 
-  // Načtení reklam firmy
+  // Načtení reklam
   const service = createServiceClient()
   const { data: ads } = await service
     .from('ads')
@@ -105,10 +130,21 @@ export default async function PortalDashboardPage() {
 
   const allAds = (ads ?? []) as Ad[]
   const today = new Date().toISOString().split('T')[0]
-  const activeAds = allAds.filter(a => a.active && a.status === 'approved' && a.active_from <= today && a.active_to >= today)
+
+  const activeAds   = allAds.filter(a => a.active && a.status === 'approved' && a.active_from <= today && a.active_to >= today)
+  const expiringAds = allAds.filter(a => {
+    if (a.status !== 'approved') return false
+    const daysLeft = Math.round((new Date(a.active_to).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24))
+    return daysLeft >= 0 && daysLeft <= 14
+  })
+
   const totalImpressions = allAds.reduce((s, a) => s + (a.impressions ?? 0), 0)
-  const totalClicks = allAds.reduce((s, a) => s + (a.clicks ?? 0), 0)
+  const totalClicks      = allAds.reduce((s, a) => s + (a.clicks ?? 0), 0)
   const ctr = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0.00'
+
+  // Celkový odhadovaný spend (pouze schválené reklamy)
+  const approvedAds = allAds.filter(a => a.status === 'approved' || a.status === 'paused')
+  const totalSpend  = approvedAds.reduce((s, a) => s + calcAdPrice(a), 0)
 
   // Denní statistiky posledních 30 dní
   const thirtyDaysAgo = new Date()
@@ -126,13 +162,11 @@ export default async function PortalDashboardPage() {
       .gte('day', thirtyDaysAgo.toISOString().split('T')[0])
       .order('day', { ascending: false })
 
-    // Agregovat přes všechny reklamy firmy
     const byDay: Record<string, { impressions: number; clicks: number }> = {}
     for (const row of (rawStats ?? []) as DailyStat[]) {
-      const dayKey = row.day
-      if (!byDay[dayKey]) byDay[dayKey] = { impressions: 0, clicks: 0 }
-      byDay[dayKey].impressions += row.impressions ?? 0
-      byDay[dayKey].clicks += row.clicks ?? 0
+      if (!byDay[row.day]) byDay[row.day] = { impressions: 0, clicks: 0 }
+      byDay[row.day].impressions += row.impressions ?? 0
+      byDay[row.day].clicks      += row.clicks ?? 0
     }
     dailyStats = Object.entries(byDay)
       .map(([day, v]) => ({ day, ...v }))
@@ -141,11 +175,10 @@ export default async function PortalDashboardPage() {
 
   return (
     <div>
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-display font-extrabold text-3xl" style={{ color: '#1A0F0A' }}>
-            Dashboard
-          </h1>
+          <h1 className="font-display font-extrabold text-3xl" style={{ color: '#1A0F0A' }}>Dashboard</h1>
           <p className="text-sm mt-1" style={{ color: '#8B6550' }}>{company.company_name}</p>
         </div>
         <Link href="/portal/ads/new"
@@ -155,13 +188,92 @@ export default async function PortalDashboardPage() {
         </Link>
       </div>
 
+      {/* Výstraha — expirující reklamy */}
+      {expiringAds.length > 0 && (
+        <div className="mb-6 px-4 py-3 rounded-xl border flex items-start gap-3"
+          style={{ background: '#FEF9E7', borderColor: '#FDE68A' }}>
+          <span className="text-lg flex-shrink-0">⚠️</span>
+          <div className="flex-1">
+            <p className="font-bold text-sm mb-1" style={{ color: '#854F0B' }}>
+              {expiringAds.length === 1 ? 'Reklama brzy expiruje' : `${expiringAds.length} reklamy brzy expirují`}
+            </p>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {expiringAds.map(a => {
+                const daysLeft = Math.round((new Date(a.active_to).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24))
+                return (
+                  <Link key={a.id} href={`/portal/ads/${a.id}`}
+                    className="text-xs font-semibold no-underline hover:underline"
+                    style={{ color: '#854F0B' }}>
+                    {a.headline} ({daysLeft === 0 ? 'dnes' : `za ${daysLeft} dní`})
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Velká čísla */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard label="Celkem zobrazení" value={totalImpressions.toLocaleString('cs-CZ')} icon="👁️" />
-        <StatCard label="Celkem kliků" value={totalClicks.toLocaleString('cs-CZ')} icon="🖱️" />
-        <StatCard label="CTR" value={`${ctr}%`} icon="📊" />
-        <StatCard label="Aktivní kampaně" value={activeAds.length} icon="📣" />
+        <StatCard label="Celkem kliků"     value={totalClicks.toLocaleString('cs-CZ')}      icon="🖱️" />
+        <StatCard label="Průměrný CTR"     value={`${ctr} %`}                               icon="📊" />
+        <StatCard label="Aktivní kampaně"  value={activeAds.length}                          icon="📣" />
       </div>
+
+      {/* Spend summary */}
+      {approvedAds.length > 0 && (
+        <div className="bg-white rounded-xl border mb-8 overflow-hidden" style={{ borderColor: '#F0EDE8' }}>
+          <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: '#F0EDE8' }}>
+            <h2 className="font-display font-bold text-base" style={{ color: '#1A0F0A' }}>
+              Přehled výdajů
+            </h2>
+            <span className="text-xs" style={{ color: '#8B6550' }}>Orientační ceny vč. DPH</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ background: '#FFFCF8' }}>
+                  <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{ color: '#8B6550' }}>Kampaň</th>
+                  <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{ color: '#8B6550' }}>Plochy</th>
+                  <th className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider" style={{ color: '#8B6550' }}>Období</th>
+                  <th className="px-3 py-3 text-right text-xs font-bold uppercase tracking-wider" style={{ color: '#8B6550' }}>Cena vč. DPH</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y" style={{ borderColor: '#F0EDE8' }}>
+                {approvedAds.map(ad => (
+                  <tr key={ad.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-3">
+                      <Link href={`/portal/ads/${ad.id}`} className="font-semibold no-underline hover:underline" style={{ color: '#1A0F0A' }}>
+                        {ad.headline}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-3 text-xs" style={{ color: '#8B6550' }}>
+                      {ad.slots.map(s => SLOT_LABEL[s] ?? s).join(', ')}
+                    </td>
+                    <td className="px-3 py-3 text-xs whitespace-nowrap" style={{ color: '#8B6550' }}>
+                      {ad.active_from} — {ad.active_to}
+                    </td>
+                    <td className="px-3 py-3 text-right font-mono font-bold" style={{ color: '#E8634A' }}>
+                      {calcAdPrice(ad).toLocaleString('cs-CZ')} Kč
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: '#FFFCF8', borderTop: '2px solid #F0EDE8' }}>
+                  <td colSpan={3} className="px-5 py-3 font-bold text-sm" style={{ color: '#1A0F0A' }}>
+                    Celkem (orientačně)
+                  </td>
+                  <td className="px-3 py-3 text-right font-display font-extrabold text-base" style={{ color: '#E8634A' }}>
+                    {totalSpend.toLocaleString('cs-CZ')} Kč
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Denní statistiky */}
       {dailyStats.length > 0 && (
@@ -230,6 +342,7 @@ export default async function PortalDashboardPage() {
               <tbody className="divide-y" style={{ borderColor: '#F0EDE8' }}>
                 {allAds.map(ad => {
                   const adCtr = ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : '0.00'
+                  const isExpired = ad.status === 'approved' && ad.active_to < today
                   return (
                     <tr key={ad.id} className="hover:bg-gray-50">
                       <td className="px-5 py-3">
@@ -237,7 +350,13 @@ export default async function PortalDashboardPage() {
                           {ad.headline}
                         </Link>
                       </td>
-                      <td className="px-3 py-3"><StatusBadge status={ad.status} /></td>
+                      <td className="px-3 py-3">
+                        {isExpired
+                          ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold"
+                              style={{ background: '#FAECE7', color: '#993C1D' }}>Expirovaná</span>
+                          : <StatusBadge status={ad.status} />
+                        }
+                      </td>
                       <td className="px-3 py-3 text-xs whitespace-nowrap" style={{ color: '#8B6550' }}>
                         {ad.active_from} — {ad.active_to}
                       </td>
