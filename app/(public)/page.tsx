@@ -480,7 +480,7 @@ function InstitutionsCta() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          <Link href="/pro-instituce" className="w-full sm:w-auto">
+          <Link href="/proc-byt-na-zozio" className="w-full sm:w-auto">
             <Button variant="amber" size="lg" className="justify-center w-full">Zjistit více</Button>
           </Link>
           <Link href="/auth/register" className="w-full sm:w-auto">
