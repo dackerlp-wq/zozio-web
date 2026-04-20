@@ -26,23 +26,24 @@ export default async function PendingApprovalPage() {
     .from('institution_members')
     .select('institution_id')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
-  // Uživatel bez instituce pošli zpět na registraci
-  if (!membership) redirect('/auth/register')
+  const { data: institution } = membership?.institution_id
+    ? await service
+        .from('institutions')
+        .select('id, name, approval_status, email, city')
+        .eq('id', membership.institution_id)
+        .maybeSingle()
+    : { data: null }
 
-  const { data: institution } = await service
-    .from('institutions')
-    .select('id, name, approval_status, email, city')
-    .eq('id', membership.institution_id)
-    .single()
+  // Schválená instituce → admin. Jinak zůstáváme tady a ukazujeme status.
+  // Žádné jiné redirecty — jinak vzniká loop mezi /auth/pending ↔ /auth/register ↔ /admin/*.
+  if (institution && institution.approval_status === 'approved') {
+    redirect('/admin/dashboard')
+  }
 
-  if (!institution) redirect('/auth/register')
-
-  // Schválená instituce → admin
-  if (institution.approval_status === 'approved') redirect('/admin/dashboard')
-
-  const isRejected = institution.approval_status === 'rejected'
+  const isRejected = institution?.approval_status === 'rejected'
+  const hasInstitution = !!institution
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-warm">
@@ -57,33 +58,41 @@ export default async function PendingApprovalPage() {
           <div className="text-center mb-6">
             <div className="text-5xl mb-4">{isRejected ? '⚠️' : '⏳'}</div>
             <h1 className="font-display font-extrabold text-2xl text-text-primary mb-2">
-              {isRejected ? 'Registrace vyžaduje doplnění' : 'Čekáme na schválení'}
+              {!hasInstitution
+                ? 'Dokončete registraci'
+                : isRejected
+                  ? 'Registrace vyžaduje doplnění'
+                  : 'Čekáme na schválení'}
             </h1>
             <p className="text-sm text-text-muted">
-              {isRejected
-                ? 'Váš profil nebyl schválen v aktuální podobě. Prosím kontaktujte náš tým.'
-                : 'Děkujeme za registraci. Náš tým kontroluje váš profil do 1–2 pracovních dnů.'}
+              {!hasInstitution
+                ? 'Váš účet je vytvořen, ale ještě nemáme údaje o instituci. Napište nám, pomůžeme s dokončením.'
+                : isRejected
+                  ? 'Váš profil nebyl schválen v aktuální podobě. Prosím kontaktujte náš tým.'
+                  : 'Děkujeme za registraci. Náš tým kontroluje váš profil do 1–2 pracovních dnů.'}
             </p>
           </div>
 
-          <div className="bg-sand rounded-xl p-5 mb-6">
-            <div className="text-xs font-bold uppercase tracking-wider text-text-muted mb-3">
-              Přehled registrace
+          {hasInstitution && institution && (
+            <div className="bg-sand rounded-xl p-5 mb-6">
+              <div className="text-xs font-bold uppercase tracking-wider text-text-muted mb-3">
+                Přehled registrace
+              </div>
+              <Row label="Instituce" value={institution.name} />
+              <Row label="Město" value={institution.city} />
+              <Row label="Kontaktní e-mail" value={institution.email ?? user.email ?? '—'} />
+              <Row
+                label="Stav"
+                value={
+                  <span className={isRejected ? 'text-coral font-bold' : 'text-[#B8860B] font-bold'}>
+                    {isRejected ? '❌ Zamítnuto' : '⏳ Čeká na schválení'}
+                  </span>
+                }
+              />
             </div>
-            <Row label="Instituce" value={institution.name} />
-            <Row label="Město" value={institution.city} />
-            <Row label="Kontaktní e-mail" value={institution.email ?? user.email ?? '—'} />
-            <Row
-              label="Stav"
-              value={
-                <span className={isRejected ? 'text-coral font-bold' : 'text-[#B8860B] font-bold'}>
-                  {isRejected ? '❌ Zamítnuto' : '⏳ Čeká na schválení'}
-                </span>
-              }
-            />
-          </div>
+          )}
 
-          {!isRejected && (
+          {hasInstitution && !isRejected && (
             <div className="mb-6">
               <div className="text-xs font-bold uppercase tracking-wider text-text-muted mb-3">
                 Co se stane dál
@@ -99,7 +108,11 @@ export default async function PendingApprovalPage() {
               Máte otázky nebo chcete status urychlit?
             </p>
             <a
-              href={`mailto:team@zozio.cz?subject=Registrace — ${encodeURIComponent(institution.name)}`}
+              href={`mailto:team@zozio.cz?subject=${encodeURIComponent(
+                hasInstitution && institution
+                  ? `Registrace — ${institution.name}`
+                  : 'Dokončení registrace'
+              )}`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white no-underline bg-coral">
               ✉️ Napsat na team@zozio.cz
             </a>
