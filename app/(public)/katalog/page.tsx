@@ -141,14 +141,16 @@ async function getData(): Promise<{ species: SpeciesWithBreeds[] }> {
     .eq('adoption_status', 'available')
     .in('species_id', speciesIds)
 
-  // Try to select FCI metadata; fall back gracefully if columns don't exist yet.
-  let breedsData: Array<{
+  type BreedRecord = {
     species_id: string | null
     name_cs: string
     fci_group?: string | null
     original_name?: string | null
     official_abbreviation?: string | null
-  }> | null = null
+  }
+
+  // Try to select FCI metadata; fall back gracefully if columns don't exist yet.
+  let breedsData: BreedRecord[] | null = null
 
   const withFci = await supabase
     .from('animal_breeds')
@@ -162,9 +164,9 @@ async function getData(): Promise<{ species: SpeciesWithBreeds[] }> {
       .select('species_id, name_cs')
       .in('species_id', speciesIds)
       .order('name_cs')
-    breedsData = fallback.data as typeof breedsData
+    breedsData = (fallback.data ?? []) as BreedRecord[]
   } else {
-    breedsData = withFci.data as typeof breedsData
+    breedsData = (withFci.data ?? []) as unknown as BreedRecord[]
   }
 
   const animalList = animals ?? []
