@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { sendWelcomeEmail } from '@/lib/email/send'
 
 export async function POST(request: NextRequest) {
   try {
@@ -84,7 +85,20 @@ export async function POST(request: NextRequest) {
         role:           'admin',
       })
 
-    // ── FIX 3: Notifikace superadminovi ──────────────────────────────────
+    // Welcome email — registrace přijata, čeká na schválení
+    try {
+      await sendWelcomeEmail({
+        to:              email,
+        contactName:     name,
+        institutionName: name,
+        email,
+      })
+    } catch (welcomeErr) {
+      console.error('Welcome email failed:', welcomeErr)
+      // Neblokuj registraci kvůli e-mailu
+    }
+
+    // ── Notifikace superadminovi ─────────────────────────────────────────
     try {
       // Najdi všechny superadminy
       const { data: superadmins } = await service
