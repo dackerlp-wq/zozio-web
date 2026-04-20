@@ -60,6 +60,9 @@ export async function PUT(
     if (body.facebook_url   !== undefined) payload.facebook_url   = body.facebook_url   || null
     if (body.instagram_url  !== undefined) payload.instagram_url  = body.instagram_url  || null
     if (body.opening_hours  !== undefined) payload.opening_hours  = body.opening_hours  || null
+    if (body.opening_hours_structured !== undefined) {
+      payload.opening_hours_structured = body.opening_hours_structured ?? null
+    }
 
     const { error } = await service
       .from('institutions')

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { NewsletterSubscribe } from './NewsletterSubscribe'
 import { FavoriteButton } from './FavoriteButton'
 import { AdSlot } from './AdSlot'
+import { OpeningHoursDisplay } from './OpeningHoursDisplay'
 
 interface Tab { id: string; label: string; count: number | null }
 
@@ -580,14 +581,10 @@ export function InstitutionTabs({
           )}
 
           {/* Provozní hodiny */}
-          {i.opening_hours && (
-            <div className="bg-white rounded-xl border border-[#F0EDE8] p-5">
-              <h3 className="font-bold text-sm text-[#1A0F0A] mb-3">🕐 Provozní hodiny</h3>
-              <p className="text-sm text-[#4A2C1A] whitespace-pre-line leading-relaxed">
-                {i.opening_hours}
-              </p>
-            </div>
-          )}
+          <OpeningHoursDisplay
+            data={i.opening_hours_structured}
+            fallbackText={i.opening_hours ?? null}
+          />
 
           {/* Sociální sítě */}
           {(i.facebook_url || i.instagram_url) && (

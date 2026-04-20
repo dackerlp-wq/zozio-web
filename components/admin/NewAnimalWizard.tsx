@@ -737,19 +737,32 @@ function MedRecordsEditor({
 }
 
 /* ─── Step 4 ─────────────────────────────────────────────── */
+const QUARANTINE_OPTIONAL_ORIGINS = new Set(['surrendered', 'transferred'])
+
 function Step4({ data, set }: { data: WizardData; set: <K extends keyof WizardData>(k: K, v: WizardData[K]) => void }) {
+  const quarantineRequired = !QUARANTINE_OPTIONAL_ORIGINS.has(data.origin)
+
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex gap-2 rounded-lg text-xs font-semibold" style={{ padding: '12px 14px', background: '#E6F1FB', borderLeft: '3px solid #185FA5', color: '#185FA5' }}>
-        <span style={{ fontSize: '15px', flexShrink: 0 }}>⚖️</span>
-        <span>Karanténa trvá min. 14 dní dle §25 zák. 246/1992 Sb. Zdravotní záznamy jsou zákonně povinné.</span>
-      </div>
+      {quarantineRequired ? (
+        <div className="flex gap-2 rounded-lg text-xs font-semibold" style={{ padding: '12px 14px', background: '#E6F1FB', borderLeft: '3px solid #185FA5', color: '#185FA5' }}>
+          <span style={{ fontSize: '15px', flexShrink: 0 }}>⚖️</span>
+          <span>Karanténa trvá min. 14 dní dle §25 zák. 246/1992 Sb. Zdravotní záznamy jsou zákonně povinné.</span>
+        </div>
+      ) : (
+        <div className="flex gap-2 rounded-lg text-xs font-semibold" style={{ padding: '12px 14px', background: '#EAF3DE', borderLeft: '3px solid #2D8A4E', color: '#2D8A4E' }}>
+          <span style={{ fontSize: '15px', flexShrink: 0 }}>💡</span>
+          <span>
+            U způsobu příjmu „{data.origin === 'surrendered' ? 'Odevzdáno majitelem' : 'Přemístěno z útulku'}" není karanténa zákonně povinná, ale <strong>doporučujeme</strong> ji (zpravidla 7–14 dní) pro bezpečnou adaptaci a vyloučení skrytých nákaz. Zdravotní záznamy zůstávají povinné.
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-3">
-        <Field label="Zahájení karantény" lawTag>
+        <Field label="Zahájení karantény" lawTag={quarantineRequired}>
           <input type="date" value={data.quarantine_start} onChange={e => set('quarantine_start', e.target.value)} style={inputStyle} />
         </Field>
-        <Field label="Veterinář karantény" lawTag>
+        <Field label="Veterinář karantény" lawTag={quarantineRequired}>
           <input placeholder="MVDr. Horáková" value={data.quarantine_vet} onChange={e => set('quarantine_vet', e.target.value)} style={inputStyle} />
         </Field>
         <Field label="Zdravotní stav" lawTag>
