@@ -100,6 +100,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const purpose = ['family', 'sport', 'guard', 'other'].includes(body.purpose) ? body.purpose : null
+    const hoursWeekday = Number.isFinite(body.hours_alone_weekday) && body.hours_alone_weekday >= 0 && body.hours_alone_weekday <= 24
+      ? body.hours_alone_weekday : null
+    const hoursWeekend = Number.isFinite(body.hours_alone_weekend) && body.hours_alone_weekend >= 0 && body.hours_alone_weekend <= 24
+      ? body.hours_alone_weekend : null
+
     const { data, error } = await supabase
       .from('adoption_applications')
       .insert({
@@ -108,11 +114,16 @@ export async function POST(request: NextRequest) {
         applicant_name:      body.applicant_name,
         applicant_email:     body.applicant_email,
         applicant_phone:     body.applicant_phone     ?? null,
+        applicant_city:      body.applicant_city      ?? null,
         housing_type:        body.housing_type        ?? null,
         has_garden:          body.has_garden          ?? null,
         has_children:        body.has_children        ?? null,
         children_ages:       body.children_ages       ?? null,
         other_pets:          body.other_pets          ?? null,
+        backup_caregiver:    body.backup_caregiver    ?? null,
+        purpose,
+        hours_alone_weekday: hoursWeekday,
+        hours_alone_weekend: hoursWeekend,
         experience:          body.experience          ?? null,
         motivation:          body.motivation,
         application_message: body.application_message ?? null,
@@ -155,6 +166,10 @@ export async function POST(request: NextRequest) {
           applicantPhone:    body.applicant_phone  ?? undefined,
           applicantCity:     body.applicant_city   ?? undefined,
           applicantHasOtherAnimals: body.other_pets ? true : undefined,
+          backupCaregiver:   body.backup_caregiver ?? undefined,
+          purpose,
+          hoursAloneWeekday: hoursWeekday ?? undefined,
+          hoursAloneWeekend: hoursWeekend ?? undefined,
           animalEmoji,
           animalSpecies,
           applicationMessage: body.application_message ?? '',

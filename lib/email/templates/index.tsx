@@ -160,6 +160,10 @@ interface NewApplicationEmailProps {
   applicantPhone: string
   applicantCity: string
   applicantHasOtherAnimals: boolean
+  backupCaregiver: string
+  purpose: string | null
+  hoursAloneWeekday?: number
+  hoursAloneWeekend?: number
   animalName: string
   animalEmoji: string
   animalSpecies: string
@@ -169,6 +173,13 @@ interface NewApplicationEmailProps {
   adminUrl: string
 }
 
+const PURPOSE_LABEL_EMAIL: Record<string, string> = {
+  family: '🏡 Rodinný pes',
+  sport:  '🏃 Aktivní / sport',
+  guard:  '🛡️ Hlídací pes',
+  other:  'Jiné',
+}
+
 export function NewApplicationEmail({
   institutionContactName,
   applicantName,
@@ -176,6 +187,10 @@ export function NewApplicationEmail({
   applicantPhone,
   applicantCity,
   applicantHasOtherAnimals,
+  backupCaregiver,
+  purpose,
+  hoursAloneWeekday,
+  hoursAloneWeekend,
   animalName,
   animalEmoji,
   animalSpecies,
@@ -184,6 +199,10 @@ export function NewApplicationEmail({
   applicationMessage,
   adminUrl,
 }: NewApplicationEmailProps) {
+  const hoursLabel = (hoursAloneWeekday !== undefined || hoursAloneWeekend !== undefined)
+    ? `Týden: ${hoursAloneWeekday ?? '?'} h · Víkend: ${hoursAloneWeekend ?? '?'} h`
+    : 'neuvedeno'
+
   return (
     <BaseLayout previewText={`Nová adopční žádost o ${animalName} od ${applicantName}`}>
       <EmailShell>
@@ -197,8 +216,13 @@ export function NewApplicationEmail({
             { label: 'Jméno', value: applicantName },
             { label: 'E-mail', value: applicantEmail },
             { label: 'Telefon', value: applicantPhone },
-            { label: 'Bydliště', value: applicantCity },
+            { label: 'Lokalita', value: applicantCity },
             { label: 'Jiná zvířata', value: applicantHasOtherAnimals ? 'Ano' : 'Ne' },
+          ]} />
+          <InfoCard title="Životní styl a péče" rows={[
+            { label: 'Důvod pořízení', value: purpose ? (PURPOSE_LABEL_EMAIL[purpose] ?? purpose) : 'neuvedeno' },
+            { label: 'Doma sám', value: hoursLabel },
+            { label: 'Záložní péče', value: backupCaregiver },
           ]} />
           <InfoCard title="Zvíře" rows={[
             { label: 'Jméno', value: `${animalEmoji} ${animalName}` },

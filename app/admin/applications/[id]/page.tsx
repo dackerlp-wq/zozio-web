@@ -77,6 +77,7 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
                   ? <a href={`tel:${app.applicant_phone}`} className="text-coral hover:underline">{app.applicant_phone}</a>
                   : '—'
               } />
+              <InfoRow label="Lokalita" value={app.applicant_city ?? '—'} />
               <InfoRow label="Podáno" value={new Date(app.created_at).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} />
             </div>
           </div>
@@ -93,6 +94,27 @@ export default async function ApplicationDetailPage({ params }: PageProps) {
               <InfoRow label="Zahrada" value={app.has_garden === true ? '✓ Ano' : app.has_garden === false ? '✗ Ne' : '—'} />
               <InfoRow label="Děti" value={app.has_children === true ? `✓ Ano${app.children_ages ? ` (${app.children_ages})` : ''}` : app.has_children === false ? '✗ Ne' : '—'} />
               <InfoRow label="Jiná zvířata" value={app.other_pets ?? '—'} />
+            </div>
+          </div>
+
+          {/* Životní styl */}
+          <div className="bg-white rounded-lg p-4 md:p-6 border border-gray-pale shadow-sm">
+            <h2 className="font-display font-extrabold text-base md:text-lg text-espresso mb-4">🐾 Životní styl a péče</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+              <InfoRow label="Důvod pořízení" value={
+                app.purpose === 'family' ? '🏡 Rodinný pes' :
+                app.purpose === 'sport'  ? '🏃 Aktivní / sport' :
+                app.purpose === 'guard'  ? '🛡️ Hlídací pes' :
+                app.purpose === 'other'  ? 'Jiné' : '—'
+              } />
+              <InfoRow label="Doma sám" value={
+                app.hours_alone_weekday !== null || app.hours_alone_weekend !== null
+                  ? `Týden ${app.hours_alone_weekday ?? '?'} h · Víkend ${app.hours_alone_weekend ?? '?'} h`
+                  : '—'
+              } />
+              <div className="sm:col-span-2">
+                <InfoRow label="Záložní péče (kdo se postará)" value={app.backup_caregiver ?? '—'} />
+              </div>
             </div>
           </div>
 

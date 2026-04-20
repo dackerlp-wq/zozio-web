@@ -86,6 +86,10 @@ export async function sendNewApplicationEmail(props: {
   applicantPhone?: string
   applicantCity?: string
   applicantHasOtherAnimals?: boolean
+  backupCaregiver?: string
+  purpose?: string | null
+  hoursAloneWeekday?: number
+  hoursAloneWeekend?: number
   animalEmoji?: string
   animalSpecies?: string
   animalAge?: string
@@ -102,6 +106,10 @@ export async function sendNewApplicationEmail(props: {
       applicantPhone: props.applicantPhone ?? 'neuvedeno',
       applicantCity: props.applicantCity ?? 'neuvedeno',
       applicantHasOtherAnimals: props.applicantHasOtherAnimals ?? false,
+      backupCaregiver: props.backupCaregiver ?? 'neuvedeno',
+      purpose: props.purpose ?? null,
+      hoursAloneWeekday: props.hoursAloneWeekday,
+      hoursAloneWeekend: props.hoursAloneWeekend,
       animalName: props.animalName,
       animalEmoji: props.animalEmoji ?? '🐾',
       animalSpecies: props.animalSpecies ?? 'zvíře',

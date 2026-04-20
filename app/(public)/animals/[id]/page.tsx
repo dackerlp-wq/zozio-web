@@ -321,6 +321,15 @@ export default async function AnimalDetailPage({ params }: PageProps) {
                 <NotYetBanner name={a.name} status={displayStatus} />
               )}
               {isFinished && <AdoptedBanner name={a.name} status={displayStatus} />}
+
+              {/* Reklama — pod adopčním formulářem (jen mobil) */}
+              <div className="mt-6">
+                <AdSlot
+                  slot="sidebar"
+                  speciesId={a.species_id ?? undefined}
+                  institutionId={institutionId}
+                />
+              </div>
             </div>
           </div>
 
