@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { breedSlug } from '@/lib/breed-slug'
 import { BreedSearch } from '@/components/public/BreedSearch'
 import type { BreedSearchItem } from '@/components/public/BreedSearch'
+import { CatalogBrowser, type CatalogSpecies } from '@/components/public/CatalogBrowser'
 
 export const metadata: Metadata = {
   title: 'Katalog plemen psů a koček | Zozio',
@@ -14,14 +15,6 @@ export const revalidate = 3600
 
 const DOG_NAMES = ['pes', 'psi', 'psy']
 const CAT_NAMES = ['kočka', 'kočky', 'kocka']
-
-interface SpeciesWithBreeds {
-  id: string
-  name_cs: string
-  icon: string | null
-  animalCount: number
-  breeds: { name: string; count: number; slug: string }[]
-}
 
 export default async function KatalogPage() {
   const { species } = await getData()
@@ -37,18 +30,33 @@ export default async function KatalogPage() {
     }))
   ).sort((a, b) => a.name.localeCompare(b.name, 'cs'))
 
+  const browserSpecies: CatalogSpecies[] = species.map(sp => ({
+    id: sp.id,
+    name_cs: sp.name_cs,
+    icon: sp.icon,
+    animalCount: sp.animalCount,
+    breeds: sp.breeds.map(b => ({
+      name: b.name,
+      slug: b.slug,
+      count: b.count,
+      fciGroup: b.fciGroup,
+      originalName: b.originalName,
+      officialAbbreviation: b.officialAbbreviation,
+    })),
+  }))
+
   return (
     <main className="min-h-screen pt-20 md:pt-24 pb-16" style={{ background: '#FFFCF8' }}>
       <div className="max-w-[1100px] mx-auto px-4 md:px-8">
 
         {/* Header */}
-        <div className="py-8 md:py-10 border-b border-[#F0EDE8] mb-10">
+        <div className="py-8 md:py-10 border-b border-[#F0EDE8] mb-8">
           <h1 className="font-display font-extrabold text-[#1A0F0A] mb-2"
             style={{ fontSize: 'clamp(24px, 4vw, 36px)' }}>
             Katalog plemen psů a koček
           </h1>
           <p className="text-sm md:text-base mb-4" style={{ color: '#6B4030' }}>
-            Přehled plemen hledajících domov na Zozio — zjisti povahu, velikost a potřeby každého plemene
+            Přehled plemen hledajících domov na Zozio — roztříděno dle FCI skupin. Filtruj a prohlédni si povahu, velikost a potřeby každého plemene.
           </p>
           <div className="flex flex-wrap items-center gap-3 mb-5">
             <Stat label="druhů" value={species.filter(s => s.animalCount > 0).length} />
@@ -58,62 +66,7 @@ export default async function KatalogPage() {
           <BreedSearch breeds={searchBreeds} />
         </div>
 
-        {/* Species sections */}
-        <div className="space-y-12">
-          {species.map(sp => (
-            <section key={sp.id}>
-              {/* Species header */}
-              <div className="flex items-center gap-3 mb-5">
-                {sp.icon && <span className="text-3xl">{sp.icon}</span>}
-                <div className="flex-1">
-                  <h2 className="font-display font-extrabold text-[#1A0F0A] text-xl md:text-2xl">
-                    {sp.name_cs}
-                  </h2>
-                </div>
-                {sp.animalCount > 0 && (
-                  <Link
-                    href={`/adopt?species=${sp.id}`}
-                    className="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-bold text-white no-underline hover:opacity-90 transition-opacity"
-                    style={{ background: '#E8634A' }}>
-                    {sp.animalCount} k adopci →
-                  </Link>
-                )}
-              </div>
-
-              {/* Breeds grid */}
-              {sp.breeds.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
-                  {sp.breeds.map(breed => (
-                    <Link
-                      key={`${sp.id}-${breed.slug}`}
-                      href={`/katalog/${breed.slug}`}
-                      className="group flex items-center justify-between gap-2 px-3.5 py-3 rounded-lg border border-[#F0EDE8] bg-white hover:border-[#E8634A] hover:shadow-sm transition-all no-underline">
-                      <span className="text-sm font-semibold text-[#1A0F0A] group-hover:text-[#E8634A] transition-colors leading-snug">
-                        {breed.name}
-                      </span>
-                      {breed.count > 0 && (
-                        <span className="flex-shrink-0 text-xs font-bold px-1.5 py-0.5 rounded-full"
-                          style={{ background: '#FBF0EC', color: '#E8634A' }}>
-                          {breed.count}
-                        </span>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm italic" style={{ color: '#A08070' }}>
-                  Pro tento druh zatím nejsou evidovány žádné rasy.
-                </p>
-              )}
-
-              {sp.animalCount === 0 && (
-                <p className="text-xs mt-3" style={{ color: '#A08070' }}>
-                  Momentálně žádná zvířata tohoto druhu nečekají na adopci.
-                </p>
-              )}
-            </section>
-          ))}
-        </div>
+        <CatalogBrowser species={browserSpecies} />
 
         {/* CTA */}
         <div className="mt-16 p-8 rounded-lg text-center" style={{ background: '#FBF0EC' }}>
@@ -144,6 +97,23 @@ function Stat({ label, value, color = '#1A0F0A' }: { label: string; value: numbe
   )
 }
 
+interface BreedRow {
+  name: string
+  slug: string
+  count: number
+  fciGroup: string | null
+  originalName: string | null
+  officialAbbreviation: string | null
+}
+
+interface SpeciesWithBreeds {
+  id: string
+  name_cs: string
+  icon: string | null
+  animalCount: number
+  breeds: BreedRow[]
+}
+
 async function getData(): Promise<{ species: SpeciesWithBreeds[] }> {
   const supabase = createServiceClient()
 
@@ -152,7 +122,6 @@ async function getData(): Promise<{ species: SpeciesWithBreeds[] }> {
     .select('id, name_cs, icon')
     .order('name_cs')
 
-  // Filter to only dogs and cats
   const filtered = (speciesData ?? []).filter(sp => {
     const n = sp.name_cs.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     return DOG_NAMES.some(d => n.includes(d.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) ||
@@ -172,11 +141,31 @@ async function getData(): Promise<{ species: SpeciesWithBreeds[] }> {
     .eq('adoption_status', 'available')
     .in('species_id', speciesIds)
 
-  const { data: breedsData } = await supabase
+  // Try to select FCI metadata; fall back gracefully if columns don't exist yet.
+  let breedsData: Array<{
+    species_id: string | null
+    name_cs: string
+    fci_group?: string | null
+    original_name?: string | null
+    official_abbreviation?: string | null
+  }> | null = null
+
+  const withFci = await supabase
     .from('animal_breeds')
-    .select('species_id, name_cs')
+    .select('species_id, name_cs, fci_group, original_name, official_abbreviation')
     .in('species_id', speciesIds)
     .order('name_cs')
+
+  if (withFci.error) {
+    const fallback = await supabase
+      .from('animal_breeds')
+      .select('species_id, name_cs')
+      .in('species_id', speciesIds)
+      .order('name_cs')
+    breedsData = fallback.data as typeof breedsData
+  } else {
+    breedsData = withFci.data as typeof breedsData
+  }
 
   const animalList = animals ?? []
 
@@ -185,25 +174,35 @@ async function getData(): Promise<{ species: SpeciesWithBreeds[] }> {
     if (a.species_id) speciesCount[a.species_id] = (speciesCount[a.species_id] ?? 0) + 1
   }
 
-  type BreedKey = string
-  const breedCount: Record<BreedKey, number> = {}
+  const breedCount: Record<string, number> = {}
   for (const a of animalList) {
     if (a.species_id && a.breed) {
-      const key = `${a.species_id}::${a.breed}`
-      breedCount[key] = (breedCount[key] ?? 0) + 1
+      breedCount[`${a.species_id}::${a.breed}`] = (breedCount[`${a.species_id}::${a.breed}`] ?? 0) + 1
     }
   }
 
-  const breedsBySpecies: Record<string, { name: string; count: number; slug: string }[]> = {}
+  const breedsBySpecies: Record<string, BreedRow[]> = {}
   for (const b of (breedsData ?? [])) {
     if (!b.species_id) continue
     if (!breedsBySpecies[b.species_id]) breedsBySpecies[b.species_id] = []
-    // deduplicate by name
-    if (breedsBySpecies[b.species_id].find(x => x.name === b.name_cs)) continue
+    const slug = breedSlug(b.name_cs)
+    const existing = breedsBySpecies[b.species_id].find(x => x.slug === slug)
+    if (existing) {
+      if (!existing.fciGroup && b.fci_group) existing.fciGroup = b.fci_group
+      if (!existing.originalName && b.original_name) existing.originalName = b.original_name
+      if (!existing.officialAbbreviation && b.official_abbreviation) existing.officialAbbreviation = b.official_abbreviation
+      continue
+    }
     const count = breedCount[`${b.species_id}::${b.name_cs}`] ?? 0
-    breedsBySpecies[b.species_id].push({ name: b.name_cs, count, slug: breedSlug(b.name_cs) })
+    breedsBySpecies[b.species_id].push({
+      name: b.name_cs,
+      slug,
+      count,
+      fciGroup: (b.fci_group ?? null) as string | null,
+      originalName: (b.original_name ?? null) as string | null,
+      officialAbbreviation: (b.official_abbreviation ?? null) as string | null,
+    })
   }
-  // NOTE: breeds come exclusively from animal_breeds table — no fallback from animals.breed text field
   for (const sid of Object.keys(breedsBySpecies)) {
     breedsBySpecies[sid].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'cs'))
   }
