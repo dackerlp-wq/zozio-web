@@ -28,6 +28,10 @@ function RegisterForm() {
   const [name,     setName]     = useState('')
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
+  const [city,             setCity]             = useState('')
+  const [phone,            setPhone]            = useState('')
+  const [website,          setWebsite]          = useState('')
+  const [shortDescription, setShortDescription] = useState('')
   const [loading,       setLoading]       = useState(false)
   const [error,         setError]         = useState<string | null>(null)
   const [newsletter,    setNewsletter]    = useState(false)
@@ -37,8 +41,10 @@ function RegisterForm() {
 
   const handleRegister = async () => {
     if (!name)     { setError(isInstitution ? 'Vyplň název instituce' : isAdvertiser ? 'Vyplň název firmy' : 'Vyplň své jméno'); return }
+    if (isInstitution && !city) { setError('Vyplň město, kde útulek působí'); return }
     if (!email || !password) { setError('Vyplň e-mail a heslo'); return }
     if (password.length < 8) { setError('Heslo musí mít alespoň 8 znaků'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('Zadejte platný e-mail'); return }
 
     setLoading(true)
     setError(null)
@@ -47,7 +53,7 @@ function RegisterForm() {
     const role = isInstitution ? 'institution_admin' : isAdvertiser ? 'advertiser' : 'public'
     const redirectNext = isInstitution ? '/auth/pending' : isAdvertiser ? '/portal' : '/profil'
 
-    const { error: authError } = await supabase.auth.signUp({
+    const { data: signUpData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -66,6 +72,30 @@ function RegisterForm() {
         : authError.message)
       setLoading(false)
       return
+    }
+
+    // Pro útulek vytvoř záznam instituce + členství
+    if (isInstitution && signUpData.user?.id) {
+      const res = await fetch('/api/institutions/register', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          user_id:           signUpData.user.id,
+          email,
+          name,
+          city,
+          phone:             phone || null,
+          website:           website || null,
+          short_description: shortDescription || null,
+        }),
+      })
+
+      if (!res.ok) {
+        const { error: apiError } = await res.json().catch(() => ({ error: 'Chyba při vytváření instituce' }))
+        setError(apiError || 'Nepodařilo se dokončit registraci instituce.')
+        setLoading(false)
+        return
+      }
     }
 
     // Přihlásit k newsletteru pokud zaškrtl
@@ -137,6 +167,30 @@ function RegisterForm() {
             placeholder={isInstitution ? 'Útulek Praha Chodov' : isAdvertiser ? 'Firma s.r.o.' : 'Jana Nováková'}
             className={inputCls} />
         </Field>
+
+        {isInstitution && (
+          <>
+            <Field label="Město *">
+              <input value={city} onChange={e => setCity(e.target.value)}
+                placeholder="Praha" className={inputCls} />
+            </Field>
+            <Field label="Telefon">
+              <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                placeholder="+420 123 456 789" className={inputCls} />
+            </Field>
+            <Field label="Webové stránky">
+              <input type="url" value={website} onChange={e => setWebsite(e.target.value)}
+                placeholder="https://vasutulek.cz" className={inputCls} />
+            </Field>
+            <Field label="Krátký popis (volitelné)">
+              <textarea value={shortDescription} onChange={e => setShortDescription(e.target.value)}
+                placeholder="Čím se váš útulek zabývá — v jedné větě."
+                rows={2}
+                className={inputCls + ' resize-none'} />
+            </Field>
+          </>
+        )}
+
         <Field label="E-mail *">
           <input type="email" value={email} onChange={e => setEmail(e.target.value)}
             placeholder="vas@email.cz" className={inputCls} />
