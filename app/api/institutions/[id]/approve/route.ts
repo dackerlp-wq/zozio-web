@@ -66,12 +66,14 @@ export async function POST(
       try {
         if (status === 'approved') {
           const { sendApprovalEmail } = await import('@/lib/email/send')
+          const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.zozio.cz'
           await sendApprovalEmail({
             to:              institution.email,
             contactName:     institution.name,
             institutionName: institution.name,
             plan:            institution.plan ?? 'free',
-            adminUrl:        `${process.env.NEXT_PUBLIC_SITE_URL}/auth/login`,
+            adminUrl:        `${SITE}/auth/login`,
+            onboardingUrl:   `${SITE}/admin/onboarding`,
           })
         } else {
           const { sendRejectionEmail } = await import('@/lib/email/send')

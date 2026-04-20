@@ -64,9 +64,10 @@ interface ApprovalEmailProps {
   institutionName: string
   plan: string
   adminUrl: string
+  onboardingUrl: string
 }
 
-export function ApprovalEmail({ contactName, institutionName, plan, adminUrl }: ApprovalEmailProps) {
+export function ApprovalEmail({ contactName, institutionName, plan, adminUrl, onboardingUrl }: ApprovalEmailProps) {
   return (
     <BaseLayout previewText={`Gratulujeme! ${institutionName} byl schválen na Zozio.`}>
       <EmailShell>
@@ -81,11 +82,25 @@ export function ApprovalEmail({ contactName, institutionName, plan, adminUrl }: 
             { label: 'Plán', value: plan },
             { label: 'Stav', value: <span style={{ color: colors.green }}>✅ Aktivní</span> },
           ]} />
+          <HighlightBox color="green">
+            🧭 <strong>Průvodce nastavením</strong> — doporučujeme začít v{' '}
+            <a href={onboardingUrl} style={{ color: colors.green, fontWeight: 700 }}>
+              admin/onboarding
+            </a>
+            . Ukáže vám krok po kroku, jak doplnit profil, přidat první zvíře a aktivovat sbírky.
+          </HighlightBox>
           <BodyText>Co dělat jako první:</BodyText>
-          <Step num={1} title="Doplňte profil útulku" desc="Přidejte popis, fotky a kontaktní informace." color={colors.green} />
-          <Step num={2} title="Přidejte první zvíře" desc="Nahrajte profil prvního mazlíčka k adopci." color={colors.green} />
-          <Step num={3} title="Sdílejte profil" desc="Sdílejte odkaz na váš profil na sociálních sítích." color={colors.green} />
-          <CtaButton href={adminUrl} color="green">Přejít do admin panelu</CtaButton>
+          <Step num={1} title="Projděte si průvodce nastavením" desc="Onboarding vás provede vším podstatným během pár minut." color={colors.green} />
+          <Step num={2} title="Doplňte profil útulku" desc="Přidejte popis, logo, fotky a kontaktní informace." color={colors.green} />
+          <Step num={3} title="Přidejte první zvíře" desc="Nahrajte profil prvního mazlíčka k adopci." color={colors.green} />
+          <CtaButton href={onboardingUrl} color="green">Spustit průvodce nastavením</CtaButton>
+          <BodyText>
+            Nebo rovnou{' '}
+            <a href={adminUrl} style={{ color: colors.green, fontWeight: 700 }}>
+              přejít do admin panelu
+            </a>
+            {' '}a začít samostatně.
+          </BodyText>
         </EmailBody>
         <EmailFooter note="Zozio.cz — platforma pro útulky a záchranné stanice" />
       </EmailShell>

@@ -49,6 +49,7 @@ export async function sendApprovalEmail(props: {
   institutionName: string
   plan: string
   adminUrl: string
+  onboardingUrl: string
 }) {
   return resend.emails.send({
     from: FROM,
