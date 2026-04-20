@@ -5,7 +5,9 @@ const BASE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.zozio.cz'
 function nextForAction(type: string, userRole?: string | null): string {
   if (type === 'recovery') return '/auth/reset-password'
   if (type === 'signup' || type === 'email_change') {
-    if (userRole === 'institution_admin' || userRole === 'institution') return '/admin/dashboard'
+    // Instituce po ověření emailu jdou na čekací stránku — admin je pustí
+    // dál teprve po schválení (viz app/admin/layout.tsx a /auth/pending).
+    if (userRole === 'institution_admin' || userRole === 'institution') return '/auth/pending'
     if (userRole === 'advertiser') return '/portal'
     return '/profil'
   }

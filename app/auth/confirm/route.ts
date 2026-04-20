@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/server'
 // Volán z: /api/auth/send-email → odkaz v emailu → sem
 
 function redirectForRole(role?: string | null): string {
-  if (role === 'institution_admin' || role === 'institution') return '/admin/dashboard'
+  // Instituce → čekací stránka, která je pustí na dashboard po schválení
+  if (role === 'institution_admin' || role === 'institution') return '/auth/pending'
   if (role === 'advertiser') return '/portal'
   if (role === 'visitor' || role === 'public') return '/profil'
   return '/profil'

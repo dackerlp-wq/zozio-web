@@ -45,7 +45,7 @@ function RegisterForm() {
 
     const supabase = createClient()
     const role = isInstitution ? 'institution_admin' : isAdvertiser ? 'advertiser' : 'public'
-    const redirectNext = isInstitution ? '/admin/dashboard' : isAdvertiser ? '/portal' : '/profil'
+    const redirectNext = isInstitution ? '/auth/pending' : isAdvertiser ? '/portal' : '/profil'
 
     const { error: authError } = await supabase.auth.signUp({
       email,

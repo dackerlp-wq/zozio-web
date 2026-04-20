@@ -38,6 +38,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     institution = inst
   }
 
+  // Neschválené instituce směruj na čekací stránku (pending i rejected)
+  if (!isSuperadmin && institution && institution.approval_status !== 'approved') {
+    redirect('/auth/pending')
+  }
+
   return (
     <div className="min-h-screen bg-gray-pale/30 flex">
       <AdminSidebar
