@@ -1,0 +1,47 @@
+import {
+  ADOPTION_STATUS_LABEL, ADOPTION_STATUS_BADGE, ADOPTION_STATUS_ICON,
+  HEALTH_STATUS_LABEL, HEALTH_STATUS_BADGE,
+} from '@/lib/animal-labels'
+
+interface BadgeProps {
+  variant:
+    | 'intake' | 'quarantine' | 'available' | 'reserved' | 'adopted'
+    | 'foster' | 'treatment' | 'deceased' | 'not_for_adoption' | 'conditional'
+    | 'released' | 'transferred'
+    | 'healthy' | 'sick' | 'injured' | 'recovering' | 'chronic'
+    | 'urgent'
+  className?: string
+  size?: 'sm' | 'md'
+}
+
+export function Badge({ variant, className = '', size = 'md' }: BadgeProps) {
+  const sizeClass = size === 'sm' ? 'text-[10px] px-2 py-0.5' : 'text-xs px-2.5 py-1'
+
+  if (variant === 'urgent') {
+    return (
+      <span className={`inline-flex items-center gap-1 font-body font-bold rounded-pill bg-coral text-white ${sizeClass} ${className}`}>
+        🆘 Volám ZOZ
+      </span>
+    )
+  }
+
+  // Stav adopce (shelter) — včetně odvozených stavů jako quarantine
+  if (variant in ADOPTION_STATUS_LABEL) {
+    return (
+      <span className={`inline-flex items-center gap-1 font-body font-bold rounded-pill ${ADOPTION_STATUS_BADGE[variant] ?? 'bg-gray-pale text-gray'} ${sizeClass} ${className}`}>
+        {ADOPTION_STATUS_ICON[variant]} {ADOPTION_STATUS_LABEL[variant]}
+      </span>
+    )
+  }
+
+  // Zdravotní stav
+  if (variant in HEALTH_STATUS_LABEL) {
+    return (
+      <span className={`inline-flex items-center gap-1 font-body font-bold rounded-pill ${HEALTH_STATUS_BADGE[variant] ?? 'bg-gray-pale text-gray'} ${sizeClass} ${className}`}>
+        {HEALTH_STATUS_LABEL[variant]}
+      </span>
+    )
+  }
+
+  return null
+}

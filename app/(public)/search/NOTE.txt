@@ -1,0 +1,6 @@
+// Přidej tento import do /app/(public)/search/page.tsx
+// místo inline SearchInput funkce:
+// import { SearchInput } from './SearchInput'
+//
+// A odstraň tuto funkci z page.tsx:
+// function SearchInput(...) { ... }

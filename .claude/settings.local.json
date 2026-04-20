@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"req.query\\\\|req.body\\\\|dangerouslySetInnerHTML\\\\|innerHTML\" /c/Users/dacke/zozio/zozio-web/.claude/worktrees/pensive-mirzakhani/app --include=*.ts --include=*.tsx)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Read(//opt/homebrew/Cellar/node/25.9.0_2/bin/**)",
+      "Read(//Users/danieldvor/.nvm/versions/**)",
+      "Bash(export PATH=\"/opt/homebrew/bin:$PATH\")",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Read(//opt/homebrew/lib/node_modules/npm/bin/**)",
+      "Bash(/opt/homebrew/bin/npm --version)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh auth *)",
+      "Bash(git remote *)",
+      "Bash(ssh-add -l)",
+      "Read(//Users/danieldvor/.ssh/**)",
+      "Bash(npx vercel *)",
+      "Bash(vercel whoami *)",
+      "Bash(vercel deploy *)"
+    ]
+  }
+}
