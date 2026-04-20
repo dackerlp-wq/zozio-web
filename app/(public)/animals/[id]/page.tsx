@@ -249,15 +249,6 @@ export default async function AnimalDetailPage({ params }: PageProps) {
               </section>
             )}
 
-            {/* Reklama — mobilní karta, zobrazí se mezi "Podobná zvířata" a formulářem */}
-            <div className="lg:hidden mb-6">
-              <AdSlot
-                slot="sidebar"
-                speciesId={a.species_id ?? undefined}
-                institutionId={institutionId}
-              />
-            </div>
-
             {/* Podobná zvířata */}
             {similar.length > 0 && (
               <section className="mb-8">
